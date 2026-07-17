@@ -664,8 +664,26 @@ export class Game {
       if (this.driving && this.activeVehicle) {
         this.driving = false;
         const cp = this.activeVehicle.position;
-        const exitX = cp.x + 2.2;
-        const exitZ = cp.z;
+        // Try the vehicle's sides/ends (rotated to its heading) and take the
+        // first spot not inside a building; fall back to +X.
+        const rot = this.activeVehicle.body.rotation();
+        const fwd = new THREE.Vector3(0, 0, 1).applyQuaternion(
+          new THREE.Quaternion(rot.x, rot.y, rot.z, rot.w),
+        );
+        const vyaw = Math.atan2(fwd.x, fwd.z);
+        const cos = Math.cos(vyaw);
+        const sin = Math.sin(vyaw);
+        let exitX = cp.x + 2.2;
+        let exitZ = cp.z;
+        for (const [lx, lz] of [[2.2, 0], [-2.2, 0], [0, -3.2], [0, 3.2]]) {
+          const wx = cp.x + lx * cos + lz * sin;
+          const wz = cp.z - lx * sin + lz * cos;
+          if (!this.enemyBlockAt(wx, wz)) {
+            exitX = wx;
+            exitZ = wz;
+            break;
+          }
+        }
         this.player.body.setTranslation(
           { x: exitX, y: this.world.height(exitX, exitZ) + 1.2, z: exitZ },
           true,

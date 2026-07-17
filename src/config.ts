@@ -55,6 +55,8 @@ export const CAMERA_RIG = {
   pitchMax: 1.3,
   collisionRadius: 0.2,
   collisionRecoverSpeed: 5,
+  /** Chase-cam follow spring stiffness while driving (higher = tighter). */
+  vehicleFollow: 5,
 };
 
 export const FEEL = {

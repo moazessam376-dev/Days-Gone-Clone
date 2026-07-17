@@ -28,6 +28,13 @@ export class CameraRig {
   private aimBlend = 0;
   private currentDistance = CAMERA_RIG.restDistance;
   private castShape: RAPIER.Ball;
+  private followPos = new THREE.Vector3();
+  private wasVehicle = false;
+
+  /** Current spring-arm length (short = camera pressed against the player). */
+  get armDistance(): number {
+    return this.currentDistance;
+  }
 
   constructor(
     private camera: THREE.PerspectiveCamera,
@@ -76,7 +83,16 @@ export class CameraRig {
     _euler.set(this.pitch + (recoil?.pitch ?? 0), this.yaw + (recoil?.yaw ?? 0), 0);
     _rot.setFromEuler(_euler);
 
-    _pivot.copy(target).y += vehicle ? 2.0 : cfg.pivotHeight;
+    // Vehicles get a smoothed follow point so chassis jitter/tumble doesn't
+    // transfer 1:1 into the camera; on foot the pivot tracks exactly.
+    if (vehicle) {
+      if (!this.wasVehicle) this.followPos.copy(target);
+      this.followPos.lerp(target, 1 - Math.exp(-cfg.vehicleFollow * dt));
+      _pivot.copy(this.followPos).y += 2.0;
+    } else {
+      _pivot.copy(target).y += cfg.pivotHeight;
+    }
+    this.wasVehicle = vehicle;
     _offset.set(shoulderX, 0, distance).applyQuaternion(_rot);
     _desired.copy(_pivot).add(_offset);
 

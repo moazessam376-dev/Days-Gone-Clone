@@ -5,6 +5,9 @@ import { Input } from '../core/Input';
 import { PhysicsWorld } from '../physics/PhysicsWorld';
 import { Layer, interactionGroups } from '../physics/layers';
 
+/** Wheel rays only see the world — see CarController for why. */
+const WHEEL_RAY_GROUPS = interactionGroups(Layer.VEHICLE, Layer.STATIC);
+
 export const BIKE = {
   targetLength: 2.3,
   /** Flip if the model's nose points -z after alignment. */
@@ -108,7 +111,7 @@ export class BikeController {
     this.steer += (steerTarget - this.steer) * Math.min(1, dt * 9);
     this.controller.setWheelSteering(0, this.steer);
     this.controller.setWheelEngineForce(1, engine);
-    this.controller.updateVehicle(dt);
+    this.controller.updateVehicle(dt, undefined, WHEEL_RAY_GROUPS);
 
     // Visual cornering lean proportional to steer × speed.
     const leanTarget = -this.steer * Math.min(1, Math.abs(this.speed) / 8) * BIKE.leanMax;

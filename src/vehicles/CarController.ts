@@ -5,6 +5,12 @@ import { Input } from '../core/Input';
 import { PhysicsWorld } from '../physics/PhysicsWorld';
 import { Layer, interactionGroups } from '../physics/layers';
 
+const _q = new THREE.Quaternion();
+const _up = new THREE.Vector3();
+const _axis = new THREE.Vector3();
+const _fwd = new THREE.Vector3();
+const _worldUp = new THREE.Vector3(0, 1, 0);
+
 export const CAR = {
   targetLength: 4.4, // meters, sedan scaled to this
   engineForce: 9000,
@@ -14,7 +20,18 @@ export const CAR = {
   maxSteer: 0.55,
   steerSpeedFalloff: 18,
   runOverSpeed: 2.5,
+  maxAngvel: 6, // rad/s cap — no violent tumbles
+  airDamping: 2.5, // extra angular damping while airborne (per second)
+  uprightTorque: 14, // rad/s² of righting acceleration when tipped
+  uprightMaxUpY: 0.5, // consider "flipped" below this chassis-up.y
+  uprightMaxSpeed: 2.5, // only auto-right when this slow
+  uprightResetTime: 1.5, // still flipped after this long → snap upright
 };
+
+/** Wheel suspension rays must only see the world, never enemies/players —
+ * a raycast landing on an (infinite-mass) kinematic zombie capsule reads as
+ * ground and catapults the chassis. */
+const WHEEL_RAY_GROUPS = interactionGroups(Layer.VEHICLE, Layer.STATIC);
 
 /**
  * Rapier raycast-vehicle car with the Kenney sedan model. The GLB's own
@@ -28,6 +45,7 @@ export class CarController {
   private wheels: THREE.Object3D[] = [];
   private wheelRadius = 0.35;
   private steer = 0;
+  private flippedT = 0;
   /** +1 if the model's nose points +z, -1 if -z (drives engine sign). */
   private forwardSign = 1;
 
@@ -158,7 +176,61 @@ export class CarController {
     this.controller.setWheelBrake(0, driven ? 0.5 : CAR.brakeForce);
     this.controller.setWheelBrake(1, driven ? 0.5 : CAR.brakeForce);
 
-    this.controller.updateVehicle(dt);
+    this.controller.updateVehicle(dt, undefined, WHEEL_RAY_GROUPS);
+
+    // ---- Safety nets: no sky-launches, no ending stuck on the roof ----
+    const av = this.body.angvel();
+    let avLen = Math.hypot(av.x, av.y, av.z);
+    if (avLen > CAR.maxAngvel) {
+      const s = CAR.maxAngvel / avLen;
+      this.body.setAngvel({ x: av.x * s, y: av.y * s, z: av.z * s }, true);
+      avLen = CAR.maxAngvel;
+    }
+    let contacts = 0;
+    for (let i = 0; i < this.wheels.length; i++) {
+      if (this.controller.wheelIsInContact(i)) contacts++;
+    }
+    if (contacts === 0 && avLen > 0.01) {
+      const s = Math.max(0, 1 - CAR.airDamping * dt);
+      this.body.setAngvel({ x: av.x * s, y: av.y * s, z: av.z * s }, true);
+    }
+    // Auto-upright. A gentle torque rights side-tips; a fully-flipped heavy
+    // chassis can't be torqued over its own roof edge (the contact solver
+    // absorbs the spin), so if it stays flipped we snap it level after a
+    // moment, keeping its yaw — the car must never end up undrivable.
+    const rot = this.body.rotation();
+    _q.set(rot.x, rot.y, rot.z, rot.w);
+    _up.set(0, 1, 0).applyQuaternion(_q);
+    const lv = this.body.linvel();
+    const slow = Math.hypot(lv.x, lv.z) < CAR.uprightMaxSpeed;
+    if (_up.y < 0.92 && slow) {
+      // Torque assist all the way back to level (also settles part-tips).
+      _axis.crossVectors(_up, _worldUp);
+      const len = _axis.length();
+      if (len > 0.01) {
+        _axis.multiplyScalar((CAR.uprightTorque * dt) / len);
+        const av2 = this.body.angvel();
+        this.body.setAngvel(
+          { x: av2.x * 0.9 + _axis.x, y: av2.y * 0.9, z: av2.z * 0.9 + _axis.z },
+          true,
+        );
+      }
+    }
+    if (_up.y < CAR.uprightMaxUpY && slow) {
+      this.flippedT += dt;
+      if (this.flippedT >= CAR.uprightResetTime) {
+        this.flippedT = 0;
+        _fwd.set(0, 0, 1).applyQuaternion(_q);
+        const yaw = Math.atan2(_fwd.x, _fwd.z);
+        const t = this.body.translation();
+        this.body.setRotation({ x: 0, y: Math.sin(yaw / 2), z: 0, w: Math.cos(yaw / 2) }, true);
+        this.body.setTranslation({ x: t.x, y: t.y + 1.0, z: t.z }, true);
+        this.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
+        this.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
+      }
+    } else {
+      this.flippedT = 0;
+    }
   }
 
   updateVisuals(): void {
