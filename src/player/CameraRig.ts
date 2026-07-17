@@ -42,6 +42,7 @@ export class CameraRig {
     target: THREE.Vector3,
     aiming: boolean,
     recoil?: { pitch: number; yaw: number },
+    vehicle = false,
   ): void {
     const cfg = CAMERA_RIG;
 
@@ -67,14 +68,15 @@ export class CameraRig {
       this.camera.updateProjectionMatrix();
     }
 
-    const shoulderX = THREE.MathUtils.lerp(cfg.shoulderX, cfg.aimShoulderX, b);
-    const distance = THREE.MathUtils.lerp(cfg.restDistance, cfg.aimDistance, b);
+    // Vehicle chase framing: higher pivot, longer arm, no shoulder offset.
+    const shoulderX = vehicle ? 0 : THREE.MathUtils.lerp(cfg.shoulderX, cfg.aimShoulderX, b);
+    const distance = vehicle ? 7.0 : THREE.MathUtils.lerp(cfg.restDistance, cfg.aimDistance, b);
 
     // Recoil is composed in but never stored — it always springs back.
     _euler.set(this.pitch + (recoil?.pitch ?? 0), this.yaw + (recoil?.yaw ?? 0), 0);
     _rot.setFromEuler(_euler);
 
-    _pivot.copy(target).y += cfg.pivotHeight;
+    _pivot.copy(target).y += vehicle ? 2.0 : cfg.pivotHeight;
     _offset.set(shoulderX, 0, distance).applyQuaternion(_rot);
     _desired.copy(_pivot).add(_offset);
 

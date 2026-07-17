@@ -88,7 +88,9 @@ export class EnemyManager {
   heightFn: (x: number, z: number) => number = () => 0;
 
   constructor(physics: PhysicsWorld, registry: DamageRegistry, private events: EnemyEvents) {
-    const groups = interactionGroups(Layer.ENEMY, 0xffff);
+    // Enemies don't physically block the car — run-over kills are handled by
+    // the sweep, so the car must be able to plow through the crowd.
+    const groups = interactionGroups(Layer.ENEMY, 0xffff & ~Layer.VEHICLE);
     for (let s = 0; s < ENEMY.physicsPoolSize; s++) {
       const body = physics.world.createRigidBody(
         RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(0, -100 - s * 3, 0),
@@ -368,6 +370,20 @@ export class EnemyManager {
         this.posZ[i] += dir.z * 0.5;
       }
       events.onHit(i, this.posX[i], this.posZ[i], killed);
+    });
+  }
+
+  /** Vehicle run-over: kill live enemies inside the radius with the car's velocity. */
+  runOverSweep(x: number, z: number, radius: number, velX: number, velZ: number,
+    onKill: (px: number, pz: number) => void): void {
+    const point = new THREE.Vector3();
+    const dir = new THREE.Vector3(velX, 0, velZ).normalize();
+    this.hash.query(x, z, radius, (i) => {
+      if (this.state[i] === EnemyState.CORPSE || this.state[i] === EnemyState.INACTIVE) return;
+      if (Math.hypot(this.posX[i] - x, this.posZ[i] - z) > radius) return;
+      point.set(this.posX[i], this.posY[i] + 1, this.posZ[i]);
+      this.damage(i, 1000, point, dir, false);
+      onKill(this.posX[i], this.posZ[i]);
     });
   }
 

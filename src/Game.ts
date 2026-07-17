@@ -23,6 +23,7 @@ import { HUD } from './ui/HUD';
 import { EnemyManager } from './enemies/EnemyManager';
 import { EnemyRenderer } from './enemies/EnemyRenderer';
 import { WorldData } from './world/WorldGen';
+import { CarController, CAR } from './vehicles/CarController';
 import { Terrain } from './world/Terrain';
 import { Vegetation } from './world/Vegetation';
 import { Town } from './world/Town';
@@ -70,6 +71,10 @@ export class Game {
   private vegetation!: Vegetation;
   private town!: Town;
   private sun!: THREE.DirectionalLight;
+  private car!: CarController;
+  private driving = false;
+  private engineOsc: OscillatorNode | null = null;
+  private engineGain: GainNode | null = null;
 
   constructor(container: HTMLElement, assets: AssetLoader) {
     this.renderer = new Renderer(container);
@@ -97,6 +102,12 @@ export class Game {
     this.setupWeapons();
     this.setupDummies();
     this.setupEnemies(assets);
+    // Car parked on the highway a short walk from spawn.
+    this.car = new CarController(
+      this.physics,
+      this.scene,
+      new THREE.Vector3(8, this.world.height(8, 14) + 1.2, 14),
+    );
 
     this.setupOverlay();
     this.setupDebugPanel();
@@ -295,7 +306,7 @@ export class Game {
   }
 
   private onPlayerDamaged(damage: number, fromX: number, fromZ: number): void {
-    if (this.dead || this.player.invulnerable) return;
+    if (this.dead || this.player.invulnerable || this.driving) return;
     this.playerHealth -= damage;
     this.lastDamageTime = this.gameTime;
     this.hud.damageFlash();
@@ -318,6 +329,32 @@ export class Game {
     this.enemies.reset();
     this.enemyRenderer.reset();
     this.spawnEnemyWave(24);
+  }
+
+  private setEngineAudio(on: boolean): void {
+    const ctx = (this.audio as unknown as { ctx: AudioContext | null }).ctx;
+    const master = (this.audio as unknown as { master: AudioNode | null }).master;
+    if (!ctx || !master) return;
+    if (on && !this.engineOsc) {
+      this.engineOsc = ctx.createOscillator();
+      this.engineOsc.type = 'sawtooth';
+      this.engineOsc.frequency.value = 55;
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.value = 320;
+      this.engineGain = ctx.createGain();
+      this.engineGain.gain.value = 0.05;
+      this.engineOsc.connect(filter);
+      filter.connect(this.engineGain);
+      this.engineGain.connect(master);
+      this.engineOsc.start();
+    } else if (!on && this.engineOsc) {
+      this.engineOsc.stop();
+      this.engineOsc.disconnect();
+      this.engineGain?.disconnect();
+      this.engineOsc = null;
+      this.engineGain = null;
+    }
   }
 
   private initAudio(): void {
@@ -374,7 +411,8 @@ export class Game {
       );
     }
 
-    this.enemies.fixedUpdate(dt, this.player.root.position.x, this.player.root.position.z);
+    const chaseTarget = this.driving ? this.car.position : this.player.root.position;
+    this.enemies.fixedUpdate(dt, chaseTarget.x, chaseTarget.z);
 
     // Keep the pressure up: top back to ~24 alive every few seconds.
     this.spawnTimer -= dt;
@@ -384,17 +422,56 @@ export class Game {
       if (alive < 24) this.spawnEnemyWave(24 - alive);
     }
 
-    const ppos = this.player.root.position;
-    this.terrain.updatePhysics(ppos.x, ppos.z);
-    this.vegetation.update(dt, ppos.x, ppos.z);
+    const focus = this.driving ? this.car.position : this.player.root.position;
+    this.terrain.updatePhysics(focus.x, focus.z);
+    this.vegetation.update(dt, focus.x, focus.z);
 
-    this.player.fixedUpdate(dt, this.input, this.cameraRig.yaw);
+    // Enter/exit the car (E).
+    if (this.input.consumePressed('KeyE')) {
+      if (this.driving) {
+        this.driving = false;
+        const cp = this.car.position;
+        const exitX = cp.x + 2.2;
+        const exitZ = cp.z;
+        this.player.body.setTranslation(
+          { x: exitX, y: this.world.height(exitX, exitZ) + 1.2, z: exitZ },
+          true,
+        );
+        this.player.root.visible = true;
+        this.setEngineAudio(false);
+      } else if (this.player.root.position.distanceTo(this.car.position) < 3.5) {
+        this.driving = true;
+        this.player.root.visible = false;
+        // Park the player body out of the way while driving.
+        this.player.body.setTranslation({ x: 0, y: -50, z: 0 }, true);
+        this.setEngineAudio(true);
+      }
+    }
+
+    this.car.fixedUpdate(dt, this.input, this.driving);
+    if (this.driving) {
+      const v = this.car.linvel();
+      const speed = Math.hypot(v.x, v.z);
+      if (speed > CAR.runOverSpeed) {
+        this.enemies.runOverSweep(this.car.position.x, this.car.position.z, 2.6, v.x, v.z, (px, pz) => {
+          this.shake.add(0.3);
+          this.hud.showHitmarker(true);
+          this.audio.play('impact_flesh', { gain: 0.9, at: { x: px, y: 1, z: pz } });
+        });
+      }
+      if (this.engineOsc && this.engineGain) {
+        this.engineOsc.frequency.value = 55 + speed * 6;
+        this.engineGain.gain.value = 0.05 + Math.min(0.1, speed * 0.004);
+      }
+    }
+
+    if (!this.driving) this.player.fixedUpdate(dt, this.input, this.cameraRig.yaw);
     this.weapons.fixedUpdate(
       dt,
       this.input,
       this.renderer.camera,
       this.player.aiming,
-      this.input.locked && !this.player.isRolling,
+      this.input.locked && !this.player.isRolling && !this.driving,
       (p, y) => this.recoil.kick(p, y),
     );
     this.weaponRig?.setActive(this.weapons.current);
@@ -414,7 +491,15 @@ export class Game {
     });
     this.recoil.update(dt);
     this.weaponRig?.update(dt, this.handBone);
-    this.cameraRig.update(dt, this.input, this.player.root.position, this.player.aiming, this.recoil);
+    this.car.updateVisuals();
+    this.cameraRig.update(
+      dt,
+      this.input,
+      this.driving ? this.car.position : this.player.root.position,
+      this.player.aiming && !this.driving,
+      this.recoil,
+      this.driving,
+    );
     this.shake.apply(dt, this.renderer.camera);
     this.renderer.camera.updateMatrixWorld();
     if (this.weaponRig) this.weaponRig.muzzleWorld(this.muzzlePos);
