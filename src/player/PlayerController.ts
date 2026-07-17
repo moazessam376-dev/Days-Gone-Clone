@@ -43,8 +43,9 @@ export class PlayerController {
   private rollDir = new THREE.Vector3(0, 0, 1);
   invulnerable = false;
 
-  private targetYaw = 0;
-  private modelYaw = 0;
+  // Face away from the camera (which spawns looking down -Z) at start.
+  private targetYaw = Math.PI;
+  private modelYaw = Math.PI;
 
   constructor(physics: PhysicsWorld, spawn: THREE.Vector3) {
     this.root.add(this.model);

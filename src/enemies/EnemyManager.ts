@@ -84,6 +84,8 @@ export class EnemyManager {
   private tick = 0;
   private time = 0;
   private attackDidHit = new Uint8Array(ENEMY.capacity);
+  /** Terrain height sampler (flat world until M5 wires the real one). */
+  heightFn: (x: number, z: number) => number = () => 0;
 
   constructor(physics: PhysicsWorld, registry: DamageRegistry, private events: EnemyEvents) {
     const groups = interactionGroups(Layer.ENEMY, 0xffff);
@@ -135,7 +137,7 @@ export class EnemyManager {
     for (let i = 0; i < ENEMY.capacity; i++) {
       if (this.state[i] === EnemyState.INACTIVE) {
         this.posX[i] = x;
-        this.posY[i] = 0;
+        this.posY[i] = this.heightFn(x, z);
         this.posZ[i] = z;
         this.velX[i] = 0;
         this.velZ[i] = 0;
@@ -176,7 +178,7 @@ export class EnemyManager {
     slot.enemy = i;
     slot.releaseAt = this.time + ENEMY.corpseTime;
     slot.body.setEnabled(true);
-    slot.body.setTranslation({ x: this.posX[i], y: 0.9, z: this.posZ[i] }, true);
+    slot.body.setTranslation({ x: this.posX[i], y: this.posY[i] + 0.9, z: this.posZ[i] }, true);
     slot.body.setRotation({ x: 0, y: Math.sin(this.yaw[i] / 2), z: 0, w: Math.cos(this.yaw[i] / 2) }, true);
     slot.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
     slot.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
@@ -282,7 +284,7 @@ export class EnemyManager {
       this.velZ[i] = vz;
       this.posX[i] += vx * stepDt;
       this.posZ[i] += vz * stepDt;
-      this.posY[i] = 0; // flat graybox; terrain height sampling arrives in M5
+      this.posY[i] = this.heightFn(this.posX[i], this.posZ[i]);
       if (vLen > 0.1) this.yaw[i] = Math.atan2(vx, vz);
       this.animId[i] = speed === ENEMY.runSpeed ? 2 : 1;
 

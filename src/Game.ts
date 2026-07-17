@@ -1,10 +1,8 @@
-import RAPIER from '@dimforge/rapier3d-compat';
 import * as THREE from 'three';
 import { GameLoop } from './core/GameLoop';
 import { Input } from './core/Input';
 import { DebugPanel } from './core/DebugPanel';
 import { PhysicsWorld } from './physics/PhysicsWorld';
-import { Layer, ALL_LAYERS, interactionGroups } from './physics/layers';
 import { Renderer } from './rendering/Renderer';
 import { PlayerController } from './player/PlayerController';
 import { PlayerAvatar } from './player/PlayerAvatar';
@@ -24,6 +22,10 @@ import { AudioEngine } from './audio/AudioEngine';
 import { HUD } from './ui/HUD';
 import { EnemyManager } from './enemies/EnemyManager';
 import { EnemyRenderer } from './enemies/EnemyRenderer';
+import { WorldData } from './world/WorldGen';
+import { Terrain } from './world/Terrain';
+import { Vegetation } from './world/Vegetation';
+import { Town } from './world/Town';
 import { PLAYER_HEALTH, MELEE } from './config';
 
 /**
@@ -63,6 +65,11 @@ export class Game {
   private meleeCooldown = 0;
   private dead = false;
   private spawnTimer = 0;
+  private world!: WorldData;
+  private terrain!: Terrain;
+  private vegetation!: Vegetation;
+  private town!: Town;
+  private sun!: THREE.DirectionalLight;
 
   constructor(container: HTMLElement, assets: AssetLoader) {
     this.renderer = new Renderer(container);
@@ -71,9 +78,13 @@ export class Game {
     this.debug = new DebugPanel();
 
     this.setupEnvironment();
-    this.setupGraybox();
+    this.setupWorld();
 
-    this.player = new PlayerController(this.physics, new THREE.Vector3(0, 1.2, 8));
+    // Spawn on the highway centerline just outside the town center —
+    // building placement keeps clear of road lanes.
+    const spawnY = this.world.height(0, 0) + 1.2;
+    this.player = new PlayerController(this.physics, new THREE.Vector3(0, spawnY, 0));
+    this.terrain.updatePhysics(0, 0);
     this.avatar = new PlayerAvatar(assets.get('player'));
     this.player.model.add(this.avatar.object);
     this.scene.add(this.player.root);
@@ -136,7 +147,7 @@ export class Game {
   private setupEnvironment(): void {
     // Moody dusk placeholder — refined properly in M2's lighting pass.
     this.scene.background = new THREE.Color(0x2a3040);
-    this.scene.fog = new THREE.Fog(0x2a3040, 40, 300);
+    this.scene.fog = new THREE.Fog(0x2a3040, 60, 480);
 
     const hemi = new THREE.HemisphereLight(0x8a9ac0, 0x4a4238, 1.8);
     this.scene.add(hemi);
@@ -145,88 +156,22 @@ export class Game {
     sun.position.set(30, 25, 10);
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
-    sun.shadow.camera.left = -40;
-    sun.shadow.camera.right = 40;
-    sun.shadow.camera.top = 40;
-    sun.shadow.camera.bottom = -40;
-    sun.shadow.camera.far = 120;
+    sun.shadow.camera.left = -45;
+    sun.shadow.camera.right = 45;
+    sun.shadow.camera.top = 45;
+    sun.shadow.camera.bottom = -45;
+    sun.shadow.camera.far = 160;
     this.scene.add(sun);
+    this.scene.add(sun.target);
+    this.sun = sun;
   }
 
-  /** Static box: mesh + matching collider from one transform. */
-  private addStaticBox(
-    size: [number, number, number],
-    pos: [number, number, number],
-    rot?: THREE.Euler,
-    color = 0x5a6270,
-  ): void {
-    const mesh = new THREE.Mesh(
-      new THREE.BoxGeometry(...size),
-      new THREE.MeshStandardMaterial({ color, roughness: 0.9 }),
-    );
-    mesh.position.set(...pos);
-    if (rot) mesh.rotation.copy(rot);
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-    this.scene.add(mesh);
-
-    const q = new THREE.Quaternion().setFromEuler(rot ?? new THREE.Euler());
-    this.physics.world.createCollider(
-      RAPIER.ColliderDesc.cuboid(size[0] / 2, size[1] / 2, size[2] / 2)
-        .setTranslation(...pos)
-        .setRotation({ x: q.x, y: q.y, z: q.z, w: q.w })
-        .setCollisionGroups(interactionGroups(Layer.STATIC, ALL_LAYERS)),
-    );
-  }
-
-  private setupGraybox(): void {
-    const groundMat = new THREE.MeshStandardMaterial({ color: 0x4a5240, roughness: 1 });
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), groundMat);
-    ground.rotation.x = -Math.PI / 2;
-    ground.receiveShadow = true;
-    this.scene.add(ground);
-    this.physics.world.createCollider(
-      RAPIER.ColliderDesc.cuboid(100, 0.1, 100)
-        .setTranslation(0, -0.1, 0)
-        .setCollisionGroups(interactionGroups(Layer.STATIC, ALL_LAYERS)),
-    );
-
-    // Obstacle course for controller feel testing.
-    this.addStaticBox([6, 0.4, 8], [-8, 1.6, -6], new THREE.Euler(-0.42, 0, 0)); // ramp
-    for (let i = 0; i < 8; i++) {
-      this.addStaticBox([3, 0.2 * (i + 1), 0.4], [0, 0.1 * (i + 1), -10.5 - i * 0.4]); // stairs
-    }
-    this.addStaticBox([0.4, 3, 10], [6, 1.5, -6]); // wall to camera-test against
-    this.addStaticBox([0.4, 3, 6], [9, 1.5, -3], new THREE.Euler(0, 0.8, 0)); // angled wall
-    for (let i = 0; i < 4; i++) {
-      this.addStaticBox([0.8, 4, 0.8], [-4 + i * 2.5, 2, 2]); // pillar row
-    }
-    this.addStaticBox([4, 1, 4], [10, 0.5, 6]); // low platform (autostep check: too high)
-    this.addStaticBox([4, 0.35, 4], [14, 0.175, 6]); // step-up platform (autostep ok)
-
-    // Dynamic crates to shove around.
-    const crateGeo = new THREE.BoxGeometry(1, 1, 1);
-    const crateMat = new THREE.MeshStandardMaterial({ color: 0x8a6a4a, roughness: 0.8 });
-    for (let row = 0; row < 4; row++) {
-      for (let i = 0; i < 4 - row; i++) {
-        const mesh = new THREE.Mesh(crateGeo, crateMat);
-        mesh.castShadow = true;
-        mesh.receiveShadow = true;
-        this.scene.add(mesh);
-        const body = this.physics.world.createRigidBody(
-          RAPIER.RigidBodyDesc.dynamic().setTranslation(
-            i * 1.05 - (4 - row) * 0.525 + 3,
-            row * 1.05 + 0.5,
-            -3,
-          ),
-        );
-        this.physics.world.createCollider(
-          RAPIER.ColliderDesc.cuboid(0.5, 0.5, 0.5).setDensity(0.4),
-          body,
-        );
-        this.physics.syncObject(body, mesh);
-      }
-    }
+  private setupWorld(): void {
+    this.world = new WorldData();
+    this.terrain = new Terrain(this.scene, this.physics, this.world);
+    this.vegetation = new Vegetation(this.scene, this.physics, this.world);
+    this.town = new Town(this.scene, this.physics, this.world);
+    void this.town;
   }
 
   private setupDebugPanel(): void {
@@ -305,13 +250,13 @@ export class Game {
   }
 
   private setupDummies(): void {
-    // Open right-rear quadrant — clear sightlines from spawn.
+    // Practice range along the road near spawn.
     const spots = [
-      new THREE.Vector3(14, 0, 16),
-      new THREE.Vector3(19, 0, 20),
-      new THREE.Vector3(24, 0, 25),
-      new THREE.Vector3(30, 0, 30),
-    ];
+      [14, 16],
+      [19, 20],
+      [24, 25],
+      [30, 30],
+    ].map(([x, z]) => new THREE.Vector3(x, this.world.height(x, z), z));
     for (const p of spots) {
       const d = new TargetDummy(this.physics, this.registry, p);
       this.scene.add(d.root);
@@ -331,6 +276,7 @@ export class Game {
         this.audio.play('impact_flesh', { gain: 0.7, at: point });
       },
     });
+    this.enemies.heightFn = (x, z) => this.world.height(x, z);
     this.enemyRenderer = new EnemyRenderer(this.scene, assets.get('zombie'));
     this.spawnEnemyWave(24);
   }
@@ -343,7 +289,7 @@ export class Game {
       const radius = 18 + Math.random() * 22;
       const x = this.player.root.position.x + Math.cos(angle) * radius;
       const z = this.player.root.position.z + Math.sin(angle) * radius;
-      if (Math.abs(x) > 95 || Math.abs(z) > 95) continue;
+      if (Math.abs(x) > 1000 || Math.abs(z) > 1000) continue;
       if (this.enemies.spawn(x, z) >= 0) spawned++;
     }
   }
@@ -368,7 +314,7 @@ export class Game {
     this.dead = false;
     this.playerHealth = PLAYER_HEALTH.max;
     this.hud.showDeath(false);
-    this.player.body.setTranslation({ x: 0, y: 1.2, z: 8 }, true);
+    this.player.body.setTranslation({ x: 0, y: this.world.height(0, 0) + 1.2, z: 0 }, true);
     this.enemies.reset();
     this.enemyRenderer.reset();
     this.spawnEnemyWave(24);
@@ -438,6 +384,10 @@ export class Game {
       if (alive < 24) this.spawnEnemyWave(24 - alive);
     }
 
+    const ppos = this.player.root.position;
+    this.terrain.updatePhysics(ppos.x, ppos.z);
+    this.vegetation.update(dt, ppos.x, ppos.z);
+
     this.player.fixedUpdate(dt, this.input, this.cameraRig.yaw);
     this.weapons.fixedUpdate(
       dt,
@@ -475,6 +425,11 @@ export class Game {
     for (const d of this.dummies) d.update(dt);
     this.enemyRenderer.update(dt, this.enemies);
     this.hud.setHealth(this.playerHealth / PLAYER_HEALTH.max);
+
+    // Keep the shadow frustum centered on the player.
+    const pp = this.player.root.position;
+    this.sun.position.set(pp.x + 30, pp.y + 25, pp.z + 10);
+    this.sun.target.position.copy(pp);
 
     const spreadRad = this.weapons.spreadAngle(this.player.aiming);
     const fovRad = (this.renderer.camera.fov * Math.PI) / 180;
