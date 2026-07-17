@@ -55,6 +55,23 @@ export const CAMERA_RIG = {
   collisionRecoverSpeed: 5,
 };
 
+export const FEEL = {
+  shake: {
+    decay: 2.2, // trauma units/s
+    maxOffset: 0.09, // meters at trauma=1
+    maxRoll: 0.035, // radians at trauma=1
+    freq: 11,
+  },
+  hitstop: {
+    scale: 0.05,
+    durationMs: 45,
+  },
+  recoil: {
+    recoverSpeed: 9, // spring-back of camera kick
+    weaponKick: 0.05, // meters of visual gun kick per shot
+  },
+};
+
 export const DEBUG = {
   showStats: true,
 };

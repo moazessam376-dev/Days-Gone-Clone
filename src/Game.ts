@@ -11,6 +11,17 @@ import { PlayerAvatar } from './player/PlayerAvatar';
 import { CameraRig } from './player/CameraRig';
 import { AssetLoader } from './core/AssetLoader';
 import { CAMERA_RIG, PLAYER } from './config';
+import { WeaponSystem, DamageRegistry } from './weapons/WeaponSystem';
+import { WEAPONS } from './weapons/weapons.data';
+import { WeaponRig } from './weapons/WeaponRig';
+import { TargetDummy } from './entities/TargetDummy';
+import { FxPools } from './fx/ParticlePool';
+import { ScreenShake, Hitstop, Recoil } from './fx/Feedback';
+import { Tracers } from './fx/Tracers';
+import { Decals } from './fx/Decals';
+import { MuzzleFlash } from './fx/MuzzleFlash';
+import { AudioEngine } from './audio/AudioEngine';
+import { HUD } from './ui/HUD';
 
 /**
  * M1 graybox: third-person character controller + over-shoulder camera in an
@@ -27,6 +38,20 @@ export class Game {
   private player: PlayerController;
   private avatar: PlayerAvatar;
   private cameraRig: CameraRig;
+  private weapons!: WeaponSystem;
+  private weaponRig: WeaponRig | null = null;
+  private registry = new DamageRegistry();
+  private dummies: TargetDummy[] = [];
+  private fx!: FxPools;
+  private shake = new ScreenShake();
+  private hitstop = new Hitstop();
+  private recoil = new Recoil();
+  private tracers!: Tracers;
+  private decals!: Decals;
+  private muzzleFlash!: MuzzleFlash;
+  private audio = new AudioEngine();
+  private hud = new HUD();
+  private muzzlePos = new THREE.Vector3();
 
   constructor(container: HTMLElement, assets: AssetLoader) {
     this.renderer = new Renderer(container);
@@ -42,6 +67,13 @@ export class Game {
     this.player.model.add(this.avatar.object);
     this.scene.add(this.player.root);
     this.cameraRig = new CameraRig(this.renderer.camera, this.physics);
+
+    this.fx = new FxPools(this.scene);
+    this.tracers = new Tracers(this.scene);
+    this.decals = new Decals(this.scene);
+    this.muzzleFlash = new MuzzleFlash(this.scene);
+    this.setupWeapons();
+    this.setupDummies();
 
     this.setupOverlay();
     this.setupDebugPanel();
@@ -80,7 +112,10 @@ export class Game {
     const overlay = document.getElementById('click-to-play')!;
     if (this.input.mock) return;
     overlay.classList.remove('hidden');
-    overlay.addEventListener('click', () => this.input.requestLock());
+    overlay.addEventListener('click', () => {
+      this.initAudio();
+      this.input.requestLock();
+    });
     document.addEventListener('pointerlockchange', () => {
       overlay.classList.toggle('hidden', this.input.locked);
     });
@@ -201,13 +236,110 @@ export class Game {
     c.add(CAMERA_RIG, 'sensitivity', 0.0005, 0.006);
   }
 
+  private handBone: THREE.Object3D | null = null;
+
+  private setupWeapons(): void {
+    this.handBone = this.avatar.handBone;
+    this.weaponRig = new WeaponRig(this.scene);
+
+    this.weapons = new WeaponSystem(this.physics, this.registry, {
+      onShot: (def) => {
+        this.weaponRig?.kick();
+        if (def.shootAnim) this.avatar.playShoot();
+        this.shake.add(def.pellets > 1 ? 0.32 : def.auto ? 0.1 : 0.16);
+        if (this.weaponRig) {
+          this.weaponRig.muzzleWorld(this.muzzlePos);
+          this.muzzleFlash.flash(this.muzzlePos);
+        }
+        this.audio.play(`shot_${this.weapons.current}`, { gain: 0.55 });
+      },
+      onHitWorld: (point, normal) => {
+        this.decals.add(point, normal);
+        this.fx.spark.burst({
+          count: 5, position: point, direction: normal.clone(), spread: 0.7,
+          speed: [2, 6], gravity: 9, life: [0.1, 0.3], size: [0.02, 0.05],
+          colors: [0xffd9a0, 0xffb060, 0xfff0c0],
+        });
+        this.fx.dust.burst({
+          count: 3, position: point, direction: normal.clone(), spread: 0.5,
+          speed: [0.5, 1.5], gravity: -0.4, life: [0.4, 0.9], size: [0.08, 0.2],
+          growth: 0.5, colors: [0x8a8478, 0x6b665c],
+        });
+        this.tracers.fire(this.muzzlePos, point);
+        this.audio.play('impact_world', { gain: 0.4, at: point });
+      },
+      onHitFlesh: (point, dir, killed, headshot) => {
+        this.fx.blood.burst({
+          count: killed ? 14 : 8, position: point, direction: dir.clone().multiplyScalar(0.6),
+          spread: 0.8, speed: [1.5, 4.5], gravity: 12, life: [0.25, 0.6],
+          size: [0.04, 0.11], colors: [0x7a1410, 0x9c1c14, 0x580e0a],
+        });
+        this.tracers.fire(this.muzzlePos, point);
+        this.hud.showHitmarker(killed);
+        if (killed) {
+          this.hitstop.trigger();
+          this.shake.add(0.15);
+        }
+        this.audio.play('impact_flesh', { gain: headshot ? 0.8 : 0.55, at: point });
+      },
+      onReloadStart: (def) => {
+        this.avatar.playReload(def.reloadTime);
+        this.audio.play('reload', { gain: 0.5 });
+      },
+      onDryFire: () => this.audio.play('dry', { gain: 0.45 }),
+    }, this.player.body);
+
+    this.weaponRig?.setActive(this.weapons.current);
+  }
+
+  private setupDummies(): void {
+    // Open right-rear quadrant — clear sightlines from spawn.
+    const spots = [
+      new THREE.Vector3(14, 0, 16),
+      new THREE.Vector3(19, 0, 20),
+      new THREE.Vector3(24, 0, 25),
+      new THREE.Vector3(30, 0, 30),
+    ];
+    for (const p of spots) {
+      const d = new TargetDummy(this.physics, this.registry, p);
+      this.scene.add(d.root);
+      this.dummies.push(d);
+    }
+  }
+
+  private initAudio(): void {
+    this.audio.ensureContext();
+    this.registerSounds();
+  }
+
+  private registerSounds(): void {
+    if (!this.audio.ready) return;
+    for (const [key, def] of Object.entries(WEAPONS)) {
+      this.audio.registerGunshot(`shot_${key}`, def.sound);
+    }
+    this.audio.registerImpact('impact_world', { freq: 3000, dur: 0.09, gain: 0.7 });
+    this.audio.registerImpact('impact_flesh', { freq: 500, dur: 0.14, gain: 0.9 });
+    this.audio.registerImpact('reload', { freq: 1800, dur: 0.06, gain: 0.5 });
+    this.audio.registerImpact('dry', { freq: 2400, dur: 0.04, gain: 0.5 });
+  }
+
   private fixedUpdate(dt: number): void {
     this.player.fixedUpdate(dt, this.input, this.cameraRig.yaw);
+    this.weapons.fixedUpdate(
+      dt,
+      this.input,
+      this.renderer.camera,
+      this.player.aiming,
+      this.input.locked && !this.player.isRolling,
+      (p, y) => this.recoil.kick(p, y),
+    );
+    this.weaponRig?.setActive(this.weapons.current);
     this.physics.step();
   }
 
   private render(alpha: number, dt: number): void {
     this.debug.begin();
+    this.loop.timeScale = this.hitstop.timeScale;
     this.physics.interpolate(alpha);
     this.player.renderUpdate(dt);
     this.avatar.update(dt, {
@@ -216,7 +348,34 @@ export class Game {
       rolling: this.player.isRolling,
       pitch: this.cameraRig.pitch,
     });
-    this.cameraRig.update(dt, this.input, this.player.root.position, this.player.aiming);
+    this.recoil.update(dt);
+    this.weaponRig?.update(dt, this.handBone);
+    this.cameraRig.update(dt, this.input, this.player.root.position, this.player.aiming, this.recoil);
+    this.shake.apply(dt, this.renderer.camera);
+    this.renderer.camera.updateMatrixWorld();
+    if (this.weaponRig) this.weaponRig.muzzleWorld(this.muzzlePos);
+
+    this.muzzleFlash.update();
+    this.tracers.update(dt);
+    this.fx.update(dt, this.renderer.camera);
+    for (const d of this.dummies) d.update(dt);
+
+    const spreadRad = this.weapons.spreadAngle(this.player.aiming);
+    const fovRad = (this.renderer.camera.fov * Math.PI) / 180;
+    const spreadPx = (Math.tan(spreadRad) / Math.tan(fovRad / 2)) * (window.innerHeight / 2);
+    this.hud.update(
+      spreadPx,
+      this.weapons.magAmmo,
+      this.weapons.reserveAmmo,
+      this.weapons.def.name,
+      this.weapons.isReloading,
+    );
+
+    const camPos = this.renderer.camera.position;
+    const fwd = new THREE.Vector3();
+    this.renderer.camera.getWorldDirection(fwd);
+    this.audio.updateListener(camPos, fwd);
+
     this.renderer.render(this.scene);
     this.input.endFrame();
     this.debug.end();

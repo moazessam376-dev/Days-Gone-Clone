@@ -11,6 +11,7 @@ export class Input {
   private mouseDX = 0;
   private mouseDY = 0;
   private mouseButtons = new Set<number>();
+  private buttonsPressedThisFrame = new Set<number>();
   locked = false;
   /** Dev/test escape hatch (?mockinput): treat input as locked without real
    * pointer lock so automated tests can drive the game with synthetic events. */
@@ -40,7 +41,10 @@ export class Input {
     });
     document.addEventListener('mousedown', (e) => {
       if (this.mock && e.isTrusted) return;
-      if (this.locked) this.mouseButtons.add(e.button);
+      if (this.locked) {
+        this.mouseButtons.add(e.button);
+        this.buttonsPressedThisFrame.add(e.button);
+      }
     });
     document.addEventListener('mouseup', (e) => {
       if (this.mock && e.isTrusted) return;
@@ -84,6 +88,13 @@ export class Input {
     return this.mouseButtons.has(button);
   }
 
+  /** One-shot mouse press (consumed), for semi-auto triggers. */
+  consumePressedButton(button: number): boolean {
+    const had = this.buttonsPressedThisFrame.has(button);
+    if (had) this.buttonsPressedThisFrame.delete(button);
+    return had;
+  }
+
   consumeMouseDelta(): { dx: number; dy: number } {
     const d = { dx: this.mouseDX, dy: this.mouseDY };
     this.mouseDX = 0;
@@ -94,5 +105,6 @@ export class Input {
   /** Call once at the end of each render frame. */
   endFrame(): void {
     this.pressedThisFrame.clear();
+    this.buttonsPressedThisFrame.clear();
   }
 }

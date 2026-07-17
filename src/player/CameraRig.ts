@@ -36,7 +36,13 @@ export class CameraRig {
     this.castShape = new RAPIER.Ball(CAMERA_RIG.collisionRadius);
   }
 
-  update(dt: number, input: Input, target: THREE.Vector3, aiming: boolean): void {
+  update(
+    dt: number,
+    input: Input,
+    target: THREE.Vector3,
+    aiming: boolean,
+    recoil?: { pitch: number; yaw: number },
+  ): void {
     const cfg = CAMERA_RIG;
 
     const fovScale = this.camera.fov / CAMERA.fov;
@@ -64,7 +70,8 @@ export class CameraRig {
     const shoulderX = THREE.MathUtils.lerp(cfg.shoulderX, cfg.aimShoulderX, b);
     const distance = THREE.MathUtils.lerp(cfg.restDistance, cfg.aimDistance, b);
 
-    _euler.set(this.pitch, this.yaw, 0);
+    // Recoil is composed in but never stored — it always springs back.
+    _euler.set(this.pitch + (recoil?.pitch ?? 0), this.yaw + (recoil?.yaw ?? 0), 0);
     _rot.setFromEuler(_euler);
 
     _pivot.copy(target).y += cfg.pivotHeight;

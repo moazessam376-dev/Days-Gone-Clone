@@ -3,7 +3,7 @@ import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { PLAYER } from '../config';
 
 /** Bones above the hips — used to mask aim poses onto the upper body only. */
-const UPPER_BONE_RE = /(spine\.00[23]|neck|head|shoulder|upper_arm|forearm|hand|f_index|f_middle|f_ring|f_pinky|thumb)/;
+const UPPER_BONE_RE = /(spine\.?00[23]|neck|head|shoulder|upper_arm|forearm|hand|f_index|f_middle|f_ring|f_pinky|thumb)/;
 /** Everything else (hips, spine.001, legs, feet) keeps playing locomotion. */
 
 export interface AvatarState {
@@ -84,6 +84,35 @@ export class PlayerAvatar {
     this.rollAction.setLoop(THREE.LoopOnce, 1);
     this.rollAction.clampWhenFinished = false;
     this.rollAction.timeScale = rollClip.duration / PLAYER.roll.duration;
+
+    this.shootAction = this.mixer.clipAction(maskClip(clip('Pistol_Shoot'), true, 'upper'));
+    this.shootAction.setLoop(THREE.LoopOnce, 1);
+    this.reloadAction = this.mixer.clipAction(maskClip(clip('Pistol_Reload'), true, 'upper'));
+    this.reloadAction.setLoop(THREE.LoopOnce, 1);
+    this.reloadBaseDuration = clip('Pistol_Reload').duration;
+  }
+
+  private shootAction!: THREE.AnimationAction;
+  private reloadAction!: THREE.AnimationAction;
+  private reloadBaseDuration = 1;
+
+  /** Right-hand bone — mount point for weapon models. */
+  get handBone(): THREE.Object3D | null {
+    let bone: THREE.Object3D | null = null;
+    this.object.traverse((o) => {
+      if (!bone && /hand\.?R$/i.test(o.name)) bone = o;
+    });
+    return bone;
+  }
+
+  playShoot(): void {
+    this.shootAction.reset().setEffectiveWeight(1).fadeIn(0.02).play();
+    this.shootAction.timeScale = 2.2;
+  }
+
+  playReload(duration: number): void {
+    this.reloadAction.timeScale = this.reloadBaseDuration / duration;
+    this.reloadAction.reset().setEffectiveWeight(1).fadeIn(0.08).play();
   }
 
   update(dt: number, state: AvatarState): void {

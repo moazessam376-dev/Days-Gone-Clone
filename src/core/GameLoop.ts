@@ -22,6 +22,8 @@ export class GameLoop {
   private lastTime = -1;
   private rafId = 0;
   private running = false;
+  /** Global time dilation (hitstop). 1 = normal. */
+  timeScale = 1;
 
   constructor(private callbacks: LoopCallbacks) {}
 
@@ -47,7 +49,8 @@ export class GameLoop {
     }
 
     // Clamp so a backgrounded tab doesn't produce a huge catch-up burst.
-    const frameDt = Math.min((timeMs - this.lastTime) / 1000, PHYSICS.maxFrameDelta);
+    const frameDt =
+      Math.min((timeMs - this.lastTime) / 1000, PHYSICS.maxFrameDelta) * this.timeScale;
     this.lastTime = timeMs;
 
     this.accumulator += frameDt;
