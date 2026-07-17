@@ -87,7 +87,18 @@ export const ENEMY = {
   staggerTime: 0.35,
   separationRadius: 0.9,
   separationForce: 2.5,
+  /** Separation may contribute at most this fraction of move speed (seek wins). */
+  separationCap: 0.6,
+  /** Yaw added to the zombie model so it renders facing its heading. */
+  modelYawOffset: 0,
   corpseTime: 4,
+  /** Corpse rigid bodies weigh this much (kg) — knock-downs, not launches. */
+  corpseMass: 70,
+  // Death velocities are set directly (impulses are unreliable on a body the
+  // same tick it is re-enabled — Rapier reports mass 0 until the next step).
+  corpseKnockSpeed: 2.7, // m/s along the shot direction
+  corpseUpSpeed: 0.9,
+  corpseSpinSpeed: 3.5, // rad/s topple
   headshotHeight: 1.45, // hit above this (local) = headshot
   physicsPoolSize: 32,
   corpsePoolSize: 8,

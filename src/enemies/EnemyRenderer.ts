@@ -100,7 +100,7 @@ export class EnemyRenderer {
       }
 
       slot.root.position.set(manager.posX[i], manager.posY[i], manager.posZ[i]);
-      slot.root.rotation.set(0, manager.yaw[i] + Math.PI, 0);
+      slot.root.rotation.set(0, manager.yaw[i] + ENEMY.modelYawOffset, 0);
 
       const target = manager.animId[i];
       for (let a = 0; a < slot.actions.length; a++) {

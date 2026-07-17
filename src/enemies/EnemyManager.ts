@@ -134,8 +134,11 @@ export class EnemyManager {
         RAPIER.RigidBodyDesc.dynamic().setTranslation(0, -200 - c * 3, 0),
       );
       body.setEnabled(false);
+      // Human-weight body: box is 0.4×0.28×1.6 m = 0.1792 m³.
       const collider = physics.world.createCollider(
-        RAPIER.ColliderDesc.cuboid(0.2, 0.14, 0.8).setDensity(2).setCollisionGroups(corpseGroups),
+        RAPIER.ColliderDesc.cuboid(0.2, 0.14, 0.8)
+          .setDensity(ENEMY.corpseMass / 0.1792)
+          .setCollisionGroups(corpseGroups),
         body,
       );
       this.corpses.push({ body, collider, enemy: -1, releaseAt: 0 });
@@ -199,10 +202,26 @@ export class EnemyManager {
     slot.body.setEnabled(true);
     slot.body.setTranslation({ x: this.posX[i], y: this.posY[i] + 0.9, z: this.posZ[i] }, true);
     slot.body.setRotation({ x: 0, y: Math.sin(this.yaw[i] / 2), z: 0, w: Math.cos(this.yaw[i] / 2) }, true);
-    slot.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
-    slot.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
-    slot.body.applyImpulse({ x: dir.x * 14, y: 5, z: dir.z * 14 }, true);
-    slot.body.applyTorqueImpulse({ x: dir.z * 6, y: 0, z: -dir.x * 6 }, true);
+    // Velocities are set directly: impulses are silently dropped on a body
+    // re-enabled this same tick (its mass reads 0 until the next step).
+    if (Math.abs(dir.y) > 0.9) {
+      // Fire/vertical kill: crumple in place with a lazy random topple.
+      const a = Math.random() * Math.PI * 2;
+      slot.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
+      slot.body.setAngvel(
+        { x: Math.cos(a) * ENEMY.corpseSpinSpeed * 0.5, y: 0, z: Math.sin(a) * ENEMY.corpseSpinSpeed * 0.5 },
+        true,
+      );
+    } else {
+      slot.body.setLinvel(
+        { x: dir.x * ENEMY.corpseKnockSpeed, y: ENEMY.corpseUpSpeed, z: dir.z * ENEMY.corpseKnockSpeed },
+        true,
+      );
+      slot.body.setAngvel(
+        { x: dir.z * ENEMY.corpseSpinSpeed, y: 0, z: -dir.x * ENEMY.corpseSpinSpeed },
+        true,
+      );
+    }
     this.events.onDeath(i, point, dir);
   }
 
@@ -292,17 +311,28 @@ export class EnemyManager {
 
       const speed = dist < ENEMY.runDistance ? ENEMY.runSpeed : ENEMY.walkSpeed;
       const inv = dist > 0.001 ? 1 / dist : 0;
-      let vx = dx * inv * speed + sx * ENEMY.separationForce;
-      let vz = dz * inv * speed + sz * ENEMY.separationForce;
+      // Cap separation below seek so a dense pack can never steer itself
+      // away from the player — crowding spreads the pack, not the pursuit.
+      let sepX = sx * ENEMY.separationForce;
+      let sepZ = sz * ENEMY.separationForce;
+      const sepLen = Math.hypot(sepX, sepZ);
+      const sepMax = speed * ENEMY.separationCap;
+      if (sepLen > sepMax) {
+        sepX *= sepMax / sepLen;
+        sepZ *= sepMax / sepLen;
+      }
+      let vx = dx * inv * speed + sepX;
+      let vz = dz * inv * speed + sepZ;
       const vLen = Math.hypot(vx, vz);
       if (vLen > speed) {
         vx = (vx / vLen) * speed;
         vz = (vz / vLen) * speed;
       }
-      this.velX[i] = vx;
-      this.velZ[i] = vz;
       const nx = this.posX[i] + vx * stepDt;
       const nz = this.posZ[i] + vz * stepDt;
+      let biteX = 0;
+      let biteZ = 0;
+      let biting = false;
       // If already inside blocked space (bad spawn, edge case), walk free to escape.
       const curBlocked = this.obstacles ? this.obstacles(this.posX[i], this.posZ[i]) : null;
       const block = this.obstacles && !curBlocked ? this.obstacles(nx, nz) : null;
@@ -311,22 +341,41 @@ export class EnemyManager {
         this.posZ[i] = nz;
         this.animId[i] = speed === ENEMY.runSpeed ? 2 : 1;
       } else {
-        // Axis slide along the wall, then attack any breakable in the way.
-        if (!this.obstacles!(nx, this.posZ[i])) this.posX[i] = nx;
-        else if (!this.obstacles!(this.posX[i], nz)) this.posZ[i] = nz;
+        // Wall in the way: slide at FULL speed along whichever axis is free,
+        // preferring the one with more desired motion. The leftover-component
+        // slide it replaces marched whole packs slowly along walls in lockstep.
+        const canX = Math.abs(vx) > 0.01 && !this.obstacles!(this.posX[i] + Math.sign(vx) * speed * stepDt, this.posZ[i]);
+        const canZ = Math.abs(vz) > 0.01 && !this.obstacles!(this.posX[i], this.posZ[i] + Math.sign(vz) * speed * stepDt);
+        let mx = 0;
+        let mz = 0;
+        if (canX && (!canZ || Math.abs(vx) >= Math.abs(vz))) mx = Math.sign(vx) * speed;
+        else if (canZ) mz = Math.sign(vz) * speed;
+        this.posX[i] += mx * stepDt;
+        this.posZ[i] += mz * stepDt;
+        vx = mx;
+        vz = mz;
         if ('breakable' in block && block.breakable) {
           this.animId[i] = 3; // bite the barrier
-          this.yaw[i] = Math.atan2(block.breakable.x - this.posX[i], block.breakable.z - this.posZ[i]);
+          biting = true;
+          biteX = block.breakable.x;
+          biteZ = block.breakable.z;
           block.breakable.takeDamage(this.barrierDps * stepDt);
           if (Math.random() < stepDt * 4) {
             this.events.onBarrierHit?.(block.breakable.x, block.breakable.z);
           }
         } else {
-          this.animId[i] = 1;
+          this.animId[i] = mx !== 0 || mz !== 0 ? (speed === ENEMY.runSpeed ? 2 : 1) : 0;
         }
       }
+      this.velX[i] = vx;
+      this.velZ[i] = vz;
       this.posY[i] = this.heightFn(this.posX[i], this.posZ[i]);
-      if (vLen > 0.1) this.yaw[i] = Math.atan2(vx, vz);
+      // Face the motion actually applied this tick; biting a barrier faces it.
+      if (biting) {
+        this.yaw[i] = Math.atan2(biteX - this.posX[i], biteZ - this.posZ[i]);
+      } else if (Math.hypot(vx, vz) > 0.1) {
+        this.yaw[i] = Math.atan2(vx, vz);
+      }
 
       if (dist < ENEMY.attackRange) {
         this.state[i] = EnemyState.ATTACK;

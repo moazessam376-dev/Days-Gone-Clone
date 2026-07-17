@@ -197,6 +197,32 @@ export class Game {
     }
   }
 
+  /** Test hook: chase target + motion state of the N nearest live enemies. */
+  debugEnemySnapshot(n = 8): object {
+    const em = this.enemies;
+    const t = this.driving && this.activeVehicle ? this.activeVehicle.position : this.player.root.position;
+    const rows = em.active
+      .filter((i) => em.state[i] !== 4)
+      .map((i) => ({ i, d: Math.hypot(em.posX[i] - t.x, em.posZ[i] - t.z) }))
+      .sort((a, b) => a.d - b.d)
+      .slice(0, n)
+      .map(({ i, d }) => {
+        const vx = em.velX[i];
+        const vz = em.velZ[i];
+        // Angle between velocity and the to-target direction (0 = seeking).
+        const toT = Math.atan2(t.x - em.posX[i], t.z - em.posZ[i]);
+        const vYaw = Math.atan2(vx, vz);
+        const seekErr = Math.atan2(Math.sin(vYaw - toT), Math.cos(vYaw - toT));
+        return {
+          i, d: +d.toFixed(1), x: +em.posX[i].toFixed(1), z: +em.posZ[i].toFixed(1),
+          vx: +vx.toFixed(2), vz: +vz.toFixed(2), yaw: +em.yaw[i].toFixed(2),
+          seekErr: +seekErr.toFixed(2), state: em.state[i], anim: em.animId[i],
+          blocked: !!this.enemyBlockAt(em.posX[i] + vx * 0.15, em.posZ[i] + vz * 0.15),
+        };
+      });
+    return { target: { x: +t.x.toFixed(1), z: +t.z.toFixed(1) }, rows };
+  }
+
   start(): void {
     // In mock-input test mode the loop is driven exclusively by debugStep so
     // results stay deterministic regardless of tab visibility or real input.
