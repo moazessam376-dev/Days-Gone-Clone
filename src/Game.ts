@@ -24,6 +24,8 @@ import { EnemyManager } from './enemies/EnemyManager';
 import { EnemyRenderer } from './enemies/EnemyRenderer';
 import { WorldData } from './world/WorldGen';
 import { CarController, CAR } from './vehicles/CarController';
+import { FireGrid, FIRE } from './fire/FireGrid';
+import { ThrowableSystem, THROWABLE } from './weapons/Throwables';
 import { Terrain } from './world/Terrain';
 import { Vegetation } from './world/Vegetation';
 import { Town } from './world/Town';
@@ -75,6 +77,10 @@ export class Game {
   private driving = false;
   private engineOsc: OscillatorNode | null = null;
   private engineGain: GainNode | null = null;
+  private fire!: FireGrid;
+  private throwables!: ThrowableSystem;
+  private fireLights: THREE.PointLight[] = [];
+  private fireFxTimer = 0;
 
   constructor(container: HTMLElement, assets: AssetLoader) {
     this.renderer = new Renderer(container);
@@ -102,6 +108,45 @@ export class Game {
     this.setupWeapons();
     this.setupDummies();
     this.setupEnemies(assets);
+    this.fire = new FireGrid(this.world);
+    for (let i = 0; i < 2; i++) {
+      const l = new THREE.PointLight(0xff7a20, 0, 18, 1.6);
+      this.scene.add(l);
+      this.fireLights.push(l);
+    }
+    this.throwables = new ThrowableSystem(this.physics, this.scene, {
+      onExplode: (pos) => {
+        this.enemies.explosionAt(pos.x, pos.z, THROWABLE.grenadeRadius, THROWABLE.grenadeDamage);
+        this.fire.ignite(pos.x, pos.z, 1.5);
+        this.fx.spark.burst({
+          count: 30, position: pos, spread: 1, speed: [6, 16], gravity: 10,
+          life: [0.2, 0.6], size: [0.08, 0.2], colors: [0xffd9a0, 0xff9040, 0xfff0c0],
+        });
+        this.fx.dust.burst({
+          count: 18, position: pos, spread: 1, speed: [2, 7], gravity: -1,
+          life: [0.6, 1.4], size: [0.3, 0.8], growth: 1.2, colors: [0x5a544c, 0x3a3630],
+        });
+        const d = pos.distanceTo(this.player.root.position);
+        this.shake.add(Math.max(0, 0.7 - d * 0.05));
+        this.hitstop.trigger();
+        this.audio.play('explosion', { gain: 0.9, at: pos });
+        // Fling nearby corpses for drama.
+        const dist = pos.distanceTo(this.player.root.position);
+        if (dist < THROWABLE.grenadeRadius && !this.driving) {
+          this.onPlayerDamaged(Math.round(60 * (1 - dist / THROWABLE.grenadeRadius)), pos.x, pos.z);
+        }
+      },
+      onMolotovBreak: (pos) => {
+        this.fire.ignite(pos.x, pos.z, THROWABLE.fireRadius);
+        this.enemies.explosionAt(pos.x, pos.z, 2.5, 30);
+        this.fx.spark.burst({
+          count: 20, position: pos, spread: 0.9, speed: [3, 8], gravity: 6,
+          life: [0.3, 0.7], size: [0.1, 0.25], colors: [0xff8a30, 0xffb050, 0xff6010],
+        });
+        this.audio.play('molotov', { gain: 0.7, at: pos });
+      },
+    });
+
     // Car parked on the highway a short walk from spawn.
     this.car = new CarController(
       this.physics,
@@ -331,6 +376,58 @@ export class Game {
     this.spawnEnemyWave(24);
   }
 
+  /** Flame/smoke particles + flickering lights for burning cells and enemies. */
+  private updateFireFx(dt: number): void {
+    this.fireFxTimer -= dt;
+    const cells = this.fire.cells;
+    // Two pooled lights on the first clusters.
+    let li = 0;
+    for (const cell of cells.values()) {
+      if (li >= this.fireLights.length) break;
+      const l = this.fireLights[li++];
+      l.position.set(cell.x, cell.y + 1.2, cell.z);
+      l.intensity = 20 + Math.sin(performance.now() * 0.02 + li * 7) * 6;
+    }
+    for (; li < this.fireLights.length; li++) this.fireLights[li].intensity = 0;
+
+    if (this.fireFxTimer > 0) return;
+    this.fireFxTimer = 0.09;
+    // Flame + smoke bursts on a random subset of burning cells.
+    let n = 0;
+    const camPos = this.renderer.camera.position;
+    for (const cell of cells.values()) {
+      if (n >= 14) break;
+      if (Math.random() > 0.35) continue;
+      if (Math.abs(cell.x - camPos.x) > 90 || Math.abs(cell.z - camPos.z) > 90) continue;
+      n++;
+      const pos = new THREE.Vector3(cell.x + (Math.random() - 0.5), cell.y + 0.3, cell.z + (Math.random() - 0.5));
+      this.fx.spark.burst({
+        count: 2, position: pos, direction: new THREE.Vector3(0, 1, 0), spread: 0.3,
+        speed: [1, 2.5], gravity: -2, life: [0.3, 0.6], size: [0.15, 0.4],
+        colors: [0xff8a30, 0xffb050, 0xff5010],
+      });
+      if (Math.random() < 0.3) {
+        this.fx.dust.burst({
+          count: 1, position: pos.clone().add(new THREE.Vector3(0, 0.8, 0)),
+          direction: new THREE.Vector3(0, 1, 0), spread: 0.25, speed: [0.6, 1.4],
+          gravity: -0.6, life: [0.8, 1.6], size: [0.3, 0.6], growth: 0.8,
+          colors: [0x3a3630, 0x504a42],
+        });
+      }
+    }
+    // Burning enemies trail flames.
+    const em = this.enemies;
+    for (const i of em.active) {
+      if (em.burnT[i] <= 0 || em.state[i] === 4) continue;
+      this.fx.spark.burst({
+        count: 2, position: new THREE.Vector3(em.posX[i], em.posY[i] + 1 + Math.random() * 0.6, em.posZ[i]),
+        direction: new THREE.Vector3(0, 1, 0), spread: 0.4, speed: [0.8, 2],
+        gravity: -2, life: [0.25, 0.5], size: [0.12, 0.3],
+        colors: [0xff8a30, 0xffb050],
+      });
+    }
+  }
+
   private setEngineAudio(on: boolean): void {
     const ctx = (this.audio as unknown as { ctx: AudioContext | null }).ctx;
     const master = (this.audio as unknown as { master: AudioNode | null }).master;
@@ -371,6 +468,8 @@ export class Game {
     this.audio.registerImpact('impact_flesh', { freq: 500, dur: 0.14, gain: 0.9 });
     this.audio.registerImpact('reload', { freq: 1800, dur: 0.06, gain: 0.5 });
     this.audio.registerImpact('dry', { freq: 2400, dur: 0.04, gain: 0.5 });
+    this.audio.registerGunshot('explosion', { sub: 40, crack: 0.4, body: 0.5 });
+    this.audio.registerImpact('molotov', { freq: 900, dur: 0.3, gain: 0.8 });
   }
 
   private fixedUpdate(dt: number): void {
@@ -409,6 +508,27 @@ export class Game {
           },
         },
       );
+    }
+
+    // Throwables: G = grenade, F = molotov.
+    if (!this.driving) {
+      const wantGrenade = this.input.consumePressed('KeyG');
+      const wantMolotov = this.input.consumePressed('KeyF');
+      if (wantGrenade || wantMolotov) {
+        const dir = new THREE.Vector3();
+        this.renderer.camera.getWorldDirection(dir);
+        const origin = this.player.root.position.clone();
+        origin.y += 0.7;
+        origin.addScaledVector(dir, 0.6);
+        this.throwables.throw(wantGrenade ? 'grenade' : 'molotov', origin, dir);
+        this.audio.play('reload', { gain: 0.4 });
+      }
+    }
+    this.throwables.fixedUpdate(dt);
+    this.fire.update(dt);
+    this.enemies.burnTick(dt, (x, z) => this.fire.isBurningAt(x, z), FIRE.enemyBurnDps, FIRE.enemyBurnTime);
+    if (!this.driving && this.fire.isBurningAt(this.player.root.position.x, this.player.root.position.z)) {
+      this.onPlayerDamaged(FIRE.playerBurnDps * dt, this.player.root.position.x, this.player.root.position.z);
     }
 
     const chaseTarget = this.driving ? this.car.position : this.player.root.position;
@@ -510,6 +630,8 @@ export class Game {
     for (const d of this.dummies) d.update(dt);
     this.enemyRenderer.update(dt, this.enemies);
     this.hud.setHealth(this.playerHealth / PLAYER_HEALTH.max);
+
+    this.updateFireFx(dt);
 
     // Keep the shadow frustum centered on the player.
     const pp = this.player.root.position;

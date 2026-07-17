@@ -76,9 +76,13 @@ export class EnemyManager {
   readonly staggerT = new Float32Array(ENEMY.capacity);
   /** 0 idle, 1 walk, 2 run, 3 bite — consumed by the renderer. */
   readonly animId = new Uint8Array(ENEMY.capacity);
+  /** Seconds of burning remaining per enemy (fire DoT). */
+  readonly burnT = new Float32Array(ENEMY.capacity);
 
   readonly active: number[] = [];
-  private hash = new SpatialHash(-256, -256, 512, 4, ENEMY.capacity);
+  // Covers the full 2048m world — queries outside the grid clamp to edge
+  // cells and silently miss, so the extent must match WORLD.size.
+  private hash = new SpatialHash(-1024, -1024, 2048, 4, ENEMY.capacity);
   private pool: PoolSlot[] = [];
   private corpses: CorpseSlot[] = [];
   private tick = 0;
@@ -371,6 +375,46 @@ export class EnemyManager {
       }
       events.onHit(i, this.posX[i], this.posZ[i], killed);
     });
+  }
+
+  /** Fire DoT: ignite enemies standing in fire, drain burning ones. */
+  burnTick(dt: number, isBurningAt: (x: number, z: number) => boolean, dps: number, duration: number): void {
+    const point = new THREE.Vector3();
+    const up = new THREE.Vector3(0, 1, 0);
+    for (const i of this.active) {
+      if (this.state[i] === EnemyState.CORPSE) continue;
+      if (this.burnT[i] <= 0 && isBurningAt(this.posX[i], this.posZ[i])) {
+        this.burnT[i] = duration;
+      }
+      if (this.burnT[i] > 0) {
+        this.burnT[i] -= dt;
+        this.health[i] -= dps * dt;
+        if (this.health[i] <= 0) {
+          point.set(this.posX[i], this.posY[i] + 1, this.posZ[i]);
+          this.kill(i, point, up);
+          this.burnT[i] = 0;
+        }
+      }
+    }
+  }
+
+  /** Explosion AoE with linear falloff and outward kill impulses. */
+  explosionAt(x: number, z: number, radius: number, maxDamage: number): number {
+    const point = new THREE.Vector3();
+    const dir = new THREE.Vector3();
+    let kills = 0;
+    this.hash.query(x, z, radius, (i) => {
+      if (this.state[i] === EnemyState.CORPSE || this.state[i] === EnemyState.INACTIVE) return;
+      const dx = this.posX[i] - x;
+      const dz = this.posZ[i] - z;
+      const dist = Math.hypot(dx, dz);
+      if (dist > radius) return;
+      const dmg = maxDamage * (1 - dist / radius);
+      point.set(this.posX[i], this.posY[i] + 1, this.posZ[i]);
+      dir.set(dx / (dist || 1), 0.4, dz / (dist || 1)).normalize();
+      if (this.damage(i, dmg, point, dir, false)) kills++;
+    });
+    return kills;
   }
 
   /** Vehicle run-over: kill live enemies inside the radius with the car's velocity. */
