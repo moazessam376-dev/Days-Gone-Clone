@@ -11,7 +11,6 @@ import { AssetLoader } from './core/AssetLoader';
 import { CAMERA_RIG, PLAYER } from './config';
 import { WeaponSystem, DamageRegistry } from './weapons/WeaponSystem';
 import { WEAPONS } from './weapons/weapons.data';
-import { TargetDummy } from './entities/TargetDummy';
 import { FxPools } from './fx/ParticlePool';
 import { ScreenShake, Hitstop, Recoil } from './fx/Feedback';
 import { Tracers } from './fx/Tracers';
@@ -49,7 +48,6 @@ export class Game {
   private cameraRig: CameraRig;
   private weapons!: WeaponSystem;
   private registry = new DamageRegistry();
-  private dummies: TargetDummy[] = [];
   private fx!: FxPools;
   private shake = new ScreenShake();
   private hitstop = new Hitstop();
@@ -110,7 +108,6 @@ export class Game {
     this.decals = new Decals(this.scene);
     this.muzzleFlash = new MuzzleFlash(this.scene);
     this.setupWeapons();
-    this.setupDummies();
     this.setupEnemies(assets);
     this.fire = new FireGrid(this.world);
     for (let i = 0; i < 2; i++) {
@@ -172,6 +169,9 @@ export class Game {
       fixedUpdate: (dt) => this.fixedUpdate(dt),
       render: (alpha, dt) => this.render(alpha, dt),
     });
+    // Start frozen behind the click-to-play screen — the world must not
+    // simulate (enemies chasing, fire spreading) until the player is in.
+    if (!this.input.mock) this.loop.setPaused(true);
 
     if (this.input.mock) {
       // Test hook for automated verification (?mockinput only).
@@ -201,6 +201,9 @@ export class Game {
   private setupOverlay(): void {
     const overlay = document.getElementById('click-to-play')!;
     if (this.input.mock) return;
+    const title = document.getElementById('overlay-title')!;
+    const hint = document.getElementById('overlay-hint')!;
+    let hasPlayed = false;
     overlay.classList.remove('hidden');
     overlay.addEventListener('click', () => {
       this.initAudio();
@@ -208,6 +211,18 @@ export class Game {
     });
     document.addEventListener('pointerlockchange', () => {
       overlay.classList.toggle('hidden', this.input.locked);
+      if (this.input.locked) {
+        hasPlayed = true;
+        this.loop.setPaused(false);
+        this.audio.resume();
+      } else {
+        this.loop.setPaused(true);
+        this.audio.suspend();
+        if (hasPlayed) {
+          title.textContent = 'PAUSED';
+          hint.textContent = 'Click to resume';
+        }
+      }
     });
   }
 
@@ -339,21 +354,6 @@ export class Game {
     }, this.player.body);
 
     this.avatar.setWeapon(this.weapons.current);
-  }
-
-  private setupDummies(): void {
-    // Practice range along the road near spawn.
-    const spots = [
-      [14, 16],
-      [19, 20],
-      [24, 25],
-      [30, 30],
-    ].map(([x, z]) => new THREE.Vector3(x, this.world.height(x, z), z));
-    for (const p of spots) {
-      const d = new TargetDummy(this.physics, this.registry, p);
-      this.scene.add(d.root);
-      this.dummies.push(d);
-    }
   }
 
   private setupEnemies(assets: AssetLoader): void {
@@ -692,7 +692,6 @@ export class Game {
     this.muzzleFlash.update();
     this.tracers.update(dt);
     this.fx.update(dt, this.renderer.camera);
-    for (const d of this.dummies) d.update(dt);
     this.enemyRenderer.update(dt, this.enemies);
     this.hud.setHealth(this.playerHealth / PLAYER_HEALTH.max);
 

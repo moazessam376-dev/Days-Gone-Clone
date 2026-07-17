@@ -22,10 +22,29 @@ export class GameLoop {
   private lastTime = -1;
   private rafId = 0;
   private running = false;
+  private paused = false;
   /** Global time dilation (hitstop). 1 = normal. */
   timeScale = 1;
 
   constructor(private callbacks: LoopCallbacks) {}
+
+  /**
+   * Freeze the simulation (menu/pause). Rendering continues with dt=0 so the
+   * HUD and overlay stay responsive on a frozen frame; the accumulator is
+   * discarded on resume so time lost while paused is never caught up.
+   */
+  setPaused(p: boolean): void {
+    if (this.paused === p) return;
+    this.paused = p;
+    if (!p) {
+      this.accumulator = 0;
+      this.lastTime = -1;
+    }
+  }
+
+  get isPaused(): boolean {
+    return this.paused;
+  }
 
   start(): void {
     if (this.running) return;
@@ -42,6 +61,11 @@ export class GameLoop {
   private tick = (timeMs: number): void => {
     if (!this.running) return;
     this.rafId = requestAnimationFrame(this.tick);
+
+    if (this.paused) {
+      this.callbacks.render(1, 0);
+      return;
+    }
 
     if (this.lastTime < 0) {
       this.lastTime = timeMs;

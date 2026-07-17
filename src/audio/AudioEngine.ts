@@ -29,6 +29,15 @@ export class AudioEngine {
     return this.ctx !== null && this.ctx.state === 'running';
   }
 
+  /** Silence everything while the game is paused. */
+  suspend(): void {
+    if (this.ctx && this.ctx.state === 'running') void this.ctx.suspend();
+  }
+
+  resume(): void {
+    if (this.ctx && this.ctx.state === 'suspended') void this.ctx.resume();
+  }
+
   /** Pre-render a gunshot buffer: sub sine thump + noise body + high crack. */
   registerGunshot(key: string, opts: { sub: number; crack: number; body: number }): void {
     if (!this.ctx || this.buffers.has(key)) return;
