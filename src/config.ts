@@ -134,6 +134,18 @@ export const MELEE = {
   knockback: 4,
 };
 
+export const AMMO_CRATES = {
+  /** [x, z] spots around town; a hideout crate is added at setup. */
+  townSpots: [
+    [26, -18],
+    [-30, 24],
+    [12, 55],
+  ] as Array<[number, number]>,
+  pickupRadius: 1.6,
+  respawnTime: 30,
+  pulseSpeed: 3,
+};
+
 export const DEBUG = {
   showStats: true,
 };

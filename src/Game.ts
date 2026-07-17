@@ -30,6 +30,8 @@ import { ThrowableSystem, THROWABLE } from './weapons/Throwables';
 import { Terrain } from './world/Terrain';
 import { Vegetation } from './world/Vegetation';
 import { Town } from './world/Town';
+import { AmmoCrates } from './world/AmmoCrates';
+import { AMMO_CRATES } from './config';
 import { EnterableBuilding } from './world/EnterableBuilding';
 import { PLAYER_HEALTH, MELEE, ACTIONS } from './config';
 
@@ -94,6 +96,7 @@ export class Game {
   private fireLights: THREE.PointLight[] = [];
   private fireFxTimer = 0;
   private hideout!: EnterableBuilding;
+  private ammoCrates!: AmmoCrates;
   private townRects: Array<{ x: number; z: number; hw: number; hd: number; cos: number; sin: number }> = [];
 
   constructor(container: HTMLElement, assets: AssetLoader) {
@@ -163,6 +166,13 @@ export class Game {
       },
     });
     this.throwables.heightFn = (x, z) => this.world.height(x, z);
+
+    // Ammo resupply crates: town spots + one at the hideout door.
+    this.ammoCrates = new AmmoCrates(
+      this.scene,
+      [...AMMO_CRATES.townSpots, [36, 40]],
+      (x, z) => this.world.height(x, z),
+    );
 
     // Vehicles parked on the highway a short walk from spawn.
     this.car = new CarController(
@@ -750,6 +760,18 @@ export class Game {
       }
     }
 
+    // Ammo pickup (on foot only).
+    if (!this.driving) {
+      const p = this.player.root.position;
+      if (this.ammoCrates.fixedUpdate(dt, p.x, p.z)) {
+        this.weapons.refillReserves();
+        this.hud.toast('AMMO');
+        this.audio.play('reload', { gain: 0.6 });
+      }
+    } else {
+      this.ammoCrates.fixedUpdate(dt, 1e9, 1e9); // timers only, no pickup
+    }
+
     // Sprinting or rolling interrupts a reload (Days Gone-style commitment).
     if (this.player.sprinting || this.player.isRolling) this.weapons.cancelReload();
 
@@ -813,6 +835,7 @@ export class Game {
 
     this.updateFireFx(dt);
     this.fireRenderer.update(dt, this.fire, this.renderer.camera);
+    this.ammoCrates.render(dt);
 
     // Keep the shadow frustum centered on the player.
     const pp = this.player.root.position;

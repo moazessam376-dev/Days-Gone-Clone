@@ -12,6 +12,8 @@ export class HUD {
   private death!: HTMLElement;
   private hitmarkerUntil = 0;
   private vignetteUntil = 0;
+  private toastEl!: HTMLElement;
+  private toastUntil = 0;
 
   constructor() {
     const style = document.createElement('style');
@@ -54,6 +56,9 @@ export class HUD {
       #death h1 { color: #a83226; font-size: 44px; letter-spacing: 8px; margin: 0;
                   font-weight: 800; }
       #death p { color: #cfd6e4; opacity: .8; margin: 0; }
+      #toast { position: absolute; left: 50%; top: 42%; transform: translateX(-50%);
+               color: #7dff9a; font-size: 15px; letter-spacing: 4px; font-weight: 700;
+               text-shadow: 0 1px 4px rgba(0,0,0,.9); opacity: 0; transition: opacity .2s; }
     `;
     document.head.appendChild(style);
 
@@ -71,6 +76,7 @@ export class HUD {
       <div id="health"><div class="fill"></div></div>
       <div id="vignette"></div>
       <div id="death"><h1>YOU DIED</h1><p>Press Enter to respawn</p></div>
+      <div id="toast"></div>
     `;
     document.body.appendChild(hud);
 
@@ -80,6 +86,7 @@ export class HUD {
     this.healthFill = hud.querySelector('#health .fill')!;
     this.vignette = hud.querySelector('#vignette')!;
     this.death = hud.querySelector('#death')!;
+    this.toastEl = hud.querySelector('#toast')!;
     const ret = hud.querySelector('#reticle')!;
     this.reticleTicks = ['t', 'b', 'l', 'r'].map((c) => ret.querySelector(`.${c}`)!);
   }
@@ -98,6 +105,13 @@ export class HUD {
     this.weaponEl.textContent = reloading ? `${weaponName} · reloading` : weaponName;
 
     this.hitmarker.style.opacity = performance.now() < this.hitmarkerUntil ? '1' : '0';
+    this.toastEl.style.opacity = performance.now() < this.toastUntil ? '1' : '0';
+  }
+
+  /** Brief centered pickup label ("AMMO"). */
+  toast(text: string): void {
+    this.toastEl.textContent = text;
+    this.toastUntil = performance.now() + 1200;
   }
 
   setHealth(fraction: number): void {
