@@ -46,8 +46,8 @@ export const CAMERA_RIG = {
   pivotHeight: 0.6,
   shoulderX: 0.45,
   restDistance: 2.8,
-  aimShoulderX: 0.8,
-  aimDistance: 2.1,
+  aimShoulderX: 0.62,
+  aimDistance: 1.55,
   aimFov: 42,
   aimLerpTime: 0.12,
   sensitivity: 0.0022,
@@ -57,6 +57,10 @@ export const CAMERA_RIG = {
   collisionRecoverSpeed: 5,
   /** Chase-cam follow spring stiffness while driving (higher = tighter). */
   vehicleFollow: 5,
+  /** Hide the player model when the camera arm shrinks below this... */
+  hideAvatarBelow: 0.85,
+  /** ...and show it again above this (hysteresis kills boundary flicker). */
+  showAvatarAbove: 1.0,
 };
 
 export const FEEL = {

@@ -9,7 +9,7 @@ async function boot(): Promise<void> {
   await Promise.all([
     RAPIER.init(),
     assets.loadAll({
-      player: 'assets/models/player_soldier.glb',
+      player: 'assets/models/player_base.glb',
       zombie: 'assets/models/zombie.glb',
       sedan: 'assets/models/kit/car/sedan.glb',
       motorbike: 'assets/models/motorbike.glb',

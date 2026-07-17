@@ -10,6 +10,7 @@ import { CameraRig } from './player/CameraRig';
 import { AssetLoader } from './core/AssetLoader';
 import { CAMERA_RIG, PLAYER } from './config';
 import { WeaponSystem, DamageRegistry } from './weapons/WeaponSystem';
+import { WeaponRig } from './weapons/WeaponRig';
 import { WEAPONS } from './weapons/weapons.data';
 import { FxPools } from './fx/ParticlePool';
 import { ScreenShake, Hitstop, Recoil } from './fx/Feedback';
@@ -48,6 +49,9 @@ export class Game {
   private avatar: PlayerAvatar;
   private cameraRig: CameraRig;
   private weapons!: WeaponSystem;
+  private weaponRig!: WeaponRig;
+  private handBone: THREE.Object3D | null = null;
+  private avatarHidden = false;
   private registry = new DamageRegistry();
   private fx!: FxPools;
   private shake = new ScreenShake();
@@ -350,10 +354,10 @@ export class Game {
     this.weapons = new WeaponSystem(this.physics, this.registry, {
       onShot: (def) => {
         this.combatFaceT = PLAYER.combatFaceTime;
-        this.avatar.kick();
+        this.weaponRig.kick();
         if (def.shootAnim) this.avatar.playShoot();
         this.shake.add(def.pellets > 1 ? 0.32 : def.auto ? 0.1 : 0.16);
-        this.avatar.muzzleWorld(this.muzzlePos, this.player.facing);
+        this.weaponRig.muzzleWorld(this.muzzlePos);
         this.muzzleFlash.flash(this.muzzlePos);
         this.audio.play(`shot_${this.weapons.current}`, { gain: 0.55 });
       },
@@ -393,7 +397,9 @@ export class Game {
       onDryFire: () => this.audio.play('dry', { gain: 0.45 }),
     }, this.player.body);
 
-    this.avatar.setWeapon(this.weapons.current);
+    this.weaponRig = new WeaponRig(this.scene);
+    this.handBone = this.avatar.handBone;
+    this.weaponRig.setActive(this.weapons.current);
   }
 
   private setupEnemies(assets: AssetLoader): void {
@@ -758,7 +764,7 @@ export class Game {
       this.input.locked && !this.player.isRolling && !this.driving && this.actionLock <= 0,
       (p, y) => this.recoil.kick(p, y),
     );
-    this.avatar.setWeapon(this.weapons.current);
+    this.weaponRig.setActive(this.weapons.current);
     this.physics.step();
   }
 
@@ -774,6 +780,7 @@ export class Game {
       rollT: this.player.rollProgress,
       pitch: this.cameraRig.pitch,
     });
+    this.weaponRig.update(dt, this.handBone);
     this.recoil.update(dt);
     this.car.updateVisuals();
     this.bike.updateVisuals();
@@ -787,7 +794,16 @@ export class Game {
     );
     this.shake.apply(dt, this.renderer.camera);
     this.renderer.camera.updateMatrixWorld();
-    this.avatar.muzzleWorld(this.muzzlePos, this.player.facing);
+    this.weaponRig.muzzleWorld(this.muzzlePos);
+
+    // Camera pressed against a wall → hide the body so we never render its
+    // insides (hysteresis so the boundary doesn't flicker).
+    const arm = this.cameraRig.armDistance;
+    if (arm < CAMERA_RIG.hideAvatarBelow) this.avatarHidden = true;
+    else if (arm > CAMERA_RIG.showAvatarAbove) this.avatarHidden = false;
+    const showBody = !this.avatarHidden && !this.driving;
+    this.avatar.object.visible = showBody;
+    this.weaponRig.setVisible(showBody);
 
     this.muzzleFlash.update();
     this.tracers.update(dt);
