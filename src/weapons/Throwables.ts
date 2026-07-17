@@ -11,6 +11,8 @@ export const THROWABLE = {
   grenadeDamage: 130,
   molotovArmTime: 0.25,
   molotovMaxAge: 3.5,
+  /** Molotov breaks when it comes this close to the ground while falling. */
+  molotovBreakHeight: 0.35,
   fireRadius: 3,
   poolSize: 6,
 };
@@ -37,6 +39,8 @@ export interface ThrowableEvents {
  */
 export class ThrowableSystem {
   private pool: Projectile[] = [];
+  /** Terrain height sampler — drives molotov ground-contact breaks. */
+  heightFn: (x: number, z: number) => number = () => 0;
   private grenadeMat = new THREE.MeshStandardMaterial({ color: 0x3a4a32, roughness: 0.6 });
   private molotovMat = new THREE.MeshStandardMaterial({
     color: 0xc06a28,
@@ -107,10 +111,19 @@ export class ThrowableSystem {
           this.events.onExplode(new THREE.Vector3(pos.x, pos.y, pos.z));
         }
       } else {
-        const landed = p.age > THROWABLE.molotovArmTime && speed < 3;
-        if (landed || p.age > THROWABLE.molotovMaxAge) {
+        // Break on the first ground touch: slow after a bounce, or falling
+        // into the near-ground band. The bottle shatters where it LANDS —
+        // never mid-air (a long lob that times out while flying just fizzles).
+        const groundY = this.heightFn(pos.x, pos.z);
+        const nearGround = pos.y - groundY < THROWABLE.molotovBreakHeight;
+        const landed =
+          p.age > THROWABLE.molotovArmTime && (speed < 3 || (nearGround && vel.y <= 0));
+        if (landed) {
           this.retire(p);
-          this.events.onMolotovBreak(new THREE.Vector3(pos.x, pos.y, pos.z));
+          this.events.onMolotovBreak(new THREE.Vector3(pos.x, Math.max(groundY, pos.y - 0.2), pos.z));
+        } else if (p.age > THROWABLE.molotovMaxAge) {
+          this.retire(p);
+          if (nearGround) this.events.onMolotovBreak(new THREE.Vector3(pos.x, groundY, pos.z));
         }
       }
     }

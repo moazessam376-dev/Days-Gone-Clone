@@ -24,6 +24,7 @@ import { WorldData } from './world/WorldGen';
 import { CarController, CAR } from './vehicles/CarController';
 import { BikeController } from './vehicles/BikeController';
 import { FireGrid, FIRE } from './fire/FireGrid';
+import { FireRenderer } from './fx/FireRenderer';
 import { ThrowableSystem, THROWABLE } from './weapons/Throwables';
 import { Terrain } from './world/Terrain';
 import { Vegetation } from './world/Vegetation';
@@ -84,6 +85,7 @@ export class Game {
   private engineOsc: OscillatorNode | null = null;
   private engineGain: GainNode | null = null;
   private fire!: FireGrid;
+  private fireRenderer!: FireRenderer;
   private throwables!: ThrowableSystem;
   private fireLights: THREE.PointLight[] = [];
   private fireFxTimer = 0;
@@ -116,7 +118,8 @@ export class Game {
     this.setupWeapons();
     this.setupEnemies(assets);
     this.fire = new FireGrid(this.world);
-    for (let i = 0; i < 2; i++) {
+    this.fireRenderer = new FireRenderer(this.scene);
+    for (let i = 0; i < FIRE.lightCount; i++) {
       const l = new THREE.PointLight(0xff7a20, 0, 18, 1.6);
       this.scene.add(l);
       this.fireLights.push(l);
@@ -146,6 +149,8 @@ export class Game {
       onMolotovBreak: (pos) => {
         this.fire.ignite(pos.x, pos.z, THROWABLE.fireRadius);
         this.enemies.explosionAt(pos.x, pos.z, 2.5, 30);
+        // Anyone caught in the splash is burning NOW, not on the next grid tick.
+        this.enemies.igniteInRadius(pos.x, pos.z, THROWABLE.fireRadius + 0.5, FIRE.enemyBurnTime);
         this.fx.spark.burst({
           count: 20, position: pos, spread: 0.9, speed: [3, 8], gravity: 6,
           life: [0.3, 0.7], size: [0.1, 0.25], colors: [0xff8a30, 0xffb050, 0xff6010],
@@ -153,6 +158,7 @@ export class Game {
         this.audio.play('molotov', { gain: 0.7, at: pos });
       },
     });
+    this.throwables.heightFn = (x, z) => this.world.height(x, z);
 
     // Vehicles parked on the highway a short walk from spawn.
     this.car = new CarController(
@@ -472,18 +478,19 @@ export class Game {
 
     if (this.fireFxTimer > 0) return;
     this.fireFxTimer = 0.09;
-    // Flame + smoke bursts on a random subset of burning cells.
+    // Ember + smoke bursts on a random subset of burning cells (the flame
+    // bodies themselves are FireRenderer's instanced billboards).
     let n = 0;
     const camPos = this.renderer.camera.position;
     for (const cell of cells.values()) {
       if (n >= 14) break;
-      if (Math.random() > 0.35) continue;
+      if (Math.random() > 0.2) continue;
       if (Math.abs(cell.x - camPos.x) > 90 || Math.abs(cell.z - camPos.z) > 90) continue;
       n++;
       const pos = new THREE.Vector3(cell.x + (Math.random() - 0.5), cell.y + 0.3, cell.z + (Math.random() - 0.5));
       this.fx.spark.burst({
         count: 2, position: pos, direction: new THREE.Vector3(0, 1, 0), spread: 0.3,
-        speed: [1, 2.5], gravity: -2, life: [0.3, 0.6], size: [0.15, 0.4],
+        speed: [1, 3], gravity: -2, life: [0.3, 0.7], size: [0.3, 0.7],
         colors: [0xff8a30, 0xffb050, 0xff5010],
       });
       if (Math.random() < 0.3) {
@@ -789,6 +796,7 @@ export class Game {
     this.hud.setHealth(this.playerHealth / PLAYER_HEALTH.max);
 
     this.updateFireFx(dt);
+    this.fireRenderer.update(dt, this.fire, this.renderer.camera);
 
     // Keep the shadow frustum centered on the player.
     const pp = this.player.root.position;

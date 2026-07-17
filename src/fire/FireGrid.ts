@@ -10,6 +10,11 @@ export const FIRE = {
   enemyBurnTime: 4,
   enemyBurnDps: 20,
   playerBurnDps: 10,
+  // Rendering pools (see FireRenderer).
+  flameInstances: 96,
+  flamesPerCell: 2,
+  scorchInstances: 128,
+  lightCount: 4,
 };
 
 interface FireCell {

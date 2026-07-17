@@ -500,6 +500,15 @@ export class EnemyManager {
     return kills;
   }
 
+  /** Molotov splash: set live enemies in the radius burning immediately. */
+  igniteInRadius(x: number, z: number, radius: number, duration: number): void {
+    this.hash.query(x, z, radius, (i) => {
+      if (this.state[i] === EnemyState.CORPSE || this.state[i] === EnemyState.INACTIVE) return;
+      if (Math.hypot(this.posX[i] - x, this.posZ[i] - z) > radius) return;
+      this.burnT[i] = duration;
+    });
+  }
+
   /** Vehicle run-over: kill live enemies inside the radius with the car's velocity. */
   runOverSweep(x: number, z: number, radius: number, velX: number, velZ: number,
     onKill: (px: number, pz: number) => void): void {
