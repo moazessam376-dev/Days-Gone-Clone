@@ -29,7 +29,7 @@ import { Terrain } from './world/Terrain';
 import { Vegetation } from './world/Vegetation';
 import { Town } from './world/Town';
 import { EnterableBuilding } from './world/EnterableBuilding';
-import { PLAYER_HEALTH, MELEE } from './config';
+import { PLAYER_HEALTH, MELEE, ACTIONS } from './config';
 
 /**
  * M1 graybox: third-person character controller + over-shoulder camera in an
@@ -64,6 +64,12 @@ export class Game {
   private lastDamageTime = -999;
   private gameTime = 0;
   private meleeCooldown = 0;
+  /** While > 0, firing/melee/throwing are blocked (a deliberate action is in progress). */
+  private actionLock = 0;
+  private throwTimer = 0;
+  private pendingThrow: { kind: 'grenade' | 'molotov'; t: number } | null = null;
+  /** While > 0, the body faces the camera direction (hip-fire follow-through). */
+  private combatFaceT = 0;
   private dead = false;
   private spawnTimer = 0;
   private world!: WorldData;
@@ -295,6 +301,7 @@ export class Game {
     p.add(PLAYER, 'decel', 5, 100);
     p.add(PLAYER, 'turnSpeed', 2, 30);
     p.add(PLAYER.roll, 'speed', 3, 15).name('rollSpeed');
+    p.add(PLAYER, 'combatFaceTime', 0, 3);
     p.add(PLAYER.roll, 'duration', 0.2, 1.2).name('rollDuration');
 
     const c = this.debug.folder('Camera');
@@ -310,6 +317,7 @@ export class Game {
 
     this.weapons = new WeaponSystem(this.physics, this.registry, {
       onShot: (def) => {
+        this.combatFaceT = PLAYER.combatFaceTime;
         this.avatar.kick();
         if (def.shootAnim) this.avatar.playShoot();
         this.shake.add(def.pellets > 1 ? 0.32 : def.auto ? 0.1 : 0.16);
@@ -414,6 +422,9 @@ export class Game {
     this.playerHealth = PLAYER_HEALTH.max;
     this.hud.showDeath(false);
     this.player.body.setTranslation({ x: 0, y: this.world.height(0, 0) + 1.2, z: 0 }, true);
+    this.pendingThrow = null;
+    this.actionLock = 0;
+    this.combatFaceT = 0;
     this.enemies.reset();
     this.enemyRenderer.reset();
     this.spawnEnemyWave(24);
@@ -529,10 +540,22 @@ export class Game {
       this.playerHealth = Math.min(PLAYER_HEALTH.max, this.playerHealth + PLAYER_HEALTH.regenRate * dt);
     }
 
+    // One deliberate action at a time.
+    this.actionLock = Math.max(0, this.actionLock - dt);
+    this.throwTimer = Math.max(0, this.throwTimer - dt);
+    this.combatFaceT = Math.max(0, this.combatFaceT - dt);
+
     // Melee (V key).
     this.meleeCooldown = Math.max(0, this.meleeCooldown - dt);
-    if (this.input.consumePressed('KeyV') && this.meleeCooldown <= 0 && !this.player.isRolling) {
+    if (
+      this.input.consumePressed('KeyV') &&
+      this.meleeCooldown <= 0 &&
+      this.actionLock <= 0 &&
+      !this.weapons.isReloading &&
+      !this.player.isRolling
+    ) {
       this.meleeCooldown = MELEE.cooldown;
+      this.actionLock = ACTIONS.meleeLock;
       this.avatar.playMelee();
       const facing = this.player.aiming ? this.cameraRig.yaw + Math.PI : this.player.model.rotation.y;
       this.enemies.meleeSweep(
@@ -553,18 +576,39 @@ export class Game {
       );
     }
 
-    // Throwables: G = grenade, F = molotov.
+    // Throwables: G = grenade, F = molotov. Press starts a wind-up; the
+    // projectile leaves the hand after ACTIONS.throwWindup with the camera
+    // direction sampled at release, and throws are rate-limited.
     if (!this.driving) {
       const wantGrenade = this.input.consumePressed('KeyG');
       const wantMolotov = this.input.consumePressed('KeyF');
-      if (wantGrenade || wantMolotov) {
+      if (
+        (wantGrenade || wantMolotov) &&
+        this.actionLock <= 0 &&
+        this.throwTimer <= 0 &&
+        !this.weapons.isReloading &&
+        !this.player.isRolling
+      ) {
+        this.pendingThrow = { kind: wantGrenade ? 'grenade' : 'molotov', t: ACTIONS.throwWindup };
+        this.actionLock = ACTIONS.throwLock;
+        this.throwTimer = ACTIONS.throwCooldown;
+        this.combatFaceT = Math.max(this.combatFaceT, ACTIONS.throwLock);
+        this.avatar.playMelee(); // overhand swing doubles as the throw wind-up
+      }
+    }
+    if (this.pendingThrow) {
+      this.pendingThrow.t -= dt;
+      if (this.driving) {
+        this.pendingThrow = null;
+      } else if (this.pendingThrow.t <= 0) {
         const dir = new THREE.Vector3();
         this.renderer.camera.getWorldDirection(dir);
         const origin = this.player.root.position.clone();
         origin.y += 0.7;
         origin.addScaledVector(dir, 0.6);
-        this.throwables.throw(wantGrenade ? 'grenade' : 'molotov', origin, dir);
+        this.throwables.throw(this.pendingThrow.kind, origin, dir);
         this.audio.play('reload', { gain: 0.4 });
+        this.pendingThrow = null;
       }
     }
     this.throwables.fixedUpdate(dt);
@@ -649,13 +693,18 @@ export class Game {
       }
     }
 
-    if (!this.driving) this.player.fixedUpdate(dt, this.input, this.cameraRig.yaw);
+    // Sprinting or rolling interrupts a reload (Days Gone-style commitment).
+    if (this.player.sprinting || this.player.isRolling) this.weapons.cancelReload();
+
+    if (!this.driving) {
+      this.player.fixedUpdate(dt, this.input, this.cameraRig.yaw, this.combatFaceT > 0);
+    }
     this.weapons.fixedUpdate(
       dt,
       this.input,
       this.renderer.camera,
       this.player.aiming,
-      this.input.locked && !this.player.isRolling && !this.driving,
+      this.input.locked && !this.player.isRolling && !this.driving && this.actionLock <= 0,
       (p, y) => this.recoil.kick(p, y),
     );
     this.avatar.setWeapon(this.weapons.current);

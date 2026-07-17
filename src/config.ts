@@ -27,6 +27,8 @@ export const PLAYER = {
   decel: 30,
   aimMoveScale: 0.45,
   turnSpeed: 14,
+  /** After the last shot, keep facing the camera/aim direction this long. */
+  combatFaceTime: 1.5,
   gravity: -25,
   maxFallSpeed: 40,
   roll: {
@@ -96,6 +98,15 @@ export const PLAYER_HEALTH = {
   max: 100,
   regenDelay: 5,
   regenRate: 8, // hp/s
+};
+
+/** Cross-action exclusivity: one deliberate action at a time. */
+export const ACTIONS = {
+  meleeLock: 0.4, // seconds firing/throwing are blocked after a melee swing
+  throwLock: 0.5, // seconds firing/melee are blocked after starting a throw
+  throwWindup: 0.25, // wind-up before the projectile actually leaves the hand
+  throwCooldown: 0.8, // min time between throws
+  switchFireDelay: 0.3, // can't fire immediately after a weapon switch
 };
 
 export const MELEE = {

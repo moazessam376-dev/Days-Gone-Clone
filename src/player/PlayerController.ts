@@ -91,7 +91,7 @@ export class PlayerController {
     return this.velocity.length();
   }
 
-  fixedUpdate(dt: number, input: Input, cameraYaw: number): void {
+  fixedUpdate(dt: number, input: Input, cameraYaw: number, combatFacing = false): void {
     this.aiming = input.locked && input.isMouseDown(2) && !this.isRolling;
 
     // Camera-relative input direction.
@@ -169,10 +169,11 @@ export class PlayerController {
       this.velocity.set(corrected.x / dt, 0, corrected.z / dt);
     }
 
-    // Facing target: camera direction while aiming, velocity direction while
-    // moving. Model yaw convention: facing = (sin yaw, 0, cos yaw); the camera
-    // looks along (-sin camYaw, 0, -cos camYaw), hence the π offset.
-    if (this.aiming) {
+    // Facing target: camera direction while aiming OR shooting (hip fire must
+    // address the target even mid-run), velocity direction otherwise. Model
+    // yaw convention: facing = (sin yaw, 0, cos yaw); the camera looks along
+    // (-sin camYaw, 0, -cos camYaw), hence the π offset.
+    if ((this.aiming || combatFacing) && !this.isRolling) {
       this.targetYaw = cameraYaw + Math.PI;
     } else if (this.velocity.lengthSq() > 0.05) {
       this.targetYaw = Math.atan2(this.velocity.x, this.velocity.z);

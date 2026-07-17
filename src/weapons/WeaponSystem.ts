@@ -4,6 +4,7 @@ import { Input } from '../core/Input';
 import { PhysicsWorld } from '../physics/PhysicsWorld';
 import { Layer, interactionGroups } from '../physics/layers';
 import { WEAPONS, WEAPON_ORDER, type WeaponDef } from './weapons.data';
+import { ACTIONS } from '../config';
 
 export interface Damageable {
   /** Returns true if this damage killed the target. */
@@ -98,6 +99,20 @@ export class WeaponSystem {
     this.reloading = 0;
     this.bloom = 0;
     this.patternIndex = 0;
+    // Swapping isn't free: brief delay before the new weapon can fire.
+    this.cooldown = Math.max(this.cooldown, ACTIONS.switchFireDelay);
+  }
+
+  /** Sprinting or rolling interrupts a reload (ammo only transfers at the end). */
+  cancelReload(): void {
+    this.reloading = 0;
+  }
+
+  /** Ammo crate pickup: top every weapon's reserve back to its data value. */
+  refillReserves(): void {
+    for (const key of WEAPON_ORDER) {
+      this.ammo.get(key)!.reserve = WEAPONS[key].reserveAmmo;
+    }
   }
 
   /**
