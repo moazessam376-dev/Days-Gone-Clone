@@ -19,7 +19,17 @@ export interface EnemyEvents {
   onPlayerHit: (damage: number, fromX: number, fromZ: number) => void;
   /** An enemy died: forward the ragdoll impulse info for effects. */
   onDeath: (index: number, point: THREE.Vector3, dir: THREE.Vector3) => void;
+  /** An enemy is banging on a breakable barrier. */
+  onBarrierHit?: (x: number, z: number) => void;
 }
+
+export interface EnemyBreakable {
+  takeDamage(amount: number): boolean;
+  x: number;
+  z: number;
+}
+
+export type EnemyBlock = null | { wall: true } | { breakable: EnemyBreakable };
 
 interface PoolSlot {
   body: RAPIER.RigidBody;
@@ -90,6 +100,9 @@ export class EnemyManager {
   private attackDidHit = new Uint8Array(ENEMY.capacity);
   /** Terrain height sampler (flat world until M5 wires the real one). */
   heightFn: (x: number, z: number) => number = () => 0;
+  /** Static-world steering query (buildings, breakable barriers). */
+  obstacles: ((x: number, z: number) => EnemyBlock) | null = null;
+  private barrierDps = 14;
 
   constructor(physics: PhysicsWorld, registry: DamageRegistry, private events: EnemyEvents) {
     // Enemies don't physically block the car — run-over kills are handled by
@@ -288,11 +301,32 @@ export class EnemyManager {
       }
       this.velX[i] = vx;
       this.velZ[i] = vz;
-      this.posX[i] += vx * stepDt;
-      this.posZ[i] += vz * stepDt;
+      const nx = this.posX[i] + vx * stepDt;
+      const nz = this.posZ[i] + vz * stepDt;
+      // If already inside blocked space (bad spawn, edge case), walk free to escape.
+      const curBlocked = this.obstacles ? this.obstacles(this.posX[i], this.posZ[i]) : null;
+      const block = this.obstacles && !curBlocked ? this.obstacles(nx, nz) : null;
+      if (!block) {
+        this.posX[i] = nx;
+        this.posZ[i] = nz;
+        this.animId[i] = speed === ENEMY.runSpeed ? 2 : 1;
+      } else {
+        // Axis slide along the wall, then attack any breakable in the way.
+        if (!this.obstacles!(nx, this.posZ[i])) this.posX[i] = nx;
+        else if (!this.obstacles!(this.posX[i], nz)) this.posZ[i] = nz;
+        if ('breakable' in block && block.breakable) {
+          this.animId[i] = 3; // bite the barrier
+          this.yaw[i] = Math.atan2(block.breakable.x - this.posX[i], block.breakable.z - this.posZ[i]);
+          block.breakable.takeDamage(this.barrierDps * stepDt);
+          if (Math.random() < stepDt * 4) {
+            this.events.onBarrierHit?.(block.breakable.x, block.breakable.z);
+          }
+        } else {
+          this.animId[i] = 1;
+        }
+      }
       this.posY[i] = this.heightFn(this.posX[i], this.posZ[i]);
       if (vLen > 0.1) this.yaw[i] = Math.atan2(vx, vz);
-      this.animId[i] = speed === ENEMY.runSpeed ? 2 : 1;
 
       if (dist < ENEMY.attackRange) {
         this.state[i] = EnemyState.ATTACK;

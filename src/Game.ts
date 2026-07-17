@@ -29,6 +29,7 @@ import { ThrowableSystem, THROWABLE } from './weapons/Throwables';
 import { Terrain } from './world/Terrain';
 import { Vegetation } from './world/Vegetation';
 import { Town } from './world/Town';
+import { EnterableBuilding } from './world/EnterableBuilding';
 import { PLAYER_HEALTH, MELEE } from './config';
 
 /**
@@ -81,6 +82,8 @@ export class Game {
   private throwables!: ThrowableSystem;
   private fireLights: THREE.PointLight[] = [];
   private fireFxTimer = 0;
+  private hideout!: EnterableBuilding;
+  private townRects: Array<{ x: number; z: number; hw: number; hd: number; cos: number; sin: number }> = [];
 
   constructor(container: HTMLElement, assets: AssetLoader) {
     this.renderer = new Renderer(container);
@@ -227,7 +230,36 @@ export class Game {
     this.terrain = new Terrain(this.scene, this.physics, this.world);
     this.vegetation = new Vegetation(this.scene, this.physics, this.world);
     this.town = new Town(this.scene, this.physics, this.world);
-    void this.town;
+    for (const b of this.town.buildingSpots) {
+      this.townRects.push({
+        x: b.x, z: b.z, hw: b.w / 2 + 0.35, hd: b.d / 2 + 0.35,
+        cos: Math.cos(b.rot), sin: Math.sin(b.rot),
+      });
+    }
+    this.hideout = new EnterableBuilding(this.scene, this.physics, this.world, (w) => {
+      // Boards break: debris burst + bang.
+      this.fx.dust.burst({
+        count: 12, position: new THREE.Vector3(w.x, this.world.height(w.x, w.z) + 1.6, w.z),
+        spread: 1, speed: [1, 4], gravity: 6, life: [0.4, 0.9], size: [0.08, 0.2],
+        colors: [0x6b4f33, 0x4f3a26],
+      });
+      this.shake.add(0.25);
+      this.audio.play('impact_world', { gain: 0.9, at: { x: w.x, y: 1.6, z: w.z } });
+    });
+  }
+
+  /** Combined enemy steering obstacles: town buildings + hideout walls. */
+  private enemyBlockAt(x: number, z: number): ReturnType<EnterableBuilding['blockAt']> {
+    const hide = this.hideout.blockAt(x, z);
+    if (hide) return hide;
+    for (const r of this.townRects) {
+      const dx = x - r.x;
+      const dz = z - r.z;
+      const lx = dx * r.cos + dz * r.sin;
+      const lz = -dx * r.sin + dz * r.cos;
+      if (Math.abs(lx) < r.hw && Math.abs(lz) < r.hd) return { wall: true };
+    }
+    return null;
   }
 
   private setupDebugPanel(): void {
@@ -323,6 +355,11 @@ export class Game {
   private setupEnemies(assets: AssetLoader): void {
     this.enemies = new EnemyManager(this.physics, this.registry, {
       onPlayerHit: (damage, fromX, fromZ) => this.onPlayerDamaged(damage, fromX, fromZ),
+      onBarrierHit: (x, z) => {
+        const d = Math.hypot(x - this.player.root.position.x, z - this.player.root.position.z);
+        if (d < 15) this.shake.add(0.06);
+        this.audio.play('impact_world', { gain: 0.5, at: { x, y: 1.6, z } });
+      },
       onDeath: (_i, point, dir) => {
         this.fx.blood.burst({
           count: 16, position: point.clone(), direction: dir.clone().multiplyScalar(0.7),
@@ -333,6 +370,7 @@ export class Game {
       },
     });
     this.enemies.heightFn = (x, z) => this.world.height(x, z);
+    this.enemies.obstacles = (x, z) => this.enemyBlockAt(x, z);
     this.enemyRenderer = new EnemyRenderer(this.scene, assets.get('zombie'));
     this.spawnEnemyWave(24);
   }
@@ -346,6 +384,7 @@ export class Game {
       const x = this.player.root.position.x + Math.cos(angle) * radius;
       const z = this.player.root.position.z + Math.sin(angle) * radius;
       if (Math.abs(x) > 1000 || Math.abs(z) > 1000) continue;
+      if (this.enemyBlockAt(x, z)) continue; // never spawn inside buildings
       if (this.enemies.spawn(x, z) >= 0) spawned++;
     }
   }

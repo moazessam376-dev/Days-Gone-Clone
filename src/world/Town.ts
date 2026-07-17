@@ -34,6 +34,7 @@ export class Town {
       const bx = rp.x + -rp.dirZ * off * side;
       const bz = rp.z + rp.dirX * off * side;
       if (used.some((u) => Math.hypot(u.x - bx, u.y - bz) < 18)) continue;
+      if (Math.hypot(bx - 40, bz - 40) < 18) continue; // hideout lot
       // Keep clear of ALL road lanes (roads cross the town), not just our own.
       if (data.roadDistance(bx, bz) < 13) continue;
       used.push(new THREE.Vector2(bx, bz));
