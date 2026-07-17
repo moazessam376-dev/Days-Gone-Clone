@@ -12,8 +12,12 @@ export class Input {
   private mouseDY = 0;
   private mouseButtons = new Set<number>();
   locked = false;
+  /** Dev/test escape hatch (?mockinput): treat input as locked without real
+   * pointer lock so automated tests can drive the game with synthetic events. */
+  readonly mock = new URLSearchParams(location.search).has('mockinput');
 
   constructor(private element: HTMLElement) {
+    if (this.mock) this.locked = true;
     document.addEventListener('keydown', (e) => {
       if (e.repeat) return;
       this.keys.add(e.code);
@@ -36,6 +40,7 @@ export class Input {
     document.addEventListener('mouseup', (e) => this.mouseButtons.delete(e.button));
 
     document.addEventListener('pointerlockchange', () => {
+      if (this.mock) return;
       this.locked = document.pointerLockElement === this.element;
       if (!this.locked) {
         this.keys.clear();
@@ -55,6 +60,16 @@ export class Input {
   /** True only on the first frame the key went down. Cleared in endFrame(). */
   wasPressed(code: string): boolean {
     return this.pressedThisFrame.has(code);
+  }
+
+  /**
+   * Like wasPressed but consumes the press so only one caller (and one fixed
+   * tick, even when several run in a single render frame) acts on it.
+   */
+  consumePressed(code: string): boolean {
+    const had = this.pressedThisFrame.has(code);
+    if (had) this.pressedThisFrame.delete(code);
+    return had;
   }
 
   isMouseDown(button: number): boolean {
