@@ -158,9 +158,11 @@ export class PlayerController {
       this.velocity.set(corrected.x / dt, 0, corrected.z / dt);
     }
 
-    // Facing target: camera yaw while aiming, velocity direction while moving.
+    // Facing target: camera direction while aiming, velocity direction while
+    // moving. Model yaw convention: facing = (sin yaw, 0, cos yaw); the camera
+    // looks along (-sin camYaw, 0, -cos camYaw), hence the π offset.
     if (this.aiming) {
-      this.targetYaw = cameraYaw;
+      this.targetYaw = cameraYaw + Math.PI;
     } else if (this.velocity.lengthSq() > 0.05) {
       this.targetYaw = Math.atan2(this.velocity.x, this.velocity.z);
     }

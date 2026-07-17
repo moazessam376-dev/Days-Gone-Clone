@@ -1,0 +1,24 @@
+{
+  "assets": [
+    {
+      "name": "player_base.glb",
+      "url": "https://static.poly.pizza/0b65e14d-a349-44cc-836c-efdeb6933d48.glb",
+      "sha256": "7446b2d8d7b709815c6b8f62470db375cfd7f170a9be89cd414d539b6344fcaa",
+      "dest": "models/player_base.glb",
+      "title": "Animated Base Character",
+      "author": "Quaternius",
+      "source": "https://poly.pizza/m/cwYvO5UauX",
+      "license": "CC-BY 3.0"
+    },
+    {
+      "name": "zombie.glb",
+      "url": "https://static.poly.pizza/972d277d-6fc4-46c7-85d1-e4d68cf46548.glb",
+      "sha256": "02d990c2e442855a7a524a75b51982dc07aec3ee44a48243d61988e125e75a60",
+      "dest": "models/zombie.glb",
+      "title": "Animated Zombie",
+      "author": "Quaternius",
+      "source": "https://poly.pizza/m/jkrEvQZb8J",
+      "license": "CC-BY 3.0"
+    }
+  ]
+}

@@ -19,25 +19,33 @@ export class Input {
   constructor(private element: HTMLElement) {
     if (this.mock) this.locked = true;
     document.addEventListener('keydown', (e) => {
-      if (e.repeat) return;
+      if (e.repeat || (this.mock && e.isTrusted)) return;
       this.keys.add(e.code);
       this.pressedThisFrame.add(e.code);
     });
-    document.addEventListener('keyup', (e) => this.keys.delete(e.code));
+    document.addEventListener('keyup', (e) => {
+      if (this.mock && e.isTrusted) return;
+      this.keys.delete(e.code);
+    });
     window.addEventListener('blur', () => {
+      if (this.mock) return;
       this.keys.clear();
       this.mouseButtons.clear();
     });
 
     document.addEventListener('mousemove', (e) => {
-      if (!this.locked) return;
+      if (!this.locked || (this.mock && e.isTrusted)) return;
       this.mouseDX += e.movementX;
       this.mouseDY += e.movementY;
     });
     document.addEventListener('mousedown', (e) => {
+      if (this.mock && e.isTrusted) return;
       if (this.locked) this.mouseButtons.add(e.button);
     });
-    document.addEventListener('mouseup', (e) => this.mouseButtons.delete(e.button));
+    document.addEventListener('mouseup', (e) => {
+      if (this.mock && e.isTrusted) return;
+      this.mouseButtons.delete(e.button);
+    });
 
     document.addEventListener('pointerlockchange', () => {
       if (this.mock) return;

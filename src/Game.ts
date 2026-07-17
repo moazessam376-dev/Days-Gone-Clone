@@ -7,7 +7,9 @@ import { PhysicsWorld } from './physics/PhysicsWorld';
 import { Layer, ALL_LAYERS, interactionGroups } from './physics/layers';
 import { Renderer } from './rendering/Renderer';
 import { PlayerController } from './player/PlayerController';
+import { PlayerAvatar } from './player/PlayerAvatar';
 import { CameraRig } from './player/CameraRig';
+import { AssetLoader } from './core/AssetLoader';
 import { CAMERA_RIG, PLAYER } from './config';
 
 /**
@@ -23,9 +25,10 @@ export class Game {
   private debug: DebugPanel;
   private loop: GameLoop;
   private player: PlayerController;
+  private avatar: PlayerAvatar;
   private cameraRig: CameraRig;
 
-  constructor(container: HTMLElement) {
+  constructor(container: HTMLElement, assets: AssetLoader) {
     this.renderer = new Renderer(container);
     this.physics = new PhysicsWorld();
     this.input = new Input(this.renderer.renderer.domElement);
@@ -35,7 +38,8 @@ export class Game {
     this.setupGraybox();
 
     this.player = new PlayerController(this.physics, new THREE.Vector3(0, 1.2, 8));
-    this.buildPlaceholderModel();
+    this.avatar = new PlayerAvatar(assets.get('player'));
+    this.player.model.add(this.avatar.object);
     this.scene.add(this.player.root);
     this.cameraRig = new CameraRig(this.renderer.camera, this.physics);
 
@@ -66,6 +70,9 @@ export class Game {
   }
 
   start(): void {
+    // In mock-input test mode the loop is driven exclusively by debugStep so
+    // results stay deterministic regardless of tab visibility or real input.
+    if (this.input.mock) return;
     this.loop.start();
   }
 
@@ -77,21 +84,6 @@ export class Game {
     document.addEventListener('pointerlockchange', () => {
       overlay.classList.toggle('hidden', this.input.locked);
     });
-  }
-
-  private buildPlaceholderModel(): void {
-    // Capsule + nose wedge so facing direction is readable before real assets.
-    const mat = new THREE.MeshStandardMaterial({ color: 0x7a8ba0, roughness: 0.7 });
-    const capsule = new THREE.Mesh(
-      new THREE.CapsuleGeometry(PLAYER.radius, PLAYER.height - PLAYER.radius * 2, 6, 12),
-      mat,
-    );
-    capsule.castShadow = true;
-    this.player.model.add(capsule);
-
-    const nose = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.3), mat);
-    nose.position.set(0, 0.5, PLAYER.radius + 0.12);
-    this.player.model.add(nose);
   }
 
   private setupEnvironment(): void {
@@ -218,6 +210,12 @@ export class Game {
     this.debug.begin();
     this.physics.interpolate(alpha);
     this.player.renderUpdate(dt);
+    this.avatar.update(dt, {
+      speed: this.player.speed,
+      aiming: this.player.aiming,
+      rolling: this.player.isRolling,
+      pitch: this.cameraRig.pitch,
+    });
     this.cameraRig.update(dt, this.input, this.player.root.position, this.player.aiming);
     this.renderer.render(this.scene);
     this.input.endFrame();

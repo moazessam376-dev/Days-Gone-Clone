@@ -39,7 +39,9 @@ export const PLAYER = {
 };
 
 export const CAMERA_RIG = {
-  pivotHeight: 1.5,
+  // Relative to the player root (capsule CENTER, ~0.9m above feet):
+  // 0.6 puts the pivot at chest/shoulder height (~1.5m above ground).
+  pivotHeight: 0.6,
   shoulderX: 0.45,
   restDistance: 2.8,
   aimShoulderX: 0.62,
