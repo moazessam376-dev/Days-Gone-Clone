@@ -58,9 +58,12 @@ classes for hero objects (player, car), struct-of-arrays for enemies.
   hit third-party hosts).
 - Only CC0 or CC-BY sources. Every manifest entry must carry a license field;
   `CREDITS.md` is auto-generated from the manifest. Key verified sources:
-  Quaternius animated base character + zombie via `static.poly.pizza` (CC-BY),
-  Kenney kits via kenney.nl direct zips (CC0; URL hashes rot — script scrapes the
-  asset page as fallback).
+  Quaternius Character Soldier (player; its in-hand weapon meshes ARE the gun
+  models — toggle visibility, never parent into the 100x-scaled skeleton),
+  Quaternius animated zombie, Zsky motorbike (all via `static.poly.pizza`),
+  Kenney car kit + suburban city kit via kenney.nl zips (CC0; URL hashes rot).
+  Kit GLBs reference an external `Textures/colormap.png` — it must ship next
+  to them or the models render untextured white.
 
 ## Deploy
 

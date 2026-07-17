@@ -2,58 +2,97 @@ import * as THREE from 'three';
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { PLAYER } from '../config';
 
-/** Bones above the hips — used to mask aim poses onto the upper body only. */
-const UPPER_BONE_RE = /(spine\.?00[23]|neck|head|shoulder|upper_arm|forearm|hand|f_index|f_middle|f_ring|f_pinky|thumb)/;
-/** Everything else (hips, spine.001, legs, feet) keeps playing locomotion. */
+/** Upper-body bones of the Soldier rig (CharacterArmature). */
+const UPPER_BONE_RE = /(Abdomen|Torso|Neck|Head|Shoulder|UpperArm|LowerArm|Pinky|Middle|Index|Thumb)/;
+
+/** In-hand weapon mesh names shipped with the Soldier model. */
+const WEAPON_NODES: Record<string, string> = {
+  pistol: 'Pistol',
+  rifle: 'AK',
+  shotgun: 'Shotgun',
+};
+const ALL_WEAPON_NODES = [
+  'Revolver', 'Sniper', 'Revolver_Small', 'Pistol', 'SMG', 'GrenadeLauncher',
+  'ShortCannon', 'Shotgun', 'Sniper_2', 'RocketLauncher', 'AK', 'Shovel',
+  'Knife_2', 'Knife_1',
+];
 
 export interface AvatarState {
   speed: number;
   aiming: boolean;
   rolling: boolean;
+  /** 0..1 progress through the roll (drives the tucked-spin). */
+  rollT: number;
   /** Camera pitch in radians; positive = looking up. */
   pitch: number;
 }
 
 interface WeightedAction {
   action: THREE.AnimationAction;
-  weight: number; // current
+  weight: number;
   target: number;
 }
 
 /**
- * The player's visual body: Quaternius animated base character driven by a
- * weight-blended animation graph (everything always "playing", weights lerp):
+ * Player visuals: Quaternius Character Soldier. The model ships with real
+ * weapon meshes parented into the right hand — the active one is toggled
+ * visible, so the grip is always correct by construction.
  *
- * - Locomotion: Idle/Walk/Jog/Sprint blended piecewise by speed.
- * - Aiming: locomotion is swapped to lower-body-masked variants while the
- *   upper body blends the three Pistol_Aim_{Down,Neutral,Up} poses by camera
- *   pitch — the standard AAA aim-offset setup.
- * - Roll: full-body one-shot, time-scaled to the controller's roll duration.
+ * Animation graph (weight-blended):
+ * - Locomotion: Idle ↔ Run (Run timeScale follows speed; sprint overdrives).
+ * - Aiming: Run_Gun full-body while moving; upper-masked Idle_Shoot pose
+ *   held while standing. Aim pitch additionally tilts the Torso bone
+ *   procedurally so shots read up/down hill.
+ * - Shoot: fast upper-body Idle_Shoot one-shot. Reload: same clip slowed.
+ * - Melee: upper-body Punch. Roll: Duck pose + procedural forward spin.
  */
 export class PlayerAvatar {
   readonly object: THREE.Group;
   private mixer: THREE.AnimationMixer;
   private actions = new Map<string, WeightedAction>();
-  private rollAction: THREE.AnimationAction;
+  private shootAction!: THREE.AnimationAction;
+  private meleeAction!: THREE.AnimationAction;
+  private reloadAction!: THREE.AnimationAction;
+  private reloadBaseDuration = 1;
   private aimBlend = 0;
-  private wasRolling = false;
+  private torsoBone: THREE.Object3D | null = null;
+  private weaponMeshes = new Map<string, THREE.Object3D>();
+  private activeWeapon = '';
+  private spinGroup = new THREE.Group();
+  private gunKick = 0;
 
   constructor(gltf: GLTF) {
-    this.object = gltf.scene;
-    // Drop the model so feet sit at the capsule bottom (root group is centered
-    // on the capsule), and flip 180°: the GLB's natural forward is -Z but the
-    // controller's yaw convention treats +Z as forward.
-    this.object.position.y = -PLAYER.height / 2;
-    this.object.rotation.y = Math.PI;
+    this.object = new THREE.Group() as THREE.Group;
+    const model = gltf.scene;
 
-    this.mixer = new THREE.AnimationMixer(this.object);
+    // Normalize height to the capsule and face +Z (controller convention:
+    // facing = (sin yaw, 0, cos yaw), model natural forward is -Z → flip).
+    const bbox = new THREE.Box3().setFromObject(model);
+    const height = bbox.max.y - bbox.min.y;
+    const scale = 1.78 / height;
+    model.scale.setScalar(scale);
+    model.position.y = 0;
 
+    // spinGroup owns the roll spin so it composes with the yaw on `model`.
+    // The soldier faces +Z natively, matching the controller's yaw convention.
+    this.spinGroup.add(model);
+    this.spinGroup.position.y = -PLAYER.height / 2;
+    this.object.add(this.spinGroup);
+
+    model.traverse((o) => {
+      if (o.name === 'Torso') this.torsoBone = o;
+      if (ALL_WEAPON_NODES.includes(o.name)) {
+        this.weaponMeshes.set(o.name, o);
+        o.visible = false;
+      }
+    });
+
+    this.mixer = new THREE.AnimationMixer(model);
     const clip = (name: string): THREE.AnimationClip => {
-      const c = THREE.AnimationClip.findByName(gltf.animations, `Rig|${name}`);
-      if (!c) throw new Error(`Missing animation clip: ${name}`);
+      const c = THREE.AnimationClip.findByName(gltf.animations, `CharacterArmature|${name}`);
+      if (!c) throw new Error(`Missing soldier clip ${name}`);
       return c;
     };
-
     const maskClip = (c: THREE.AnimationClip, upper: boolean, suffix: string): THREE.AnimationClip => {
       const tracks = c.tracks.filter((t) => UPPER_BONE_RE.test(t.name) === upper);
       return new THREE.AnimationClip(`${c.name}_${suffix}`, c.duration, tracks);
@@ -66,123 +105,109 @@ export class PlayerAvatar {
       this.actions.set(key, { action, weight: 0, target: 0 });
     };
 
-    // Full-body locomotion (used when not aiming).
-    addWeighted('idle', clip('Idle_Loop'));
-    addWeighted('walk', clip('Walk_Loop'));
-    addWeighted('jog', clip('Jog_Fwd_Loop'));
-    addWeighted('sprint', clip('Sprint_Loop'));
-    // Lower-body locomotion variants (legs keep moving while aiming).
-    addWeighted('idle_lower', maskClip(clip('Idle_Loop'), false, 'lower'));
-    addWeighted('walk_lower', maskClip(clip('Walk_Loop'), false, 'lower'));
-    // Upper-body aim poses, blended by camera pitch.
-    addWeighted('aim_down', maskClip(clip('Pistol_Aim_Down'), true, 'upper'));
-    addWeighted('aim_neutral', maskClip(clip('Pistol_Aim_Neutral'), true, 'upper'));
-    addWeighted('aim_up', maskClip(clip('Pistol_Aim_Up'), true, 'upper'));
+    addWeighted('idle', clip('Idle'));
+    addWeighted('run', clip('Run'));
+    addWeighted('run_gun', clip('Run_Gun'));
+    addWeighted('aim_pose', maskClip(clip('Idle_Shoot'), true, 'upper'));
+    addWeighted('duck', clip('Duck'));
 
-    const rollClip = clip('Roll');
-    this.rollAction = this.mixer.clipAction(rollClip);
-    this.rollAction.setLoop(THREE.LoopOnce, 1);
-    this.rollAction.clampWhenFinished = false;
-    this.rollAction.timeScale = rollClip.duration / PLAYER.roll.duration;
-
-    this.shootAction = this.mixer.clipAction(maskClip(clip('Pistol_Shoot'), true, 'upper'));
+    this.shootAction = this.mixer.clipAction(maskClip(clip('Idle_Shoot'), true, 'shoot'));
     this.shootAction.setLoop(THREE.LoopOnce, 1);
-    this.meleeAction = this.mixer.clipAction(maskClip(clip('Punch_Cross'), true, 'upper'));
+    this.meleeAction = this.mixer.clipAction(maskClip(clip('Punch'), true, 'melee'));
     this.meleeAction.setLoop(THREE.LoopOnce, 1);
-    this.reloadAction = this.mixer.clipAction(maskClip(clip('Pistol_Reload'), true, 'upper'));
+    this.reloadAction = this.mixer.clipAction(maskClip(clip('Idle_Shoot'), true, 'reload'));
     this.reloadAction.setLoop(THREE.LoopOnce, 1);
-    this.reloadBaseDuration = clip('Pistol_Reload').duration;
+    this.reloadBaseDuration = clip('Idle_Shoot').duration;
   }
 
-  private shootAction!: THREE.AnimationAction;
-  private reloadAction!: THREE.AnimationAction;
-  private meleeAction!: THREE.AnimationAction;
-  private reloadBaseDuration = 1;
+  /** Show the active weapon's in-hand mesh (real grip for free). */
+  setWeapon(key: string): void {
+    if (this.activeWeapon === key) return;
+    this.activeWeapon = key;
+    const wanted = WEAPON_NODES[key];
+    for (const [name, mesh] of this.weaponMeshes) mesh.visible = name === wanted;
+  }
 
-  /** Right-hand bone — mount point for weapon models. */
-  get handBone(): THREE.Object3D | null {
-    let bone: THREE.Object3D | null = null;
-    this.object.traverse((o) => {
-      if (!bone && /hand\.?R$/i.test(o.name)) bone = o;
-    });
-    return bone;
+  /** World-space muzzle: far edge of the active gun mesh along `facing`. */
+  muzzleWorld(out: THREE.Vector3, facing: THREE.Vector3): THREE.Vector3 {
+    const node = this.weaponMeshes.get(WEAPON_NODES[this.activeWeapon] ?? '');
+    if (!node) return out.set(0, 0, 0);
+    const box = new THREE.Box3().setFromObject(node);
+    box.getCenter(out);
+    const half = new THREE.Vector3();
+    box.getSize(half).multiplyScalar(0.5);
+    out.addScaledVector(facing, Math.abs(half.x * facing.x) + Math.abs(half.z * facing.z) + 0.05);
+    return out;
+  }
+
+  kick(): void {
+    this.gunKick = 1;
   }
 
   playShoot(): void {
-    this.shootAction.reset().setEffectiveWeight(1).fadeIn(0.02).play();
-    this.shootAction.timeScale = 2.2;
+    this.shootAction.reset().setEffectiveWeight(1).play();
+    this.shootAction.timeScale = 3.2;
   }
 
   playReload(duration: number): void {
-    this.reloadAction.timeScale = this.reloadBaseDuration / duration;
+    this.reloadAction.timeScale = (this.reloadBaseDuration / duration) * 0.9;
     this.reloadAction.reset().setEffectiveWeight(1).fadeIn(0.08).play();
   }
 
   playMelee(): void {
-    if (!this.meleeAction) return;
-    this.meleeAction.reset().setEffectiveWeight(1).fadeIn(0.03).play();
-    this.meleeAction.timeScale = 1.6;
+    this.meleeAction.reset().setEffectiveWeight(1).play();
+    this.meleeAction.timeScale = 1.7;
   }
 
   update(dt: number, state: AvatarState): void {
-    // Roll interrupts everything: fire the one-shot on the rising edge.
-    if (state.rolling && !this.wasRolling) {
-      this.rollAction.reset().fadeIn(0.05).play();
-    } else if (!state.rolling && this.wasRolling) {
-      this.rollAction.fadeOut(0.12);
-    }
-    this.wasRolling = state.rolling;
-
-    this.aimBlend = THREE.MathUtils.clamp(
-      this.aimBlend + (state.aiming ? dt : -dt) / 0.12,
-      0,
-      1,
-    );
-
-    // Piecewise locomotion weights by speed.
-    const s = state.speed;
-    let wIdle = 0;
-    let wWalk = 0;
-    let wJog = 0;
-    let wSprint = 0;
-    if (s < PLAYER.walkSpeed) {
-      wWalk = THREE.MathUtils.smoothstep(s, 0.1, PLAYER.walkSpeed);
-      wIdle = 1 - wWalk;
-    } else if (s < PLAYER.jogSpeed) {
-      wJog = THREE.MathUtils.smoothstep(s, PLAYER.walkSpeed, PLAYER.jogSpeed);
-      wWalk = 1 - wJog;
-    } else {
-      wSprint = THREE.MathUtils.smoothstep(s, PLAYER.jogSpeed, PLAYER.sprintSpeed);
-      wJog = 1 - wSprint;
-    }
-
+    this.aimBlend = THREE.MathUtils.clamp(this.aimBlend + (state.aiming ? dt : -dt) / 0.12, 0, 1);
     const a = this.aimBlend;
-    const rollSuppress = state.rolling ? 0 : 1;
+    const moving = state.speed > 0.4;
+    const moveBlend = THREE.MathUtils.clamp(state.speed / PLAYER.jogSpeed, 0, 1);
 
-    // Aim pitch → three-pose blend. Poses cover roughly ±60° of pitch.
-    const p = THREE.MathUtils.clamp(state.pitch / 1.05, -1, 1);
-    const wUp = Math.max(0, p);
-    const wDown = Math.max(0, -p);
-    const wNeutral = 1 - wUp - wDown;
+    // Roll: Duck pose + one full forward spin.
+    if (state.rolling) {
+      this.setTarget('duck', 1);
+      this.setTarget('idle', 0);
+      this.setTarget('run', 0);
+      this.setTarget('run_gun', 0);
+      this.setTarget('aim_pose', 0);
+      this.spinGroup.rotation.x = -Math.PI * 2 * THREE.MathUtils.smoothstep(state.rollT, 0.05, 0.95);
+    } else {
+      this.spinGroup.rotation.x = 0;
+      this.setTarget('duck', 0);
+      this.setTarget('idle', (1 - moveBlend) * (1 - a));
+      this.setTarget('run', moveBlend * (1 - a));
+      this.setTarget('run_gun', moveBlend * a);
+      this.setTarget('aim_pose', (moving ? 0.55 : 1) * a);
+      // Run cycle speed follows actual velocity.
+      const run = this.actions.get('run')!.action;
+      const runGun = this.actions.get('run_gun')!.action;
+      run.timeScale = runGun.timeScale = THREE.MathUtils.clamp(state.speed / 4.2, 0.5, 1.6);
+    }
 
-    this.setTarget('idle', wIdle * (1 - a) * rollSuppress);
-    this.setTarget('walk', wWalk * (1 - a) * rollSuppress);
-    this.setTarget('jog', wJog * (1 - a) * rollSuppress);
-    this.setTarget('sprint', wSprint * (1 - a) * rollSuppress);
-    this.setTarget('idle_lower', (wIdle + wJog + wSprint) * a * rollSuppress);
-    this.setTarget('walk_lower', wWalk * a * rollSuppress);
-    this.setTarget('aim_down', wDown * a * rollSuppress);
-    this.setTarget('aim_neutral', wNeutral * a * rollSuppress);
-    this.setTarget('aim_up', wUp * a * rollSuppress);
+    // Aim pitch: tilt the torso so aiming up/down reads on the body.
+    if (this.torsoBone) {
+      const tilt = a * -state.pitch * 0.55;
+      this.torsoBone.rotation.x += tilt; // applied after mixer sampling below
+    }
 
-    // Fast exponential approach keeps blends snappy but pop-free.
-    const k = 1 - Math.exp(-15 * dt);
+    const k = 1 - Math.exp(-14 * dt);
     for (const wa of this.actions.values()) {
       wa.weight += (wa.target - wa.weight) * k;
       wa.action.setEffectiveWeight(wa.weight);
     }
-
     this.mixer.update(dt);
+
+    // Post-mixer additive torso pitch (mixer overwrote the rotation).
+    if (this.torsoBone && a > 0.01 && !state.rolling) {
+      this.torsoBone.rotation.x += a * -state.pitch * 0.55;
+    }
+
+    // Gun kick: tiny rotation punch on the visible weapon.
+    this.gunKick *= Math.exp(-16 * dt);
+    const gun = this.weaponMeshes.get(WEAPON_NODES[this.activeWeapon] ?? '');
+    if (gun) gun.rotation.x = this.gunKick * -0.3;
   }
 
   private setTarget(key: string, target: number): void {

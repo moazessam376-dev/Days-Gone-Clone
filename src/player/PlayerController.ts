@@ -76,6 +76,16 @@ export class PlayerController {
     return this.rollT >= 0;
   }
 
+  /** 0..1 progress through the roll (0 when not rolling). */
+  get rollProgress(): number {
+    return this.rollT >= 0 ? this.rollT / PLAYER.roll.duration : 0;
+  }
+
+  /** Unit facing vector of the visual model. */
+  get facing(): THREE.Vector3 {
+    return new THREE.Vector3(Math.sin(this.model.rotation.y), 0, Math.cos(this.model.rotation.y));
+  }
+
   /** Horizontal speed in m/s (for animation blending later). */
   get speed(): number {
     return this.velocity.length();

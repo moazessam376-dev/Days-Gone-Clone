@@ -65,9 +65,25 @@ async function main(): Promise<void> {
       }
     }
 
-    const destPath = join(OUT_DIR, asset.dest);
-    await mkdir(dirname(destPath), { recursive: true });
-    await copyFile(rawPath, destPath);
+    if (asset.extract) {
+      // Zip archive: extract the listed files into the dest directory.
+      const outDir = join(OUT_DIR, asset.dest);
+      await mkdir(outDir, { recursive: true });
+      const { execFileSync } = await import('node:child_process');
+      for (const [pathInZip, destName] of Object.entries(asset.extract)) {
+        execFileSync('unzip', ['-o', '-j', rawPath, pathInZip, '-d', outDir]);
+        const extracted = join(outDir, pathInZip.split('/').pop()!);
+        const wanted = join(outDir, destName);
+        if (extracted !== wanted) {
+          await mkdir(dirname(wanted), { recursive: true });
+          await copyFile(extracted, wanted);
+        }
+      }
+    } else {
+      const destPath = join(OUT_DIR, asset.dest);
+      await mkdir(dirname(destPath), { recursive: true });
+      await copyFile(rawPath, destPath);
+    }
   }
 
   // CREDITS.md — CC-BY sources require attribution; generate it, don't hand-edit.

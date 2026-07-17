@@ -11,6 +11,16 @@
       "license": "CC-BY 3.0"
     },
     {
+      "name": "player_soldier.glb",
+      "url": "https://static.poly.pizza/1083c1d3-d1d4-4682-adf6-bc516d06ac84.glb",
+      "sha256": "06597e2cd20840eee8bed03790f32138e379ba3d6c7f61eb87e29f0c672d4d54",
+      "dest": "models/player_soldier.glb",
+      "title": "Character Soldier",
+      "author": "Quaternius",
+      "source": "https://poly.pizza/m/PpLF4rt4ah",
+      "license": "CC0 / Public Domain"
+    },
+    {
       "name": "zombie.glb",
       "url": "https://static.poly.pizza/972d277d-6fc4-46c7-85d1-e4d68cf46548.glb",
       "sha256": "02d990c2e442855a7a524a75b51982dc07aec3ee44a48243d61988e125e75a60",
@@ -19,6 +29,54 @@
       "author": "Quaternius",
       "source": "https://poly.pizza/m/jkrEvQZb8J",
       "license": "CC-BY 3.0"
+    },
+    {
+      "name": "motorbike.glb",
+      "url": "https://static.poly.pizza/b61993ed-4bd4-4439-89c0-933ad42384c7.glb",
+      "sha256": "cd49ea6e852b313b6c6f6f0448f5efdd1e464c97d2f1ae8f716046606b3ada0e",
+      "dest": "models/motorbike.glb",
+      "title": "Military Motorbike",
+      "author": "Zsky",
+      "source": "https://poly.pizza/m/9SwnIlPjNv",
+      "license": "CC-BY"
+    },
+    {
+      "name": "carkit.zip",
+      "url": "https://kenney.nl/media/pages/assets/car-kit/1a312ec241-1775131960/kenney_car-kit.zip",
+      "sha256": "fac7dacac5c7874348cf19729af3ef205f3d366493edaf0a827d93f4fdf3d0c4",
+      "dest": "models/kit/car",
+      "title": "Car Kit",
+      "author": "Kenney",
+      "source": "https://kenney.nl/assets/car-kit",
+      "license": "CC0",
+      "extract": {
+        "Models/GLB format/sedan.glb": "sedan.glb",
+        "Models/GLB format/Textures/colormap.png": "Textures/colormap.png",
+        "Models/GLB format/suv.glb": "suv.glb"
+      }
+    },
+    {
+      "name": "suburban.zip",
+      "url": "https://kenney.nl/media/pages/assets/city-kit-suburban/2c871b7af2-1745479373/kenney_city-kit-suburban_20.zip",
+      "sha256": "5869c35cf30b1c87bdb2d197b6d325eebadd2ef08ea27f04797e8e08d77a9a39",
+      "dest": "models/kit/suburban",
+      "title": "City Kit (Suburban)",
+      "author": "Kenney",
+      "source": "https://kenney.nl/assets/city-kit-suburban",
+      "license": "CC0",
+      "extract": {
+        "Models/GLB format/Textures/colormap.png": "Textures/colormap.png",
+        "Models/GLB format/building-type-a.glb": "building-type-a.glb",
+        "Models/GLB format/building-type-b.glb": "building-type-b.glb",
+        "Models/GLB format/building-type-c.glb": "building-type-c.glb",
+        "Models/GLB format/building-type-e.glb": "building-type-e.glb",
+        "Models/GLB format/building-type-g.glb": "building-type-g.glb",
+        "Models/GLB format/building-type-h.glb": "building-type-h.glb",
+        "Models/GLB format/building-type-k.glb": "building-type-k.glb",
+        "Models/GLB format/building-type-m.glb": "building-type-m.glb",
+        "Models/GLB format/building-type-q.glb": "building-type-q.glb",
+        "Models/GLB format/building-type-s.glb": "building-type-s.glb"
+      }
     }
   ]
 }
