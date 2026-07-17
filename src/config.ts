@@ -72,6 +72,40 @@ export const FEEL = {
   },
 };
 
+export const ENEMY = {
+  capacity: 512,
+  health: 70,
+  walkSpeed: 1.3,
+  runSpeed: 3.6,
+  runDistance: 22, // start sprinting at the player inside this range
+  attackRange: 1.7,
+  attackDamage: 12,
+  attackWindup: 0.45, // seconds into the bite when damage lands
+  attackCooldown: 1.3,
+  staggerTime: 0.35,
+  separationRadius: 0.9,
+  separationForce: 2.5,
+  corpseTime: 4,
+  headshotHeight: 1.45, // hit above this (local) = headshot
+  physicsPoolSize: 32,
+  corpsePoolSize: 8,
+  aiLod: { nearDist: 30, midDist: 80, farTickDivider: 8 },
+};
+
+export const PLAYER_HEALTH = {
+  max: 100,
+  regenDelay: 5,
+  regenRate: 8, // hp/s
+};
+
+export const MELEE = {
+  range: 1.9,
+  arcDeg: 70,
+  damage: 45,
+  cooldown: 0.7,
+  knockback: 4,
+};
+
 export const DEBUG = {
   showStats: true,
 };

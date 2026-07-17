@@ -22,6 +22,9 @@ import { Decals } from './fx/Decals';
 import { MuzzleFlash } from './fx/MuzzleFlash';
 import { AudioEngine } from './audio/AudioEngine';
 import { HUD } from './ui/HUD';
+import { EnemyManager } from './enemies/EnemyManager';
+import { EnemyRenderer } from './enemies/EnemyRenderer';
+import { PLAYER_HEALTH, MELEE } from './config';
 
 /**
  * M1 graybox: third-person character controller + over-shoulder camera in an
@@ -52,6 +55,14 @@ export class Game {
   private audio = new AudioEngine();
   private hud = new HUD();
   private muzzlePos = new THREE.Vector3();
+  private enemies!: EnemyManager;
+  private enemyRenderer!: EnemyRenderer;
+  private playerHealth = PLAYER_HEALTH.max;
+  private lastDamageTime = -999;
+  private gameTime = 0;
+  private meleeCooldown = 0;
+  private dead = false;
+  private spawnTimer = 0;
 
   constructor(container: HTMLElement, assets: AssetLoader) {
     this.renderer = new Renderer(container);
@@ -74,6 +85,7 @@ export class Game {
     this.muzzleFlash = new MuzzleFlash(this.scene);
     this.setupWeapons();
     this.setupDummies();
+    this.setupEnemies(assets);
 
     this.setupOverlay();
     this.setupDebugPanel();
@@ -307,6 +319,61 @@ export class Game {
     }
   }
 
+  private setupEnemies(assets: AssetLoader): void {
+    this.enemies = new EnemyManager(this.physics, this.registry, {
+      onPlayerHit: (damage, fromX, fromZ) => this.onPlayerDamaged(damage, fromX, fromZ),
+      onDeath: (_i, point, dir) => {
+        this.fx.blood.burst({
+          count: 16, position: point.clone(), direction: dir.clone().multiplyScalar(0.7),
+          spread: 0.9, speed: [1.5, 5], gravity: 12, life: [0.3, 0.7],
+          size: [0.05, 0.13], colors: [0x7a1410, 0x9c1c14, 0x580e0a],
+        });
+        this.audio.play('impact_flesh', { gain: 0.7, at: point });
+      },
+    });
+    this.enemyRenderer = new EnemyRenderer(this.scene, assets.get('zombie'));
+    this.spawnEnemyWave(24);
+  }
+
+  private spawnEnemyWave(count: number): void {
+    let spawned = 0;
+    let guard = 0;
+    while (spawned < count && guard++ < 200) {
+      const angle = Math.random() * Math.PI * 2;
+      const radius = 18 + Math.random() * 22;
+      const x = this.player.root.position.x + Math.cos(angle) * radius;
+      const z = this.player.root.position.z + Math.sin(angle) * radius;
+      if (Math.abs(x) > 95 || Math.abs(z) > 95) continue;
+      if (this.enemies.spawn(x, z) >= 0) spawned++;
+    }
+  }
+
+  private onPlayerDamaged(damage: number, fromX: number, fromZ: number): void {
+    if (this.dead || this.player.invulnerable) return;
+    this.playerHealth -= damage;
+    this.lastDamageTime = this.gameTime;
+    this.hud.damageFlash();
+    this.shake.add(0.35);
+    this.audio.play('impact_flesh', { gain: 0.9 });
+    void fromX;
+    void fromZ;
+    if (this.playerHealth <= 0) {
+      this.playerHealth = 0;
+      this.dead = true;
+      this.hud.showDeath(true);
+    }
+  }
+
+  private respawn(): void {
+    this.dead = false;
+    this.playerHealth = PLAYER_HEALTH.max;
+    this.hud.showDeath(false);
+    this.player.body.setTranslation({ x: 0, y: 1.2, z: 8 }, true);
+    this.enemies.reset();
+    this.enemyRenderer.reset();
+    this.spawnEnemyWave(24);
+  }
+
   private initAudio(): void {
     this.audio.ensureContext();
     this.registerSounds();
@@ -324,6 +391,53 @@ export class Game {
   }
 
   private fixedUpdate(dt: number): void {
+    this.gameTime += dt;
+
+    if (this.dead) {
+      if (this.input.consumePressed('Enter')) this.respawn();
+      this.physics.step();
+      return;
+    }
+
+    // Health regen after a quiet period.
+    if (this.playerHealth < PLAYER_HEALTH.max && this.gameTime - this.lastDamageTime > PLAYER_HEALTH.regenDelay) {
+      this.playerHealth = Math.min(PLAYER_HEALTH.max, this.playerHealth + PLAYER_HEALTH.regenRate * dt);
+    }
+
+    // Melee (V key).
+    this.meleeCooldown = Math.max(0, this.meleeCooldown - dt);
+    if (this.input.consumePressed('KeyV') && this.meleeCooldown <= 0 && !this.player.isRolling) {
+      this.meleeCooldown = MELEE.cooldown;
+      this.avatar.playMelee();
+      const facing = this.player.aiming ? this.cameraRig.yaw + Math.PI : this.player.model.rotation.y;
+      this.enemies.meleeSweep(
+        this.player.root.position.x,
+        this.player.root.position.z,
+        facing,
+        MELEE.range,
+        (MELEE.arcDeg * Math.PI) / 180,
+        MELEE.damage,
+        {
+          onHit: (_i, x, z, killed) => {
+            this.hud.showHitmarker(killed);
+            if (killed) this.hitstop.trigger();
+            this.shake.add(0.2);
+            this.audio.play('impact_flesh', { gain: 0.8, at: { x, y: 1.2, z } });
+          },
+        },
+      );
+    }
+
+    this.enemies.fixedUpdate(dt, this.player.root.position.x, this.player.root.position.z);
+
+    // Keep the pressure up: top back to ~24 alive every few seconds.
+    this.spawnTimer -= dt;
+    if (this.spawnTimer <= 0) {
+      this.spawnTimer = 4;
+      const alive = this.enemies.active.filter((i) => this.enemies.state[i] !== 4).length;
+      if (alive < 24) this.spawnEnemyWave(24 - alive);
+    }
+
     this.player.fixedUpdate(dt, this.input, this.cameraRig.yaw);
     this.weapons.fixedUpdate(
       dt,
@@ -359,6 +473,8 @@ export class Game {
     this.tracers.update(dt);
     this.fx.update(dt, this.renderer.camera);
     for (const d of this.dummies) d.update(dt);
+    this.enemyRenderer.update(dt, this.enemies);
+    this.hud.setHealth(this.playerHealth / PLAYER_HEALTH.max);
 
     const spreadRad = this.weapons.spreadAngle(this.player.aiming);
     const fovRad = (this.renderer.camera.fov * Math.PI) / 180;

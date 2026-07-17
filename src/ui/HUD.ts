@@ -8,7 +8,10 @@ export class HUD {
   private ammoEl!: HTMLElement;
   private weaponEl!: HTMLElement;
   private healthFill!: HTMLElement;
+  private vignette!: HTMLElement;
+  private death!: HTMLElement;
   private hitmarkerUntil = 0;
+  private vignetteUntil = 0;
 
   constructor() {
     const style = document.createElement('style');
@@ -40,6 +43,17 @@ export class HUD {
                 border-radius: 3px; overflow: hidden; }
       #health .fill { height: 100%; width: 100%; background: #b03a30;
                       transition: width .15s ease-out; }
+      #vignette { position: absolute; inset: 0; opacity: 0; transition: opacity .3s;
+                  background: radial-gradient(ellipse at center, transparent 55%,
+                  rgba(160,20,10,.55) 100%); }
+      #death { position: absolute; inset: 0; display: flex; flex-direction: column;
+               align-items: center; justify-content: center; gap: 10px;
+               background: rgba(8,6,6,.82); opacity: 0; pointer-events: none;
+               transition: opacity .6s; }
+      #death.show { opacity: 1; }
+      #death h1 { color: #a83226; font-size: 44px; letter-spacing: 8px; margin: 0;
+                  font-weight: 800; }
+      #death p { color: #cfd6e4; opacity: .8; margin: 0; }
     `;
     document.head.appendChild(style);
 
@@ -55,6 +69,8 @@ export class HUD {
       <div id="ammo"><div id="weapon-name"></div>
         <span class="mag"></span> <span class="reserve"></span></div>
       <div id="health"><div class="fill"></div></div>
+      <div id="vignette"></div>
+      <div id="death"><h1>YOU DIED</h1><p>Press Enter to respawn</p></div>
     `;
     document.body.appendChild(hud);
 
@@ -62,6 +78,8 @@ export class HUD {
     this.ammoEl = hud.querySelector('#ammo .mag')!;
     this.weaponEl = hud.querySelector('#weapon-name')!;
     this.healthFill = hud.querySelector('#health .fill')!;
+    this.vignette = hud.querySelector('#vignette')!;
+    this.death = hud.querySelector('#death')!;
     const ret = hud.querySelector('#reticle')!;
     this.reticleTicks = ['t', 'b', 'l', 'r'].map((c) => ret.querySelector(`.${c}`)!);
   }
@@ -84,6 +102,18 @@ export class HUD {
 
   setHealth(fraction: number): void {
     this.healthFill.style.width = `${Math.max(0, fraction) * 100}%`;
+    // Persistent low-health vignette below 35%.
+    const low = fraction < 0.35 ? (0.35 - fraction) / 0.35 : 0;
+    const flash = performance.now() < this.vignetteUntil ? 1 : 0;
+    this.vignette.style.opacity = String(Math.min(1, low * 0.8 + flash));
+  }
+
+  damageFlash(): void {
+    this.vignetteUntil = performance.now() + 350;
+  }
+
+  showDeath(show: boolean): void {
+    this.death.classList.toggle('show', show);
   }
 
   showHitmarker(kill: boolean): void {

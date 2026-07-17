@@ -87,6 +87,8 @@ export class PlayerAvatar {
 
     this.shootAction = this.mixer.clipAction(maskClip(clip('Pistol_Shoot'), true, 'upper'));
     this.shootAction.setLoop(THREE.LoopOnce, 1);
+    this.meleeAction = this.mixer.clipAction(maskClip(clip('Punch_Cross'), true, 'upper'));
+    this.meleeAction.setLoop(THREE.LoopOnce, 1);
     this.reloadAction = this.mixer.clipAction(maskClip(clip('Pistol_Reload'), true, 'upper'));
     this.reloadAction.setLoop(THREE.LoopOnce, 1);
     this.reloadBaseDuration = clip('Pistol_Reload').duration;
@@ -94,6 +96,7 @@ export class PlayerAvatar {
 
   private shootAction!: THREE.AnimationAction;
   private reloadAction!: THREE.AnimationAction;
+  private meleeAction!: THREE.AnimationAction;
   private reloadBaseDuration = 1;
 
   /** Right-hand bone — mount point for weapon models. */
@@ -113,6 +116,12 @@ export class PlayerAvatar {
   playReload(duration: number): void {
     this.reloadAction.timeScale = this.reloadBaseDuration / duration;
     this.reloadAction.reset().setEffectiveWeight(1).fadeIn(0.08).play();
+  }
+
+  playMelee(): void {
+    if (!this.meleeAction) return;
+    this.meleeAction.reset().setEffectiveWeight(1).fadeIn(0.03).play();
+    this.meleeAction.timeScale = 1.6;
   }
 
   update(dt: number, state: AvatarState): void {
