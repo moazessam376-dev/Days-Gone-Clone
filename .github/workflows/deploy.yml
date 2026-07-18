@@ -31,8 +31,24 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
+  physics-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/puppeteer
+          key: puppeteer-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - run: npm ci
+      - run: npm run build
+      - run: npm run test:physics
   deploy:
-    needs: build
+    # A physics regression BLOCKS the deploy — see docs/collision-matrix.md.
+    needs: [build, physics-tests]
     runs-on: ubuntu-latest
     environment:
       name: github-pages
