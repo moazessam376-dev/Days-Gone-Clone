@@ -136,6 +136,15 @@ export const MELEE = {
   knockback: 4,
 };
 
+export const VEHICLES = {
+  /** Below this speed a vehicle is a steering obstacle zombies walk around;
+   * above it (and past runOverSpeed 2.5) the car plows through instead —
+   * the 0.5 m/s overlap means there is no dead zone. */
+  obstacleMaxSpeed: 3,
+  /** Extra clearance around the chassis footprint for the steering rect. */
+  obstacleMargin: 0.45,
+};
+
 export const AMMO_CRATES = {
   /** [x, z] spots around town; a hideout crate is added at setup. */
   townSpots: [

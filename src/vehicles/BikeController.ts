@@ -33,6 +33,8 @@ export class BikeController {
   private controller: RAPIER.DynamicRayCastVehicleController;
   private steer = 0;
   private lean = 0;
+  /** Chassis footprint half-extents (for the zombie steering obstacle). */
+  readonly halfExtents = { hw: 0.45, hd: 1.15 };
 
   constructor(physics: PhysicsWorld, scene: THREE.Scene, position: THREE.Vector3, gltf: GLTF) {
     this.model = gltf.scene.clone(true);
@@ -59,6 +61,7 @@ export class BikeController {
         .setAngularDamping(2.5)
         .enabledRotations(false, true, false), // yaw only — arcade balance
     );
+    this.halfExtents.hd = size.z / 2;
     physics.world.createCollider(
       RAPIER.ColliderDesc.cuboid(0.25, size.y / 2.4, size.z / 2)
         .setDensity(220)

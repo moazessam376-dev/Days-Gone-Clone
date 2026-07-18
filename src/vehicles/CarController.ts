@@ -45,6 +45,8 @@ export class CarController {
   private wheelRadius = 0.35;
   private steer = 0;
   private flippedT = 0;
+  /** Chassis footprint half-extents (for the zombie steering obstacle). */
+  readonly halfExtents = { hw: 1, hd: 2.2 };
   /** +1 if the model's nose points +z, -1 if -z (drives engine sign). */
   private forwardSign = 1;
 
@@ -95,6 +97,8 @@ export class CarController {
         .setLinearDamping(0.1)
         .setAngularDamping(1.2),
     );
+    this.halfExtents.hw = size.x / 2;
+    this.halfExtents.hd = size.z / 2;
     physics.world.createCollider(
       RAPIER.ColliderDesc.cuboid(size.x / 2, size.y / 2.6, size.z / 2)
         .setDensity(160)

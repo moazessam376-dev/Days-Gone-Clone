@@ -33,7 +33,10 @@ import { Town } from './world/Town';
 import { AmmoCrates } from './world/AmmoCrates';
 import { AMMO_CRATES } from './config';
 import { EnterableBuilding } from './world/EnterableBuilding';
-import { PLAYER_HEALTH, MELEE, ACTIONS } from './config';
+import { PLAYER_HEALTH, MELEE, ACTIONS, VEHICLES } from './config';
+
+const _vehicleQuat = new THREE.Quaternion();
+const _vehicleFwd = new THREE.Vector3();
 
 /**
  * M1 graybox: third-person character controller + over-shoulder camera in an
@@ -97,6 +100,11 @@ export class Game {
   private fireFxTimer = 0;
   private hideout!: EnterableBuilding;
   private ammoCrates!: AmmoCrates;
+  private vehicleRects: Array<{
+    v: CarController | BikeController;
+    x: number; z: number; hw: number; hd: number;
+    cos: number; sin: number; active: boolean;
+  }> = [];
   private townRects: Array<{ x: number; z: number; hw: number; hd: number; cos: number; sin: number }> = [];
 
   constructor(container: HTMLElement, assets: AssetLoader) {
@@ -187,6 +195,10 @@ export class Game {
       new THREE.Vector3(-6, this.world.height(-6, 10) + 1.2, 10),
       assets.get('motorbike'),
     );
+    for (const v of [this.car, this.bike] as Array<CarController | BikeController>) {
+      this.vehicleRects.push({ v, x: 0, z: 0, hw: 1, hd: 1, cos: 1, sin: 0, active: false });
+    }
+    this.updateVehicleRects();
 
     this.setupOverlay();
     this.setupDebugPanel();
@@ -237,7 +249,10 @@ export class Game {
           i, d: +d.toFixed(1), x: +em.posX[i].toFixed(1), z: +em.posZ[i].toFixed(1),
           vx: +vx.toFixed(2), vz: +vz.toFixed(2), yaw: +em.yaw[i].toFixed(2),
           seekErr: +seekErr.toFixed(2), state: em.state[i], anim: em.animId[i],
-          blocked: !!this.enemyBlockAt(em.posX[i] + vx * 0.15, em.posZ[i] + vz * 0.15),
+          blocked: !!(
+            this.enemyBlockAt(em.posX[i] + vx * 0.15, em.posZ[i] + vz * 0.15) ??
+            this.vehicleBlockAt(em.posX[i] + vx * 0.15, em.posZ[i] + vz * 0.15)
+          ),
         };
       });
     return { target: { x: +t.x.toFixed(1), z: +t.z.toFixed(1) }, rows };
@@ -323,6 +338,47 @@ export class Game {
       this.shake.add(0.25);
       this.audio.play('impact_world', { gain: 0.9, at: { x: w.x, y: 1.6, z: w.z } });
     });
+  }
+
+  /** Refresh the two vehicle steering rects (called each fixed tick). A
+   * vehicle blocks zombie steering only while slow — a charging car must
+   * plow through the horde, not shove an invisible wall ahead of itself. */
+  private updateVehicleRects(): void {
+    for (let i = 0; i < this.vehicleRects.length; i++) {
+      const r = this.vehicleRects[i];
+      const v = r.v;
+      const t = v.body.translation();
+      const lv = v.body.linvel();
+      r.active = Math.hypot(lv.x, lv.z) < VEHICLES.obstacleMaxSpeed;
+      if (!r.active) continue;
+      const rot = v.body.rotation();
+      _vehicleQuat.set(rot.x, rot.y, rot.z, rot.w);
+      _vehicleFwd.set(0, 0, 1).applyQuaternion(_vehicleQuat);
+      const yaw = Math.atan2(_vehicleFwd.x, _vehicleFwd.z);
+      r.x = t.x;
+      r.z = t.z;
+      r.cos = Math.cos(yaw);
+      r.sin = Math.sin(yaw);
+      r.hw = v.halfExtents.hw + VEHICLES.obstacleMargin;
+      r.hd = v.halfExtents.hd + VEHICLES.obstacleMargin;
+    }
+  }
+
+  /** Is (x,z) inside a slow/parked vehicle's footprint? */
+  private vehicleBlockAt(
+    x: number,
+    z: number,
+    exclude?: CarController | BikeController | null,
+  ): { wall: true } | null {
+    for (const r of this.vehicleRects) {
+      if (!r.active || r.v === exclude) continue;
+      const dx = x - r.x;
+      const dz = z - r.z;
+      const lx = dx * r.cos + dz * r.sin;
+      const lz = -dx * r.sin + dz * r.cos;
+      if (Math.abs(lx) < r.hw && Math.abs(lz) < r.hd) return { wall: true };
+    }
+    return null;
   }
 
   /** Combined enemy steering obstacles: town buildings + hideout walls. */
@@ -430,7 +486,7 @@ export class Game {
       },
     });
     this.enemies.heightFn = (x, z) => this.world.height(x, z);
-    this.enemies.obstacles = (x, z) => this.enemyBlockAt(x, z);
+    this.enemies.obstacles = (x, z) => this.enemyBlockAt(x, z) ?? this.vehicleBlockAt(x, z);
     this.enemyRenderer = new EnemyRenderer(this.scene, assets.get('zombie'));
     this.spawnEnemyWave(24);
   }
@@ -444,7 +500,7 @@ export class Game {
       const x = this.player.root.position.x + Math.cos(angle) * radius;
       const z = this.player.root.position.z + Math.sin(angle) * radius;
       if (Math.abs(x) > 1000 || Math.abs(z) > 1000) continue;
-      if (this.enemyBlockAt(x, z)) continue; // never spawn inside buildings
+      if (this.enemyBlockAt(x, z) || this.vehicleBlockAt(x, z)) continue; // not inside buildings/vehicles
       if (this.enemies.spawn(x, z) >= 0) spawned++;
     }
   }
@@ -667,6 +723,7 @@ export class Game {
       this.onPlayerDamaged(FIRE.playerBurnDps * dt, this.player.root.position.x, this.player.root.position.z);
     }
 
+    this.updateVehicleRects();
     const chaseTarget = this.driving && this.activeVehicle ? this.activeVehicle.position : this.player.root.position;
     this.enemies.fixedUpdate(dt, chaseTarget.x, chaseTarget.z);
 
@@ -701,7 +758,7 @@ export class Game {
         for (const [lx, lz] of [[2.2, 0], [-2.2, 0], [0, -3.2], [0, 3.2]]) {
           const wx = cp.x + lx * cos + lz * sin;
           const wz = cp.z - lx * sin + lz * cos;
-          if (!this.enemyBlockAt(wx, wz)) {
+          if (!this.enemyBlockAt(wx, wz) && !this.vehicleBlockAt(wx, wz, this.activeVehicle)) {
             exitX = wx;
             exitZ = wz;
             break;
