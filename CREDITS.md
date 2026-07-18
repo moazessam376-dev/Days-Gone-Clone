@@ -19,3 +19,8 @@ This game uses the following third-party assets. Thank you to the creators!
 
 - **Car Kit** by Kenney — https://kenney.nl/assets/car-kit
 - **City Kit (Suburban)** by Kenney — https://kenney.nl/assets/city-kit-suburban
+
+## Licensed (not redistributed)
+
+- **POLYGON Apocalypse Pack** and **POLYGON City Zombies** by Synty Studios — https://syntystore.com (developer's licensed copies; models ship only in the built game)
+- **Bike.glb** — the developer's own model (AI-generated)

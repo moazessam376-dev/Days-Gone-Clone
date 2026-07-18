@@ -68,9 +68,17 @@ any feel-tuning (debug panel dials → written back to config + spec) lands.
 - Exit criteria: a written spec the user approved, then an implementation
   matching it cell-by-cell.
 
-### R2 — Asset round (user picks all art)
-- Character chosen for its ANIMATION LIST first (R1 produces the clip
-  shopping list), model second. Zombies, vehicles, buildings, props.
+### R2 — Asset round (user picks all art)  ◀ IN PROGRESS (2026-07-18)
+Decisions locked with the user (gallery session): see `docs/r2-asset-round.md`.
+Landed so far: Synty export pipeline (FBX→GLB + skeleton reconstruction +
+animation retarget), 4 gun models (+ sawn-off as 4th weapon, wheel now 7
+sectors), Hunter_Male_01 player (hat+beard baked, clips retargeted),
+civilian-12 zombie cast × 12 colorways, user's Bike.glb with spinning spoke
+wheels + Synty Motorbike_01 fallback parked beside it, Muscle_01 armored
+car, full pose-QA pass across handling states, licensed-asset distribution
+via the `synty-assets-v1` release. Remaining: full Synty town/world
+replacement (layout sketch → user check → build), final verification +
+playtest sign-off.
 
 ### R3 — Vehicles as a real system
 - Enter/exit animations, visible rider on the bike, per-vehicle handling

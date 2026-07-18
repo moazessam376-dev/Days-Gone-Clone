@@ -655,11 +655,11 @@ const scenarios: Scenario[] = [
         down('Tab'); g.debugStep(3);
         const openTs = g.loop.timeScale;
         const wasOpen = g.wheelOpen;
-        mmove(0, 60); g.debugStep(2); // straight down = sector 3 = molotov
+        mmove(0, 60); g.debugStep(2); // straight down: 180°/(360/7) = 3.5 → sector 4 = molotov
         const sel = g.wheelSel;
         up('Tab'); g.debugStep(3);
         const closedTs = g.loop.timeScale;
-        return { pass: wasOpen && Math.abs(openTs - 0.2) < 0.011 && sel === 3 &&
+        return { pass: wasOpen && Math.abs(openTs - 0.2) < 0.011 && sel === 4 &&
                        g.equippedThrowable === 'molotov' && Math.abs(closedTs - 1) < 0.011,
                  wasOpen, openTs, sel, equipped: g.equippedThrowable, closedTs };
       `),

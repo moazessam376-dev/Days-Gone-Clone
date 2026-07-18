@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<style>html,body{margin:0;background:#3a3f46}</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "/node_modules/three/build/three.module.js",
+    "three/addons/": "/node_modules/three/examples/jsm/",
+    "fflate": "/node_modules/fflate/esm/browser.js"
+  }
+}
+</script>
+</head>
+<body>
+<script type="module">
+import * as THREE from 'three';
+import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+const W = 512, H = 512;
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setSize(W, H);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x3a3f46);
+const camera = new THREE.PerspectiveCamera(35, 1, 0.01, 5000);
+scene.add(new THREE.HemisphereLight(0xdfe8ff, 0x55504a, 1.1));
+const sun = new THREE.DirectionalLight(0xfff2dd, 2.2);
+sun.position.set(3, 6, 4);
+scene.add(sun);
+const fill = new THREE.DirectionalLight(0xaabbdd, 0.6);
+fill.position.set(-4, 2, -3);
+scene.add(fill);
+
+const fbxLoader = new FBXLoader();
+const gltfLoader = new GLTFLoader();
+const texLoader = new THREE.TextureLoader();
+
+let root = null; // currently loaded model group
+const texCache = new Map();
+
+async function getTex(url) {
+  if (!texCache.has(url)) {
+    const t = await texLoader.loadAsync(url);
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.flipY = true;
+    texCache.set(url, t);
+  }
+  return texCache.get(url);
+}
+
+window.loadModel = async (url, texUrl) => {
+  if (root) { scene.remove(root); root = null; }
+  const tex = texUrl ? await getTex(texUrl) : null;
+  if (url.endsWith('.glb') || url.endsWith('.gltf')) {
+    const g = await gltfLoader.loadAsync(url);
+    root = g.scene;
+  } else {
+    root = await fbxLoader.loadAsync(url);
+    // Synty: replace all materials with a single flat-lambert using the colormap.
+    root.traverse((o) => {
+      if (o.isMesh || o.isSkinnedMesh) {
+        const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9, metalness: 0 });
+        if (o.isSkinnedMesh) { mat.skinning = true; }
+        o.material = mat;
+        o.frustumCulled = false;
+      }
+    });
+  }
+  scene.add(root);
+  return listMeshes();
+};
+
+function listMeshes() {
+  const names = [];
+  root.traverse((o) => { if (o.isMesh || o.isSkinnedMesh) names.push(o.name); });
+  return names;
+}
+window.listMeshes = listMeshes;
+
+/** Show only meshes whose name matches; empty = show all. */
+window.showOnly = (name) => {
+  root.traverse((o) => {
+    if (o.isMesh || o.isSkinnedMesh) o.visible = !name || o.name === name;
+  });
+};
+
+/** Swap the colormap texture on all replaced materials. */
+window.setTexture = async (texUrl) => {
+  const tex = await getTex(texUrl);
+  root.traverse((o) => {
+    if ((o.isMesh || o.isSkinnedMesh) && o.material && o.material.map !== undefined) {
+      o.material.map = tex;
+      o.material.needsUpdate = true;
+    }
+  });
+};
+
+const _box = new THREE.Box3();
+const _size = new THREE.Vector3();
+const _center = new THREE.Vector3();
+
+/** Frame visible meshes 3/4 view; yawDeg orbits around; returns bbox size. */
+window.frameAndRender = (yawDeg = 30, pitchDeg = 12, marginF = 1.25) => {
+  _box.makeEmpty();
+  root.updateMatrixWorld(true);
+  root.traverse((o) => {
+    if ((o.isMesh || o.isSkinnedMesh) && o.visible) {
+      o.geometry.computeBoundingBox();
+      const b = o.isSkinnedMesh && o.geometry.boundingBox
+        ? o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld)
+        : new THREE.Box3().setFromObject(o);
+      _box.union(b);
+    }
+  });
+  _box.getSize(_size);
+  _box.getCenter(_center);
+  const radius = Math.max(_size.x, _size.y, _size.z) * 0.5 * marginF;
+  const dist = radius / Math.tan((camera.fov * Math.PI) / 360);
+  const yaw = (yawDeg * Math.PI) / 180, pitch = (pitchDeg * Math.PI) / 180;
+  camera.position.set(
+    _center.x + dist * Math.cos(pitch) * Math.sin(yaw),
+    _center.y + dist * Math.sin(pitch),
+    _center.z + dist * Math.cos(pitch) * Math.cos(yaw),
+  );
+  camera.lookAt(_center);
+  renderer.render(scene, camera);
+  return { size: [_size.x, _size.y, _size.z], center: [_center.x, _center.y, _center.z] };
+};
+
+window.__ready = true;
+</script>
+</body>
+</html>

@@ -43,8 +43,8 @@ export interface WeaponDef {
   reloadTime: number;
   /** Procedural audio profile. */
   sound: { sub: number; crack: number; body: number; pitch: number };
-  /** Visual gun proportions for the placeholder boxy model. */
-  model: { barrelLen: number; bodyLen: number; scale: number };
+  /** In-hand model: AssetLoader key (Synty GLB, barrel toward -Z) + scale. */
+  model: { asset: string; scale: number };
   /** Plays the full Pistol_Shoot anim per shot (semi-autos only). */
   shootAnim: boolean;
   pose: WeaponPoses;
@@ -59,6 +59,29 @@ export interface WeaponDef {
 const DEFAULT_POSE: WeaponPoses = {
   carry: { pos: [0, -0.09, 0], rot: [0, -Math.PI / 2, 0] },
   ads: { pos: [0, -0.09, 0], rot: [0, -Math.PI / 2, 0] },
+};
+
+// Long guns need the grip pulled back into the palm (their bbox center sits
+// mid-barrel). Tuned against the Hunter rig via scripts/pose-tune.mts
+// (R2 pose-QA pass, 2026-07-18); carry mirrors ads so the gun stays seated
+// through walk/sprint arm swings.
+const RIFLE_POSE: WeaponPoses = {
+  carry: { pos: [-0.11, -0.14, 0.03], rot: [0, -Math.PI / 2, 0] },
+  ads: { pos: [-0.11, -0.14, 0.03], rot: [0, -Math.PI / 2, 0] },
+};
+const SHOTGUN_POSE: WeaponPoses = {
+  carry: { pos: [-0.1, -0.12, 0.03], rot: [0, -Math.PI / 2, 0] },
+  ads: { pos: [-0.1, -0.12, 0.03], rot: [0, -Math.PI / 2, 0] },
+};
+const SAWNOFF_POSE: WeaponPoses = {
+  carry: { pos: [-0.07, -0.12, 0.02], rot: [0, -Math.PI / 2, 0] },
+  ads: { pos: [-0.07, -0.12, 0.02], rot: [0, -Math.PI / 2, 0] },
+};
+
+/** In-hand grip poses for throwable props (identity buries them in the fist). */
+export const THROWABLE_POSES: Record<string, GripPose> = {
+  grenade: { pos: [0, -0.06, 0.01], rot: [0, 0, 0] },
+  molotov: { pos: [0.02, -0.05, 0.02], rot: [0.35, 0, 0.25] },
 };
 
 export const WEAPONS: Record<string, WeaponDef> = {
@@ -83,7 +106,7 @@ export const WEAPONS: Record<string, WeaponDef> = {
     reserveAmmo: 60,
     reloadTime: 1.4,
     sound: { sub: 90, crack: 0.5, body: 0.16, pitch: 1.0 },
-    model: { barrelLen: 0.16, bodyLen: 0.14, scale: 0.9 },
+    model: { asset: 'wep_pistol', scale: 1 },
     shootAnim: true,
     pose: DEFAULT_POSE,
   },
@@ -111,9 +134,9 @@ export const WEAPONS: Record<string, WeaponDef> = {
     reserveAmmo: 120,
     reloadTime: 2.1,
     sound: { sub: 70, crack: 0.65, body: 0.13, pitch: 1.1 },
-    model: { barrelLen: 0.34, bodyLen: 0.26, scale: 1.0 },
+    model: { asset: 'wep_rifle', scale: 1 },
     shootAnim: false,
-    pose: DEFAULT_POSE,
+    pose: RIFLE_POSE,
   },
   shotgun: {
     name: 'Shotgun',
@@ -132,10 +155,32 @@ export const WEAPONS: Record<string, WeaponDef> = {
     reserveAmmo: 30,
     reloadTime: 2.6,
     sound: { sub: 55, crack: 0.85, body: 0.28, pitch: 0.8 },
-    model: { barrelLen: 0.4, bodyLen: 0.3, scale: 1.05 },
+    model: { asset: 'wep_shotgun', scale: 1 },
     shootAnim: true,
-    pose: DEFAULT_POSE,
+    pose: SHOTGUN_POSE,
+  },
+  sawnoff: {
+    name: 'Sawn-Off',
+    auto: false,
+    rpm: 140,
+    damage: 15,
+    headshotMult: 1.8,
+    pellets: 9,
+    range: 22,
+    // Brutal up close, useless past ~15m: the panic gun for horde breaks.
+    spread: [0.085, 0.06],
+    bloomSpread: 0.02,
+    bloomPerShot: 0.7,
+    bloomDecay: 2.2,
+    recoilPattern: [[0.11, 0.01], [0.12, -0.012]],
+    magSize: 2,
+    reserveAmmo: 18,
+    reloadTime: 2.0,
+    sound: { sub: 48, crack: 0.9, body: 0.34, pitch: 0.72 },
+    model: { asset: 'wep_sawnoff', scale: 1 },
+    shootAnim: true,
+    pose: SAWNOFF_POSE,
   },
 };
 
-export const WEAPON_ORDER = ['pistol', 'rifle', 'shotgun'] as const;
+export const WEAPON_ORDER = ['pistol', 'rifle', 'shotgun', 'sawnoff'] as const;

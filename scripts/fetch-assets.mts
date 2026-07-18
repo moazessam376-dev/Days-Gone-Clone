@@ -104,6 +104,12 @@ async function main(): Promise<void> {
       credits += `- **${a.title}** by ${a.author} — ${a.source}\n`;
     }
   }
+  // Licensed (non-redistributable) sources — used under their store licenses,
+  // never committed to this repo; see docs/r2-asset-round.md.
+  credits += `\n## Licensed (not redistributed)\n\n`;
+  credits +=
+    `- **POLYGON Apocalypse Pack** and **POLYGON City Zombies** by Synty Studios — https://syntystore.com (developer's licensed copies; models ship only in the built game)\n` +
+    `- **Bike.glb** — the developer's own model (AI-generated)\n`;
   await writeFile(join(ROOT, 'CREDITS.md'), credits);
   console.log(`✓ CREDITS.md regenerated (${manifest.assets.length} assets)`);
 }

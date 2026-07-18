@@ -1,16 +1,19 @@
 import * as THREE from 'three';
 import { FEEL, HANDLING } from '../config';
-import { WEAPONS, WEAPON_ORDER } from './weapons.data';
+import { WEAPONS, WEAPON_ORDER, THROWABLE_POSES } from './weapons.data';
+import type { AssetLoader } from '../core/AssetLoader';
 
 const _muzzle = new THREE.Vector3();
+const _box = new THREE.Box3();
 const IDENTITY_POSE = { pos: [0, 0, 0], rot: [0, 0, 0] } as const;
 
 /**
- * Placeholder boxy gun models (replaced by real assets in a polish pass).
+ * In-hand weapon models (Synty GLBs, barrel toward -Z, ~1u = 1m, baked by
+ * scripts/synty-export.mts).
  *
  * The rig follows the right-hand bone's world position/rotation from scene
- * level rather than parenting into the skeleton — the Quaternius armature
- * carries a 100× bone scale that would explode any parented offsets.
+ * level rather than parenting into the skeleton — the animation rig carries
+ * a bone scale that would explode any parented offsets.
  */
 export class WeaponRig {
   private holder = new THREE.Group();
@@ -20,37 +23,27 @@ export class WeaponRig {
   private kickZ = 0;
   private aimBlend = 0;
 
-  constructor(scene: THREE.Scene) {
+  constructor(scene: THREE.Scene, assets: AssetLoader) {
     scene.add(this.holder);
-    const metal = new THREE.MeshStandardMaterial({ color: 0x2b2f33, roughness: 0.55, metalness: 0.6 });
-    const grip = new THREE.MeshStandardMaterial({ color: 0x3f3428, roughness: 0.9 });
 
-    for (const key of WEAPON_ORDER) {
-      const def = WEAPONS[key];
+    const addProp = (key: string, assetKey: string, scale: number, muzzleFrom?: 'barrel' | 'top') => {
       const g = new THREE.Group();
+      const model = assets.get(assetKey).scene.clone(true);
+      model.scale.setScalar(scale);
+      g.add(model);
+      g.updateMatrixWorld(true);
+      _box.setFromObject(model);
 
-      const body = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.07, def.model.bodyLen), metal);
-      g.add(body);
-      const barrel = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.035, def.model.barrelLen), metal);
-      barrel.position.set(0, 0.02, -(def.model.bodyLen / 2 + def.model.barrelLen / 2));
-      g.add(barrel);
-      const handle = new THREE.Mesh(new THREE.BoxGeometry(0.038, 0.09, 0.045), grip);
-      handle.position.set(0, -0.07, def.model.bodyLen / 2 - 0.03);
-      handle.rotation.x = 0.25;
-      g.add(handle);
-      if (key === 'shotgun' || key === 'rifle') {
-        const stock = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.06, 0.16), grip);
-        stock.position.set(0, -0.02, def.model.bodyLen / 2 + 0.08);
-        g.add(stock);
-      }
-
+      // Muzzle: barrel exit sits in the upper part of the silhouette at the
+      // -Z end (export bakes barrel-toward--Z). Throwable tip = bbox top.
       const muzzle = new THREE.Object3D();
-      muzzle.position.set(0, 0.02, -(def.model.bodyLen / 2 + def.model.barrelLen + 0.02));
+      if (muzzleFrom === 'top') {
+        muzzle.position.set(0, _box.max.y + 0.01, 0);
+      } else {
+        muzzle.position.set(0, (_box.min.y + _box.max.y) / 2 + (_box.max.y - _box.min.y) * 0.25, _box.min.z - 0.02);
+      }
       g.add(muzzle);
 
-      g.scale.setScalar(def.model.scale);
-      // Pose (position + rotation in the hand frame) now comes from the
-      // per-weapon per-stance grip data — applied every frame in update().
       g.visible = false;
       g.traverse((o) => {
         if ((o as THREE.Mesh).isMesh) o.castShadow = true;
@@ -58,42 +51,16 @@ export class WeaponRig {
       this.holder.add(g);
       this.guns.set(key, g);
       this.muzzles.set(key, muzzle);
-    }
+    };
 
+    for (const key of WEAPON_ORDER) {
+      const def = WEAPONS[key];
+      addProp(key, def.model.asset, def.model.scale);
+    }
     // Hand props for equipped throwables — same holder, same visibility
     // switching as guns (setActive('grenade' | 'molotov')).
-    const grenade = new THREE.Group();
-    grenade.add(
-      new THREE.Mesh(
-        new THREE.SphereGeometry(0.06, 10, 8),
-        new THREE.MeshStandardMaterial({ color: 0x3a4a32, roughness: 0.6 }),
-      ),
-    );
-    const molotov = new THREE.Group();
-    const bottle = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.035, 0.045, 0.22, 10),
-      new THREE.MeshStandardMaterial({
-        color: 0xc06a28,
-        roughness: 0.4,
-        emissive: 0xff6a10,
-        emissiveIntensity: 0.6,
-      }),
-    );
-    molotov.add(bottle);
-    for (const [key, prop] of [
-      ['grenade', grenade],
-      ['molotov', molotov],
-    ] as Array<[string, THREE.Group]>) {
-      prop.visible = false;
-      prop.traverse((o) => {
-        if ((o as THREE.Mesh).isMesh) o.castShadow = true;
-      });
-      const tip = new THREE.Object3D();
-      prop.add(tip);
-      this.holder.add(prop);
-      this.guns.set(key, prop);
-      this.muzzles.set(key, tip);
-    }
+    addProp('grenade', 'wep_grenade', 1, 'top');
+    addProp('molotov', 'wep_molotov', 1, 'top');
   }
 
   setActive(key: string): void {
@@ -131,9 +98,10 @@ export class WeaponRig {
     const g = this.guns.get(this.active);
     if (!g) return;
     const def = WEAPONS[this.active];
-    // Throwable props have no pose data — identity grip.
-    const carry = def?.pose.carry ?? IDENTITY_POSE;
-    const ads = def?.pose.ads ?? IDENTITY_POSE;
+    // Throwables use their own single grip pose for both stances.
+    const tp = THROWABLE_POSES[this.active];
+    const carry = def?.pose.carry ?? tp ?? IDENTITY_POSE;
+    const ads = def?.pose.ads ?? tp ?? IDENTITY_POSE;
     const b = THREE.MathUtils.smoothstep(this.aimBlend, 0, 1);
     const carryPitch = def ? HANDLING.carryPitch : 0;
     g.position.set(

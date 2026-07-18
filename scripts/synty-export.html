@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<style>html,body{margin:0;background:#3a3f46}</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "/node_modules/three/build/three.module.js",
+    "three/addons/": "/node_modules/three/examples/jsm/",
+    "fflate": "/node_modules/fflate/esm/browser.js"
+  }
+}
+</script>
+</head>
+<body>
+<script type="module">
+// FBX -> GLB conversion page, driven by scripts/synty-export.mts.
+// Two jobs: exportStatic (props/guns/vehicles/buildings) and exportSkinned
+// (Synty character + clips retargeted from the Quaternius animation GLB).
+import * as THREE from 'three';
+import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
+
+const fbxLoader = new FBXLoader();
+const gltfLoader = new GLTFLoader();
+const exporter = new GLTFExporter();
+
+// Atlas textures: pre-flip vertically in canvas and use flipY=false so the
+// exported image matches glTF's UV convention (FBX assumes flipY=true).
+const texCache = new Map();
+async function atlasTexture(url, size = 1024) {
+  const key = `${url}@${size}`;
+  if (texCache.has(key)) return texCache.get(key);
+  const img = new Image();
+  img.src = url;
+  await new Promise((res, rej) => { img.onload = res; img.onerror = () => rej(new Error(`tex load failed: ${url}`)); });
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = size;
+  const ctx = cv.getContext('2d');
+  ctx.translate(0, size);
+  ctx.scale(1, -1);
+  ctx.drawImage(img, 0, 0, size, size);
+  const tex = new THREE.CanvasTexture(cv);
+  tex.flipY = false;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.needsUpdate = true;
+  texCache.set(key, tex);
+  return tex;
+}
+
+function applySyntyMaterial(root, tex) {
+  const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9, metalness: 0 });
+  root.traverse((o) => {
+    if (o.isMesh || o.isSkinnedMesh) {
+      o.material = mat;
+      o.frustumCulled = false;
+    }
+  });
+  return mat;
+}
+
+async function exportGlb(root, animations) {
+  const buf = await exporter.parseAsync(root, { binary: true, animations: animations ?? [] });
+  // parseAsync(binary) yields an ArrayBuffer; hand it to Node as base64.
+  const bytes = new Uint8Array(buf);
+  let bin = '';
+  const CHUNK = 0x8000;
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(bin);
+}
+
+/**
+ * Static model export. opts:
+ *   meshes?: string[]     keep only these mesh names (attachment picking)
+ *   rotY?: number         yaw fix (radians), baked
+ *   scale?: number        uniform scale, baked (Synty FBX is usually 1u=1m already)
+ *   groundY?: boolean     shift so bbox min.y sits at 0
+ *   center?: boolean      center on x/z
+ *   texSize?: number
+ * Returns { glb: base64, meshes: names[], size: [x,y,z], nodes: names[] }
+ */
+window.exportStatic = async (fbxUrl, texUrl, opts = {}) => {
+  const src = await fbxLoader.loadAsync(fbxUrl);
+  const tex = await atlasTexture(texUrl, opts.texSize ?? 1024);
+  applySyntyMaterial(src, tex);
+
+  if (opts.meshes && opts.meshes.length) {
+    const keep = new Set(opts.meshes);
+    const drop = [];
+    src.traverse((o) => { if ((o.isMesh || o.isSkinnedMesh) && !keep.has(o.name)) drop.push(o); });
+    drop.forEach((o) => o.parent.remove(o));
+  }
+
+  const wrapper = new THREE.Group();
+  wrapper.name = opts.name ?? 'model';
+  wrapper.add(src);
+  if (opts.scale) src.scale.setScalar(opts.scale);
+  if (opts.rotY) src.rotation.y = opts.rotY;
+  wrapper.updateMatrixWorld(true);
+
+  const box = new THREE.Box3().setFromObject(src);
+  const size = new THREE.Vector3();
+  const center = new THREE.Vector3();
+  box.getSize(size);
+  box.getCenter(center);
+  if (opts.center) { src.position.x -= center.x; src.position.z -= center.z; }
+  if (opts.groundY) src.position.y -= box.min.y;
+  wrapper.updateMatrixWorld(true);
+
+  const meshes = [];
+  const nodes = [];
+  src.traverse((o) => {
+    if (o.isMesh || o.isSkinnedMesh) meshes.push(o.name);
+    else if (o.name) nodes.push(o.name);
+  });
+  const glb = await exportGlb(wrapper);
+  return { glb, meshes, nodes, size: [size.x, size.y, size.z] };
+};
+
+/** Resize a texture to size² and return PNG base64 (unflipped — runtime
+ * TextureLoader flipY=true matches the FBX UV convention of our exports). */
+window.exportTexture = async (texUrl, size = 512) => {
+  const img = new Image();
+  img.src = texUrl;
+  await new Promise((res, rej) => { img.onload = res; img.onerror = () => rej(new Error(`tex ${texUrl}`)); });
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = size;
+  cv.getContext('2d').drawImage(img, 0, 0, size, size);
+  return cv.toDataURL('image/png').split(',')[1];
+};
+
+/** Print the node/mesh tree of an FBX or GLB without exporting (inspection). */
+window.inspect = async (url) => {
+  let src;
+  let anims = [];
+  if (url.split('?')[0].endsWith('.glb')) {
+    const g = await gltfLoader.loadAsync(url);
+    src = g.scene;
+    anims = g.animations.map((a) => a.name);
+  } else {
+    src = await fbxLoader.loadAsync(url);
+    anims = (src.animations ?? []).map((a) => a.name);
+  }
+  const out = [];
+  src.traverse((o) => {
+    const kind = o.isSkinnedMesh ? 'skinnedmesh' : o.isMesh ? 'mesh' : o.isBone ? 'bone' : 'node';
+    out.push({ name: o.name, kind, tris: o.geometry ? (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3 : 0 });
+  });
+  return { nodes: out, animations: anims };
+};
+
+/**
+ * Skinned character export with retargeted clips (rest-pose-delta method:
+ * each mapped target bone gets the source bone's world-space rotation delta
+ * from its own rest pose applied on top of the target's rest orientation —
+ * robust across differing bone-axis conventions, unlike direct world-copy).
+ *
+ *   fbxUrl:  FBX holding one or more characters (e.g. Characters.fbx)
+ *   texUrl:  atlas texture
+ *   animGlbUrl: source GLB holding the animation clips (Quaternius rig)
+ *   clips:   [{ src: 'Rig|Idle_Loop', out: 'Rig|Idle_Loop', fps? }, ...]
+ *   boneMap: { targetBoneName: sourceBoneName, ... } (after _L/_R renaming)
+ *   opts:    { mesh?: string, targetHeight?: number, texSize?: number,
+ *              hip?: string (target hip bone, default 'Hips'),
+ *              srcHip?: string (source hip bone, default 'DEF-hips') }
+ * Returns { glb, bones, clipNames, warnings, sizeRaw }
+ */
+window.__bakeForDebug = async (fbxUrl, texUrl, animGlbUrl, clips, boneMap, opts = {}) => {
+  const warnings = [];
+  const fbxScene = fbxUrl.split('?')[0].endsWith('.glb')
+    ? (await gltfLoader.loadAsync(fbxUrl)).scene
+    : await fbxLoader.loadAsync(fbxUrl);
+  const tex = await atlasTexture(texUrl, opts.texSize ?? 1024);
+
+  // --- pick the wanted SkinnedMesh + its own skeleton root ---
+  let skin = null;
+  fbxScene.traverse((o) => {
+    if (o.isSkinnedMesh && !skin && (!opts.mesh || o.name === opts.mesh)) skin = o;
+  });
+  if (!skin) throw new Error(`SkinnedMesh ${opts.mesh ?? ''} not found`);
+
+  // Clean single-rig sources (GLB, e.g. the identity-test job) skip the
+  // reconstruction below — their loaded hierarchy is already correct.
+  if (fbxUrl.split('?')[0].endsWith('.glb')) {
+    let tb = skin.skeleton.bones[0];
+    while (tb.parent && tb.parent.isBone) tb = tb.parent;
+    const tbones = [];
+    tb.traverse((o) => { if (o.isBone) tbones.push(o); });
+    applySyntyMaterial(fbxScene, tex);
+    return await window.__bakeCore(fbxScene, skin, tb, tbones, animGlbUrl, clips, boneMap, opts, warnings);
+  }
+
+  // Multi-character FBX trap (Characters.fbx / Zombies.fbx): all characters
+  // share bone NAMES, and FBXLoader resolves the duplicate names by chaining
+  // same-named bones across characters (Hips <- Hips <- Hips ...), so the
+  // loaded hierarchy is unusable. Rebuild a CLEAN skeleton from ground truth
+  // instead: boneInverses give each bone's exact bind world matrix, and the
+  // Synty humanoid parent layout is fixed. Bone ORDER is preserved so the
+  // geometry's skinIndex attribute stays valid.
+  const SYNTY_PARENT = {
+    Root: null, Hips: 'Root', Spine_01: 'Hips', Spine_02: 'Spine_01',
+    Spine_03: 'Spine_02', Neck: 'Spine_03', Head: 'Neck', Eyes: 'Head',
+    Eyebrows: 'Head', Jaw: 'Head', HairPin: 'Head',
+    Clavicle_L: 'Spine_03', Shoulder_L: 'Clavicle_L', Elbow_L: 'Shoulder_L', Hand_L: 'Elbow_L',
+    Clavicle_R: 'Spine_03', Shoulder_R: 'Clavicle_R', Elbow_R: 'Shoulder_R', Hand_R: 'Elbow_R',
+    UpperLeg_L: 'Hips', LowerLeg_L: 'UpperLeg_L', Ankle_L: 'LowerLeg_L', Ball_L: 'Ankle_L', Toes_L: 'Ball_L',
+    UpperLeg_R: 'Hips', LowerLeg_R: 'UpperLeg_R', Ankle_R: 'LowerLeg_R', Ball_R: 'Ankle_R', Toes_R: 'Ball_R',
+  };
+  const fingerParent = (name) => {
+    // Thumb_01_L -> Hand_L; Thumb_02_L -> Thumb_01_L; IndexFinger_04_R -> IndexFinger_03_R ...
+    const m = name.match(/^(Thumb|IndexFinger|Finger)_0(\d)(_[LR])$/);
+    if (!m) return undefined;
+    return m[2] === '1' ? `Hand${m[3]}` : `${m[1]}_0${m[2] - 1}${m[3]}`;
+  };
+
+  // Side-tag duplicated finger names by skeleton order (fingers follow their
+  // hand in Synty exports); verify later via bind X sign if needed.
+  const srcSkel = skin.skeleton;
+  let side = '';
+  const cleanNames = srcSkel.bones.map((b) => {
+    if (b.name === 'Hand_L') side = '_L';
+    else if (b.name === 'Hand_R') side = '_R';
+    return /^(Thumb|IndexFinger|Finger)_0\d$/.test(b.name) ? `${b.name}${side}` : b.name;
+  });
+
+  // Bind world matrices from boneInverses; locals from parent bind worlds.
+  const bindWorld = srcSkel.boneInverses.map((m) => m.clone().invert());
+  const byName = new Map();
+  const newBones = cleanNames.map((n, i) => {
+    const bone = new THREE.Bone();
+    bone.name = n;
+    byName.set(n, bone);
+    return bone;
+  });
+  const _local = new THREE.Matrix4();
+  let topBone = null;
+  newBones.forEach((bone, i) => {
+    const n = cleanNames[i];
+    const parentName = n in SYNTY_PARENT ? SYNTY_PARENT[n] : fingerParent(n);
+    if (parentName === undefined) warnings.push(`no parent rule for bone ${n}; parenting to root`);
+    const parent = parentName ? byName.get(parentName) : null;
+    if (parentName && !parent) warnings.push(`parent ${parentName} of ${n} missing`);
+    const pIdx = parent ? newBones.indexOf(parent) : -1;
+    _local.copy(bindWorld[i]);
+    if (pIdx >= 0) _local.premultiply(bindWorld[pIdx].clone().invert());
+    _local.decompose(bone.position, bone.quaternion, bone.scale);
+    if (parent) parent.add(bone);
+    else if (topBone) topBone.add(bone); // orphan fallback
+    else topBone = bone;
+  });
+  if (!topBone) throw new Error('no root bone reconstructed');
+
+  const target = new THREE.Group();
+  target.name = opts.mesh ?? 'character';
+  const newSkin = new THREE.SkinnedMesh(skin.geometry, skin.material);
+  newSkin.name = skin.name;
+  target.add(topBone);
+  target.add(newSkin);
+  const skeleton = new THREE.Skeleton(newBones, srcSkel.boneInverses.map((m) => m.clone()));
+  newSkin.bind(skeleton, skin.bindMatrix.clone());
+  skin = newSkin;
+
+  // Rigid attachments (hats, beards): modeled in character bind space, so a
+  // SkinnedMesh weighted 100% to one bone reproduces them exactly and they
+  // ride the animation with zero runtime code.
+  for (const att of opts.attachments ?? []) {
+    const attScene = await fbxLoader.loadAsync(att.url);
+    attScene.updateMatrixWorld(true);
+    const boneIdx = cleanNames.indexOf(att.bone);
+    if (boneIdx < 0) { warnings.push(`attachment bone ${att.bone} missing`); continue; }
+    attScene.traverse((o) => {
+      if (!o.isMesh) return;
+      const geo = o.geometry.clone();
+      // Attachments are authored relative to the target bone's pivot (Unity
+      // parents them with identity offset), so express them in bind space
+      // via the bone's bind world matrix.
+      geo.applyMatrix4(o.matrixWorld);
+      geo.applyMatrix4(bindWorld[boneIdx]);
+      const n = geo.attributes.position.count;
+      const idx = new Uint16Array(n * 4);
+      const w = new Float32Array(n * 4);
+      for (let i = 0; i < n; i++) { idx[i * 4] = boneIdx; w[i * 4] = 1; }
+      geo.setAttribute('skinIndex', new THREE.BufferAttribute(idx, 4));
+      geo.setAttribute('skinWeight', new THREE.BufferAttribute(w, 4));
+      const m = new THREE.SkinnedMesh(geo, skin.material);
+      m.name = `${att.bone}_${o.name}`;
+      target.add(m);
+      m.bind(skeleton, skin.bindMatrix.clone());
+    });
+  }
+  applySyntyMaterial(target, tex);
+
+  const targetBones = [];
+  topBone.traverse((o) => { if (o.isBone) targetBones.push(o); });
+  return await window.__bakeCore(target, skin, topBone, targetBones, animGlbUrl, clips, boneMap, opts, warnings);
+};
+
+/** Shared bake core: source load, rest snapshots, audit, clip bake, wrapper. */
+window.__bakeCore = async (target, skin, topBone, targetBones, animGlbUrl, clips, boneMap, opts, warnings) => {
+  // --- source rig ---
+  const animGltf = await gltfLoader.loadAsync(animGlbUrl);
+  const source = animGltf.scene;
+  const srcBones = new Map();
+  source.traverse((o) => { if (o.isBone && !srcBones.has(o.name)) srcBones.set(o.name, o); });
+
+  // --- rest pose snapshots (both skeletons at bind pose) ---
+  // World-frame delta transfer requires both rigs to FACE THE SAME WAY at
+  // rest; srcYaw pre-rotates the source rig into the target's frame (the
+  // Quaternius rig faces -Z, Synty faces +Z → srcYaw = π).
+  if (opts.srcYaw) source.rotation.y = opts.srcYaw;
+  skin.skeleton.pose();
+  target.updateMatrixWorld(true);
+  source.traverse((o) => { if (o.isSkinnedMesh) o.skeleton.pose(); });
+  source.updateMatrixWorld(true);
+
+  const tgtRestWorldQ = new Map();
+  const tgtRestLocalP = new Map();
+  for (const b of targetBones) {
+    tgtRestWorldQ.set(b, b.getWorldQuaternion(new THREE.Quaternion()));
+    tgtRestLocalP.set(b, b.position.clone());
+  }
+  const srcRestWorldQ = new Map();
+  for (const [, b] of srcBones) srcRestWorldQ.set(b, b.getWorldQuaternion(new THREE.Quaternion()));
+
+  const hipName = opts.hip ?? 'Hips';
+  const srcHipName = opts.srcHip ?? 'DEF-hips';
+  const tgtHip = targetBones.find((b) => b.name === hipName);
+  const srcHip = srcBones.get(srcHipName);
+  if (!tgtHip || !srcHip) {
+    throw new Error(
+      `hip bones not found: tgt(${hipName})=${!!tgtHip} src(${srcHipName})=${!!srcHip}; ` +
+      `topBone=${topBone.name}; targetBones[${targetBones.length}]=${targetBones.slice(0, 8).map((b) => b.name).join(',')}; ` +
+      `srcBones[${srcBones.size}]=${[...srcBones.keys()].slice(0, 8).join(',')}`
+    );
+  }
+  const tgtHipRestWorldP = tgtHip.getWorldPosition(new THREE.Vector3());
+  const srcHipRestWorldP = srcHip.getWorldPosition(new THREE.Vector3());
+  // Hip translation transfer ratio, in each rig's own units.
+  const hipScale = tgtHipRestWorldP.y / Math.max(srcHipRestWorldP.y, 1e-6);
+
+  // Bone pairs in hierarchy order (topBone.traverse is depth-first, parents
+  // before children — required so parent world matrices are current).
+  const pairs = [];
+  for (const b of targetBones) {
+    const srcName = boneMap[b.name];
+    if (!srcName) continue;
+    const s = srcBones.get(srcName);
+    if (!s) { warnings.push(`missing source bone ${srcName}`); continue; }
+    pairs.push([b, s]);
+  }
+
+  // Rest-correspondence audit: with both rigs at bind and world-aligned, each
+  // mapped bone's direction toward its first mapped child should agree.
+  const restAudit = [];
+  {
+    const bp = new THREE.Vector3(), bc = new THREE.Vector3();
+    const sp = new THREE.Vector3(), sc = new THREE.Vector3();
+    const mapped = new Map(pairs);
+    for (const [b, s] of pairs) {
+      let childB = null;
+      b.traverse((o) => { if (!childB && o !== b && mapped.has(o)) childB = o; });
+      if (!childB) continue;
+      const childS = mapped.get(childB);
+      b.getWorldPosition(bp); childB.getWorldPosition(bc);
+      s.getWorldPosition(sp); childS.getWorldPosition(sc);
+      const dB = bc.sub(bp).normalize();
+      const dS = sc.sub(sp).normalize();
+      restAudit.push({ bone: b.name, dot: +dB.dot(dS).toFixed(3), tgtDir: dB.toArray().map((v) => +v.toFixed(2)), srcDir: dS.toArray().map((v) => +v.toFixed(2)) });
+    }
+  }
+
+  // Swing-matching data (opts.method === 'swing'): for rigs whose REST POSES
+  // are different body poses (the Quaternius zombie binds in a zombie-arms
+  // pose, not a T-pose), rest-delta transfer is meaningless. Instead rotate
+  // each target bone so its world bone-direction (toward its first mapped
+  // child) tracks the source's animated direction absolutely.
+  const mappedT = new Map(pairs);
+  const pairChild = new Map();
+  const tgtRestDir = new Map();
+  if (opts.method === 'swing') {
+    const bp = new THREE.Vector3(), bc = new THREE.Vector3();
+    for (const [b, s] of pairs) {
+      let childB = null;
+      b.traverse((o) => { if (!childB && o !== b && mappedT.has(o)) childB = o; });
+      if (!childB) continue;
+      pairChild.set(b, [childB, mappedT.get(childB)]);
+      b.getWorldPosition(bp); childB.getWorldPosition(bc);
+      tgtRestDir.set(b, bc.sub(bp).normalize().clone());
+    }
+  }
+
+  // --- bake clips ---
+  const mixer = new THREE.AnimationMixer(source);
+  const _q = new THREE.Quaternion();
+  const _pq = new THREE.Quaternion();
+  const _swing = new THREE.Quaternion();
+  const _v = new THREE.Vector3();
+  const _v2 = new THREE.Vector3();
+  const outClips = [];
+  for (const c of clips) {
+    const clip = THREE.AnimationClip.findByName(animGltf.animations, c.src);
+    if (!clip) { warnings.push(`missing source clip ${c.src}`); continue; }
+    const fps = c.fps ?? 30;
+    const frames = Math.max(2, Math.round(clip.duration * fps) + 1);
+    const dt = clip.duration / (frames - 1);
+    const action = mixer.clipAction(clip);
+    mixer.stopAllAction();
+    action.reset().play();
+
+    const times = new Float32Array(frames);
+    const quatValues = new Map(pairs.map(([b]) => [b, new Float32Array(frames * 4)]));
+    const hipValues = new Float32Array(frames * 3);
+
+    for (let f = 0; f < frames; f++) {
+      mixer.setTime(f * dt);
+      source.updateMatrixWorld(true);
+      times[f] = f * dt;
+
+      for (const [b, s] of pairs) {
+        const swingInfo = pairChild.get(b);
+        if (swingInfo) {
+          // swing matching: target bone direction tracks source direction
+          const [, sChild] = swingInfo;
+          s.getWorldPosition(_v);
+          sChild.getWorldPosition(_v2);
+          _v2.sub(_v).normalize();
+          _swing.setFromUnitVectors(tgtRestDir.get(b), _v2);
+          _q.copy(_swing).multiply(tgtRestWorldQ.get(b));
+        } else {
+          // world delta from source rest, applied onto target rest orientation
+          s.getWorldQuaternion(_q);
+          _q.multiply(srcRestWorldQ.get(s).clone().invert());
+          _q.multiply(tgtRestWorldQ.get(b));
+        }
+        // to bone-local: inverse of CURRENT parent world orientation
+        b.parent.getWorldQuaternion(_pq).invert();
+        _pq.multiply(_q);
+        b.quaternion.copy(_pq);
+        b.updateMatrixWorld();
+        quatValues.get(b).set([_pq.x, _pq.y, _pq.z, _pq.w], f * 4);
+      }
+
+      // hip translation: world delta scaled into target units, made local
+      srcHip.getWorldPosition(_v).sub(srcHipRestWorldP).multiplyScalar(hipScale);
+      _v.add(tgtHipRestWorldP);
+      tgtHip.parent.worldToLocal(_v);
+      tgtHip.position.copy(_v);
+      tgtHip.updateMatrixWorld();
+      hipValues.set([_v.x, _v.y, _v.z], f * 3);
+    }
+
+    const tracks = [];
+    for (const [b, values] of quatValues) {
+      tracks.push(new THREE.QuaternionKeyframeTrack(`${b.name}.quaternion`, times, values));
+    }
+    tracks.push(new THREE.VectorKeyframeTrack(`${tgtHip.name}.position`, times, hipValues));
+    outClips.push(new THREE.AnimationClip(c.out, clip.duration, tracks));
+  }
+
+  // Restore bind pose, then normalize overall height via root scale.
+  skin.skeleton.pose();
+  target.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(skin);
+  const size = new THREE.Vector3();
+  box.getSize(size);
+  let root = target;
+  if (opts.targetHeight) {
+    const s = opts.targetHeight / size.y;
+    // Scale a wrapper, not the bones — keeps animation tracks in rig units.
+    const wrapper = new THREE.Group();
+    wrapper.name = `${target.name}_scaled`;
+    wrapper.add(target);
+    target.scale.setScalar(s);
+    wrapper.updateMatrixWorld(true);
+    root = wrapper;
+  }
+  return {
+    root,
+    outClips,
+    warnings,
+    targetBones,
+    restAudit,
+    sizeRaw: [size.x, size.y, size.z],
+  };
+};
+
+window.exportSkinned = async (fbxUrl, texUrl, animGlbUrl, clips, boneMap, opts = {}) => {
+  const baked = await window.__bakeForDebug(fbxUrl, texUrl, animGlbUrl, clips, boneMap, opts);
+  const glb = await exportGlb(baked.root, baked.outClips);
+  return {
+    glb,
+    bones: baked.targetBones.map((b) => b.name),
+    clipNames: baked.outClips.map((cl) => cl.name),
+    warnings: baked.warnings,
+    sizeRaw: baked.sizeRaw,
+  };
+};
+
+/**
+ * Debug: run the same bake as exportSkinned, then render the TARGET playing
+ * a baked clip at several times (no game code involved). Returns jpegs.
+ *   shots: [{ clip: 'Rig|Idle_Loop', time: 0.5, yaw?: 30 }]
+ */
+window.debugRetarget = async (fbxUrl, texUrl, animGlbUrl, clips, boneMap, opts, shots) => {
+  const res = await window.__bakeForDebug(fbxUrl, texUrl, animGlbUrl, clips, boneMap, opts);
+  const { root, outClips } = res;
+
+  const W = 512, H = 512;
+  const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+  renderer.setSize(W, H);
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x3a3f46);
+  scene.add(new THREE.HemisphereLight(0xdfe8ff, 0x55504a, 1.4));
+  const sun = new THREE.DirectionalLight(0xfff2dd, 1.8);
+  sun.position.set(3, 6, 4);
+  scene.add(sun);
+  scene.add(root);
+  const camera = new THREE.PerspectiveCamera(35, 1, 0.01, 100);
+
+  const mixer = new THREE.AnimationMixer(root);
+  const images = [];
+  for (const s of shots) {
+    const clip = outClips.find((c) => c.name === s.clip);
+    if (!clip) { images.push(null); continue; }
+    mixer.stopAllAction();
+    const action = mixer.clipAction(clip);
+    action.reset().play();
+    mixer.setTime(s.time);
+    root.updateMatrixWorld(true);
+
+    const box = new THREE.Box3().setFromObject(root);
+    const c = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
+    const radius = Math.max(size.x, size.y, size.z) * 0.65;
+    const dist = radius / Math.tan((camera.fov * Math.PI) / 360);
+    const yaw = ((s.yaw ?? 30) * Math.PI) / 180;
+    camera.position.set(c.x + dist * Math.sin(yaw), c.y + dist * 0.25, c.z + dist * Math.cos(yaw));
+    camera.lookAt(c);
+    renderer.render(scene, camera);
+    images.push(renderer.domElement.toDataURL('image/jpeg', 0.85).split(',')[1]);
+  }
+  renderer.dispose();
+  return { images, warnings: res.warnings, restAudit: res.restAudit };
+};
+
+window.__ready = true;
+</script>
+</body>
+</html>

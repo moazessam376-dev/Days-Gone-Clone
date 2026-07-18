@@ -7,3 +7,7 @@ assets/raw/
 # Local asset packs (licensed, oversized) - never commit
 assets/Game Assets/
 *.unitypackage
+
+# Synty-derived runtime GLBs (licensed) - distributed via GitHub release,
+# never committed; see docs/r2-asset-round.md
+public/assets/synty/

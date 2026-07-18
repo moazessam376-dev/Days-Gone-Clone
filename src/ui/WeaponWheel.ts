@@ -1,5 +1,8 @@
 import { WHEEL } from '../config';
 
+/** Sector count; Game's selection math derives its angle step from this. */
+export const WHEEL_SECTOR_COUNT = 7;
+
 export interface WheelSector {
   key: string;
   label: string;
@@ -11,9 +14,9 @@ export interface WheelSector {
 /**
  * Days Gone-style radial weapon wheel. Pure DOM/CSS overlay (no canvas);
  * opacity transitions run on wall-clock time so the fade is unaffected by
- * the gameplay slow-mo that accompanies it. Six fixed sectors clockwise
- * from 12 o'clock; selection is driven externally from pointer-lock mouse
- * deltas (Game owns the vector math, this class only renders).
+ * the gameplay slow-mo that accompanies it. WHEEL_SECTOR_COUNT fixed sectors
+ * clockwise from 12 o'clock; selection is driven externally from pointer-lock
+ * mouse deltas (Game owns the vector math, this class only renders).
  */
 export class WeaponWheel {
   private container: HTMLElement;
@@ -54,9 +57,9 @@ export class WeaponWheel {
     this.container.id = 'wheel';
     document.body.appendChild(this.container);
 
-    // Six slots on a radius-150 circle, clockwise from 12 o'clock.
-    for (let i = 0; i < 6; i++) {
-      const a = (i * 60 * Math.PI) / 180;
+    // Slots on a radius-150 circle, clockwise from 12 o'clock.
+    for (let i = 0; i < WHEEL_SECTOR_COUNT; i++) {
+      const a = (i * 2 * Math.PI) / WHEEL_SECTOR_COUNT;
       const el = document.createElement('div');
       el.className = 'sector';
       el.style.transform = '';
@@ -79,7 +82,7 @@ export class WeaponWheel {
 
   open(sectors: WheelSector[]): void {
     this.sectors = sectors;
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < WHEEL_SECTOR_COUNT; i++) {
       const s = sectors[i];
       const el = this.sectorEls[i];
       el.querySelector('.name')!.textContent = s.label;
@@ -99,7 +102,7 @@ export class WeaponWheel {
   /** Live sub-text refresh (a reload can complete while the wheel is open). */
   refresh(sectors: WheelSector[]): void {
     this.sectors = sectors;
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < WHEEL_SECTOR_COUNT; i++) {
       this.subEls[i].textContent = sectors[i].sub;
       this.sectorEls[i].classList.toggle('off', !sectors[i].enabled);
     }
@@ -108,7 +111,7 @@ export class WeaponWheel {
   setSelection(i: number): void {
     if (i === this.selection) return;
     this.selection = i;
-    for (let s = 0; s < 6; s++) this.sectorEls[s].classList.toggle('sel', s === i);
+    for (let s = 0; s < WHEEL_SECTOR_COUNT; s++) this.sectorEls[s].classList.toggle('sel', s === i);
     this.centerEl.textContent = i >= 0 && this.sectors[i]?.enabled ? this.sectors[i].label : '';
   }
 }

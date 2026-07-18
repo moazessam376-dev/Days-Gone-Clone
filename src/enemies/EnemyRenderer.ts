@@ -22,23 +22,41 @@ interface RenderSlot {
  */
 export class EnemyRenderer {
   private slots: RenderSlot[] = [];
+  private colorways: THREE.MeshStandardMaterial[] = [];
 
-  constructor(scene: THREE.Scene, zombieGltf: GLTF, poolSize = ENEMY.physicsPoolSize) {
-    // Normalize scale so the zombie stands ~1.75m tall regardless of export.
-    const bbox = new THREE.Box3().setFromObject(zombieGltf.scene);
-    const height = bbox.max.y - bbox.min.y;
-    const scale = 1.75 / height;
+  /**
+   * @param zombieGltfs mesh variants, distributed round-robin over the pool.
+   * @param colorwayTextures optional texture swaps; each slot assignment picks
+   *   one deterministically from the enemy index so a given freaker keeps its
+   *   outfit color for its whole life.
+   */
+  constructor(
+    scene: THREE.Scene,
+    zombieGltfs: GLTF[],
+    colorwayTextures: THREE.Texture[] = [],
+    poolSize = ENEMY.physicsPoolSize,
+  ) {
+    this.colorways = colorwayTextures.map(
+      (map) => new THREE.MeshStandardMaterial({ map, roughness: 0.9, metalness: 0 }),
+    );
 
     const clipNames = ['ZombieIdle', 'ZombieWalk', 'ZombieRun', 'ZombieBite'];
-    const clips = clipNames.map((n) => {
-      const c = THREE.AnimationClip.findByName(zombieGltf.animations, `Zombie|${n}`);
-      if (!c) throw new Error(`Missing zombie clip ${n}`);
-      return c;
+    const variants = zombieGltfs.map((gltf) => {
+      // Normalize scale so each zombie stands ~1.75m tall regardless of export.
+      const bbox = new THREE.Box3().setFromObject(gltf.scene);
+      const scale = 1.75 / (bbox.max.y - bbox.min.y);
+      const clips = clipNames.map((n) => {
+        const c = THREE.AnimationClip.findByName(gltf.animations, `Zombie|${n}`);
+        if (!c) throw new Error(`Missing zombie clip ${n}`);
+        return c;
+      });
+      return { gltf, scale, clips };
     });
 
     for (let s = 0; s < poolSize; s++) {
-      const root = cloneSkeleton(zombieGltf.scene);
-      root.scale.setScalar(scale);
+      const v = variants[s % variants.length];
+      const root = cloneSkeleton(v.gltf.scene);
+      root.scale.setScalar(v.scale);
       root.visible = false;
       root.traverse((o: THREE.Object3D) => {
         if ((o as THREE.Mesh).isMesh) {
@@ -48,7 +66,7 @@ export class EnemyRenderer {
       });
       scene.add(root);
       const mixer = new THREE.AnimationMixer(root);
-      const actions = clips.map((c) => {
+      const actions = v.clips.map((c) => {
         const a = mixer.clipAction(c);
         a.play();
         a.setEffectiveWeight(0);
@@ -58,6 +76,15 @@ export class EnemyRenderer {
       });
       this.slots.push({ root, mixer, actions, weights: [0, 0, 0, 0], enemy: -1 });
     }
+  }
+
+  /** Outfit colorway keyed to the enemy index — stable for its lifetime. */
+  private applyColorway(slot: RenderSlot, enemy: number): void {
+    if (!this.colorways.length) return;
+    const mat = this.colorways[(enemy * 7 + 3) % this.colorways.length];
+    slot.root.traverse((o) => {
+      if ((o as THREE.Mesh).isMesh) (o as THREE.Mesh).material = mat;
+    });
   }
 
   update(dt: number, manager: EnemyManager): void {
@@ -81,6 +108,7 @@ export class EnemyRenderer {
       if (!slot) break;
       slot.enemy = i;
       slot.root.visible = true;
+      this.applyColorway(slot, i);
     }
 
     for (const slot of this.slots) {

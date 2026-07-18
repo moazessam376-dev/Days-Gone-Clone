@@ -35,6 +35,8 @@ export class BikeController {
   private controller: RAPIER.DynamicRayCastVehicleController;
   private steer = 0;
   private lean = 0;
+  /** Named wheel pivots (WheelF/WheelR in the exported GLB) spun by speed. */
+  private spinWheels: Array<{ node: THREE.Object3D; radius: number }> = [];
   /** Chassis footprint half-extents (for the zombie steering obstacle). */
   readonly halfExtents = { hw: 0.45, hd: 1.15 };
 
@@ -49,6 +51,9 @@ export class BikeController {
     if (preSize.x > preSize.z) this.model.rotation.y = Math.PI / 2; // align length to z
     this.model.traverse((o) => {
       if ((o as THREE.Mesh).isMesh) o.castShadow = true;
+      if (/^Wheel[FR]$/.test(o.name)) {
+        this.spinWheels.push({ node: o, radius: ((o.userData.radius as number) ?? 0.24) * scale });
+      }
     });
     const box = new THREE.Box3().setFromObject(this.model);
     const center = box.getCenter(new THREE.Vector3());
@@ -134,6 +139,11 @@ export class BikeController {
     // Visual cornering lean proportional to steer × speed.
     const leanTarget = -this.steer * Math.min(1, Math.abs(this.speed) / 8) * BIKE.leanMax;
     this.lean += (leanTarget - this.lean) * Math.min(1, dt * 6);
+
+    // Spin the extracted spoke wheels by rolled distance.
+    for (const w of this.spinWheels) {
+      w.node.rotation.x -= (this.speed * dt) / w.radius;
+    }
   }
 
   updateVisuals(): void {

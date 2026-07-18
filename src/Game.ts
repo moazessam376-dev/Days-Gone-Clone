@@ -43,7 +43,7 @@ import {
   WHEEL,
   THROWABLE_INV,
 } from './config';
-import { WeaponWheel, type WheelSector } from './ui/WeaponWheel';
+import { WeaponWheel, WHEEL_SECTOR_COUNT, type WheelSector } from './ui/WeaponWheel';
 import { ThrowArc } from './fx/ThrowArc';
 
 const _vehicleQuat = new THREE.Quaternion();
@@ -120,6 +120,8 @@ export class Game {
   private sun!: THREE.DirectionalLight;
   private car!: CarController;
   private bike!: BikeController;
+  private bike2!: BikeController;
+  private vehicles: Array<CarController | BikeController> = [];
   private activeVehicle: CarController | BikeController | null = null;
   private driving = false;
   private engineOsc: OscillatorNode | null = null;
@@ -161,7 +163,7 @@ export class Game {
     this.tracers = new Tracers(this.scene);
     this.decals = new Decals(this.scene);
     this.muzzleFlash = new MuzzleFlash(this.scene);
-    this.setupWeapons();
+    this.setupWeapons(assets);
     this.setupEnemies(assets);
     this.fire = new FireGrid(this.world);
     this.fireRenderer = new FireRenderer(this.scene);
@@ -170,7 +172,7 @@ export class Game {
       this.scene.add(l);
       this.fireLights.push(l);
     }
-    this.throwables = new ThrowableSystem(this.physics, this.scene, {
+    this.throwables = new ThrowableSystem(this.physics, this.scene, assets, {
       onExplode: (pos) => {
         this.enemies.explosionAt(pos.x, pos.z, THROWABLE.grenadeRadius, THROWABLE.grenadeDamage);
         this.fire.ignite(pos.x, pos.z, 1.5);
@@ -214,20 +216,29 @@ export class Game {
       (x, z) => this.world.height(x, z),
     );
 
-    // Vehicles parked on the highway a short walk from spawn.
+    // Vehicles parked on the highway a short walk from spawn. The player's
+    // own Bike.glb is THE drifter; the Synty Motorbike_01 is parked nearby
+    // as the R2 comparison fallback (user decides which stays after riding).
     this.car = new CarController(
       this.physics,
       this.scene,
       new THREE.Vector3(8, this.world.height(8, 14) + 1.2, 14),
-      assets.get('sedan'),
+      assets.get('muscle'),
     );
     this.bike = new BikeController(
       this.physics,
       this.scene,
       new THREE.Vector3(-6, this.world.height(-6, 10) + 1.2, 10),
-      assets.get('motorbike'),
+      assets.get('bike'),
     );
-    for (const v of [this.car, this.bike] as Array<CarController | BikeController>) {
+    this.bike2 = new BikeController(
+      this.physics,
+      this.scene,
+      new THREE.Vector3(-10, this.world.height(-10, 14) + 1.2, 14),
+      assets.get('motorbike_synty'),
+    );
+    this.vehicles = [this.car, this.bike, this.bike2];
+    for (const v of this.vehicles) {
       this.vehicleRects.push({ v, x: 0, z: 0, hw: 1, hd: 1, cos: 1, sin: 0, active: false });
     }
     this.updateVehicleRects();
@@ -416,6 +427,7 @@ export class Game {
       gun('pistol', 'Pistol'),
       gun('rifle', 'Rifle'),
       gun('shotgun', 'Shotgun'),
+      gun('sawnoff', 'Sawn-Off'),
       {
         key: 'molotov',
         label: 'Molotov',
@@ -518,7 +530,7 @@ export class Game {
     c.add(CAMERA_RIG, 'sensitivity', 0.0005, 0.006);
   }
 
-  private setupWeapons(): void {
+  private setupWeapons(assets: AssetLoader): void {
 
     this.weapons = new WeaponSystem(this.physics, this.registry, {
       onShot: (def) => {
@@ -566,7 +578,7 @@ export class Game {
       onDryFire: () => this.audio.play('dry', { gain: 0.45 }),
     }, this.player.body);
 
-    this.weaponRig = new WeaponRig(this.scene);
+    this.weaponRig = new WeaponRig(this.scene, assets);
     this.handBone = this.avatar.handBone;
     this.weaponRig.setActive(this.weapons.current);
   }
@@ -590,7 +602,11 @@ export class Game {
     });
     this.enemies.heightFn = (x, z) => this.world.height(x, z);
     this.enemies.obstacles = (x, z) => this.enemyBlockAt(x, z) ?? this.vehicleBlockAt(x, z);
-    this.enemyRenderer = new EnemyRenderer(this.scene, assets.get('zombie'));
+    this.enemyRenderer = new EnemyRenderer(
+      this.scene,
+      Array.from({ length: 12 }, (_, i) => assets.get(`zombie_${i}`)),
+      Array.from({ length: 12 }, (_, i) => assets.texture(`zombie_tex_${i}`)),
+    );
     this.spawnEnemyWave(24);
   }
 
@@ -939,7 +955,7 @@ export class Game {
         this.activeVehicle = null;
         this.setEngineAudio(false);
       } else if (!this.driving) {
-        const candidates: Array<CarController | BikeController> = [this.car, this.bike];
+        const candidates = this.vehicles;
         let best: CarController | BikeController | null = null;
         let bd = 3.5;
         for (const v of candidates) {
@@ -959,8 +975,7 @@ export class Game {
       }
     }
 
-    this.car.fixedUpdate(dt, this.input, this.activeVehicle === this.car);
-    this.bike.fixedUpdate(dt, this.input, this.activeVehicle === this.bike);
+    for (const v of this.vehicles) v.fixedUpdate(dt, this.input, this.activeVehicle === v);
     if (this.driving && this.activeVehicle) {
       const v = this.activeVehicle.linvel();
       const speed = Math.hypot(v.x, v.z);
@@ -1086,9 +1101,10 @@ export class Game {
         this.wheelVecY *= WHEEL.maxPx / len;
       }
       if (len > WHEEL.deadzonePx) {
-        // Screen up = -y; sectors sit every 60° clockwise from 12 o'clock.
+        // Screen up = -y; sectors sit evenly clockwise from 12 o'clock.
+        const step = 360 / WHEEL_SECTOR_COUNT;
         const deg = ((Math.atan2(this.wheelVecX, -this.wheelVecY) * 180) / Math.PI + 360) % 360;
-        this.wheelSel = Math.round(deg / 60) % 6;
+        this.wheelSel = Math.round(deg / step) % WHEEL_SECTOR_COUNT;
       } else {
         this.wheelSel = -1;
       }
@@ -1110,8 +1126,7 @@ export class Game {
       this.swapT > 0 ? Math.sin(Math.PI * (1 - this.swapT / this.swapTotal)) : 0;
     this.weaponRig.update(dt, this.handBone, this.player.aiming, swapLower);
     this.recoil.update(dt);
-    this.car.updateVisuals();
-    this.bike.updateVisuals();
+    for (const v of this.vehicles) v.updateVisuals();
     this.cameraRig.update(
       dt,
       this.input,

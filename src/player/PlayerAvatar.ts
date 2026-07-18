@@ -2,9 +2,12 @@ import * as THREE from 'three';
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { PLAYER, HANDLING } from '../config';
 
-/** Bones above the hips — used to mask aim poses onto the upper body only. */
-const UPPER_BONE_RE = /(spine\.?00[23]|neck|head|shoulder|upper_arm|forearm|hand|f_index|f_middle|f_ring|f_pinky|thumb)/;
-/** Everything else (hips, spine.001, legs, feet) keeps playing locomotion. */
+/** Bones above the hips — used to mask aim poses onto the upper body only.
+ * Covers both rig conventions: Quaternius/Rigify (spine002, upper_arm,
+ * f_index…) and Synty (Spine_02, Clavicle, Elbow, IndexFinger…). */
+const UPPER_BONE_RE =
+  /(spine[._]?0{1,2}[23]|neck|head|clavicle|shoulder|upper_arm|forearm|elbow|hand|f_index|f_middle|f_ring|f_pinky|thumb|finger_0)/i;
+/** Everything else (hips, spine 01, legs, feet) keeps playing locomotion. */
 
 export interface AvatarState {
   speed: number;
@@ -46,10 +49,10 @@ export class PlayerAvatar {
   constructor(gltf: GLTF) {
     this.object = gltf.scene;
     // Drop the model so feet sit at the capsule bottom (root group is centered
-    // on the capsule), and flip 180°: the GLB's natural forward is -Z but the
-    // controller's yaw convention treats +Z as forward.
+    // on the capsule). The Synty rig's natural forward is +Z, matching the
+    // controller's yaw convention — no flip needed (the old Quaternius rig
+    // faced -Z and needed rotation.y = π here).
     this.object.position.y = -PLAYER.height / 2;
-    this.object.rotation.y = Math.PI;
 
     this.mixer = new THREE.AnimationMixer(this.object);
 
@@ -108,7 +111,7 @@ export class PlayerAvatar {
   get handBone(): THREE.Object3D | null {
     let bone: THREE.Object3D | null = null;
     this.object.traverse((o) => {
-      if (!bone && /hand\.?R$/i.test(o.name)) bone = o;
+      if (!bone && /hand[._]?R$/i.test(o.name)) bone = o;
     });
     return bone;
   }

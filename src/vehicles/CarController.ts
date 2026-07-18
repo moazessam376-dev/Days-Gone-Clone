@@ -65,9 +65,10 @@ export class CarController {
     });
 
     // Collect wheels and their (scaled) connection points before re-rooting.
+    // Kenney kits name them "wheel-*", Synty "SM_Veh_*_Wheel_fl" etc.
     const wheelNodes: THREE.Object3D[] = [];
     model.traverse((o) => {
-      if (/^wheel-/.test(o.name)) wheelNodes.push(o);
+      if (/^wheel-|_Wheel_/i.test(o.name)) wheelNodes.push(o);
     });
     model.updateMatrixWorld(true);
     const connections: THREE.Vector3[] = [];
@@ -117,7 +118,7 @@ export class CarController {
     // steering goes on the model's front pair, and forwardSign makes W drive
     // hood-first regardless of which axis the model's nose points along.
     const order = connections
-      .map((c, i) => ({ c, i, front: /front/.test(wheelNodes[i].name) }))
+      .map((c, i) => ({ c, i, front: /front|_f[lr]$/i.test(wheelNodes[i].name) }))
       .sort((a, b) => Number(b.front) - Number(a.front) || a.c.x - b.c.x);
     const frontZ = order.filter((o) => o.front).reduce((acc, o) => acc + o.c.z, 0) / 2;
     this.forwardSign = frontZ >= 0 ? 1 : -1;

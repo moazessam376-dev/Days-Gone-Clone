@@ -23,6 +23,13 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      # Licensed Synty-derived runtime assets live in a release, never in git
+      # (docs/r2-asset-round.md). Regenerate + re-upload via synty-export.
+      - name: Download Synty runtime assets
+        run: |
+          curl -fsSL -o /tmp/synty-assets.zip \
+            https://github.com/${{ github.repository }}/releases/download/synty-assets-v1/synty-assets.zip
+          unzip -q /tmp/synty-assets.zip -d public/assets/
       - run: npm ci
       - run: npm run build
       - uses: actions/configure-pages@v5
@@ -43,6 +50,11 @@ jobs:
         with:
           path: ~/.cache/puppeteer
           key: puppeteer-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - name: Download Synty runtime assets
+        run: |
+          curl -fsSL -o /tmp/synty-assets.zip \
+            https://github.com/${{ github.repository }}/releases/download/synty-assets-v1/synty-assets.zip
+          unzip -q /tmp/synty-assets.zip -d public/assets/
       - run: npm ci
       - run: npm run build
       - run: npm run test:physics

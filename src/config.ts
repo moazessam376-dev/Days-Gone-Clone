@@ -181,8 +181,9 @@ export const VEHICLES = {
    * above it (and past runOverSpeed 2.5) the car plows through instead —
    * the 0.5 m/s overlap means there is no dead zone. */
   obstacleMaxSpeed: 3,
-  /** Extra clearance around the chassis footprint for the steering rect. */
-  obstacleMargin: 0.45,
+  /** Extra clearance around the chassis footprint for the steering rect.
+   * 0.45 fit the Kenney sedan; the armored Muscle_01 needs a wider berth. */
+  obstacleMargin: 0.6,
 };
 
 export const AMMO_CRATES = {

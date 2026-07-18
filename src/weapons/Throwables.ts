@@ -2,6 +2,7 @@ import RAPIER from '@dimforge/rapier3d-compat';
 import * as THREE from 'three';
 import { PhysicsWorld } from '../physics/PhysicsWorld';
 import { THROWABLE_GROUPS } from '../physics/layers';
+import type { AssetLoader } from '../core/AssetLoader';
 
 export const THROWABLE = {
   throwSpeed: 16,
@@ -22,7 +23,8 @@ export type ThrowableKind = 'grenade' | 'molotov';
 interface Projectile {
   kind: ThrowableKind;
   body: RAPIER.RigidBody;
-  mesh: THREE.Mesh;
+  /** Group holding both prop models; the active kind's child is visible. */
+  mesh: THREE.Group;
   age: number;
   active: boolean;
 }
@@ -41,17 +43,11 @@ export class ThrowableSystem {
   private pool: Projectile[] = [];
   /** Terrain height sampler — drives molotov ground-contact breaks. */
   heightFn: (x: number, z: number) => number = () => 0;
-  private grenadeMat = new THREE.MeshStandardMaterial({ color: 0x3a4a32, roughness: 0.6 });
-  private molotovMat = new THREE.MeshStandardMaterial({
-    color: 0xc06a28,
-    roughness: 0.4,
-    emissive: 0xff6a10,
-    emissiveIntensity: 0.6,
-  });
 
   constructor(
     private physics: PhysicsWorld,
     scene: THREE.Scene,
+    assets: AssetLoader,
     private events: ThrowableEvents,
   ) {
     for (let i = 0; i < THROWABLE.poolSize; i++) {
@@ -66,8 +62,19 @@ export class ThrowableSystem {
           .setCollisionGroups(THROWABLE_GROUPS),
         body,
       );
-      const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), this.grenadeMat);
-      mesh.castShadow = true;
+      // Each pool slot carries both prop models; throw() toggles by kind.
+      const mesh = new THREE.Group();
+      for (const [kind, key] of [
+        ['grenade', 'wep_grenade'],
+        ['molotov', 'wep_molotov'],
+      ] as const) {
+        const prop = assets.get(key).scene.clone(true);
+        prop.name = kind;
+        prop.traverse((o) => {
+          if ((o as THREE.Mesh).isMesh) (o as THREE.Mesh).castShadow = true;
+        });
+        mesh.add(prop);
+      }
       mesh.visible = false;
       scene.add(mesh);
       this.pool.push({ kind: 'grenade', body, mesh, age: 0, active: false });
@@ -81,7 +88,7 @@ export class ThrowableSystem {
     p.kind = kind;
     p.age = 0;
     p.active = true;
-    p.mesh.material = kind === 'grenade' ? this.grenadeMat : this.molotovMat;
+    for (const child of p.mesh.children) child.visible = child.name === kind;
     p.mesh.visible = true;
     p.body.setEnabled(true);
     p.body.setTranslation({ x: origin.x, y: origin.y, z: origin.z }, true);
