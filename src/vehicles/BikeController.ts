@@ -52,21 +52,32 @@ export class BikeController {
     const scale = BIKE.targetLength / long;
     this.model.scale.setScalar(scale);
     if (preSize.x > preSize.z) this.model.rotation.y = Math.PI / 2; // align length to z
+    // Bake scale/rotation into world matrices BEFORE measuring wheels — a
+    // stale-matrix bbox read radii ~1.25-1.7x too big on BOTH bikes, which
+    // held the chassis that far above its wheels (the "floating motorbike").
+    this.model.updateMatrixWorld(true);
     this.model.traverse((o) => {
       if ((o as THREE.Mesh).isMesh) o.castShadow = true;
       // Wheel pivots: our bike export names them WheelF/WheelR; the Synty
       // motorbike keeps its FBX names (SM_Veh_Motorbike_Front_Wheel_01 …).
       if (/^Wheel[FR]$/.test(o.name) || /_(Front|Rear)_Wheel/i.test(o.name)) {
-        // userData.radius is in model units (needs the scale); a bbox measured
-        // after setScalar above is already in world units.
-        let radius = ((o.userData.radius as number) ?? 0) * scale;
-        if (!radius) {
-          const wb = new THREE.Box3().setFromObject(o);
-          radius = Math.max(0.1, (wb.max.y - wb.min.y) / 2);
-        }
+        // Physics radius = the rendered wheel's actual half-extent (min of
+        // the two rolling-plane axes — attached fenders inflate one).
+        // Never trust userData.radius: its unit convention drifted from the
+        // export and floated the bike 15cm off the ground.
+        const wb = new THREE.Box3().setFromObject(o);
+        const radius = Math.max(
+          0.1,
+          Math.min(wb.max.y - wb.min.y, wb.max.z - wb.min.z) / 2,
+        );
         this.spinWheels.push({ node: o, radius });
       }
     });
+    // A full fender wraps the wheel in BOTH rolling-plane axes (the moto's
+    // front read 0.41 vs its real 0.32 tire and sank into the terrain) —
+    // bike tires match front/rear, so clamp all to the smallest measured.
+    const minR = Math.min(...this.spinWheels.map((w) => w.radius));
+    for (const w of this.spinWheels) w.radius = minR;
     const box = new THREE.Box3().setFromObject(this.model);
     const center = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());
@@ -82,17 +93,12 @@ export class BikeController {
         .setCcdEnabled(true), // see CarController — no penetration pops
     );
     this.halfExtents.hd = size.z / 2;
-    physics.world.createCollider(
-      RAPIER.ColliderDesc.cuboid(0.25, size.y / 2.4, size.z / 2)
-        .setDensity(220)
-        .setCollisionGroups(VEHICLE_GROUPS),
-      this.body,
-    );
 
-    this.controller = physics.world.createVehicleController(this.body);
-    // Suspension anchors + radii from the model's own wheel nodes so the
-    // physics stance matches the visual (a hardcoded 0.32 radius sank the
-    // big-wheeled bike into the ground). Fallback: bbox-derived guesses.
+    // Measure the wheels BEFORE shaping the chassis collider — its bottom
+    // must clear the wheel hubs. With true-size wheel radii, a full-height
+    // cuboid rests on the ground first and the suspension rays never reach
+    // it: the bike sat beached on its collider, wheels dangling (contacts
+    // 0/2, undrivable). Only the oversized radii had masked this.
     this.root.updateMatrixWorld(true);
     const _wp = new THREE.Vector3();
     const wheelInfo = this.spinWheels
@@ -103,6 +109,18 @@ export class BikeController {
       .sort((a, b) => b.z - a.z);
     const front = wheelInfo[0] ?? { y: -0.1, z: size.z / 2 - 0.25, radius: 0.32 };
     const rear = wheelInfo[wheelInfo.length - 1] ?? { y: -0.1, z: -(size.z / 2 - 0.25), radius: 0.32 };
+
+    const minHubY = Math.min(front.y, rear.y);
+    const chassisHalfH = size.y / 2.4;
+    physics.world.createCollider(
+      RAPIER.ColliderDesc.cuboid(0.25, chassisHalfH, size.z / 2)
+        .setTranslation(0, minHubY + chassisHalfH, 0) // bottom at hub height
+        .setDensity(220)
+        .setCollisionGroups(VEHICLE_GROUPS),
+      this.body,
+    );
+
+    this.controller = physics.world.createVehicleController(this.body);
     // Anchor sits suspSettle above the modeled wheel center: the spring
     // settles near mid-travel with the wheels exactly where the model put them.
     const suspSettle = 0.25;
@@ -153,7 +171,12 @@ export class BikeController {
         this.body.setLinvel({ x: 0, y: 0, z: 0 }, false);
         this.body.setAngvel({ x: 0, y: 0, z: 0 }, false);
       }
-      return;
+      // Self-heal: a body that fell asleep AIRBORNE (no wheel contact)
+      // would otherwise freeze hovering forever — wake it and let it drop.
+      let contacts = 0;
+      for (let i = 0; i < 2; i++) if (this.controller.wheelIsInContact(i)) contacts++;
+      if (contacts === 0) this.body.wakeUp();
+      else return;
     }
     if (driven && this.body.isSleeping()) this.body.wakeUp();
 

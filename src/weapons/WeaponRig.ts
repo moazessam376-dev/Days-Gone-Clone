@@ -7,6 +7,7 @@ const _muzzle = new THREE.Vector3();
 const _box = new THREE.Box3();
 const _handPos = new THREE.Vector3();
 const _chestPos = new THREE.Vector3();
+const _fingerPos = new THREE.Vector3();
 const _carryQ = new THREE.Quaternion();
 const _adsQ = new THREE.Quaternion();
 const _tweakQ = new THREE.Quaternion();
@@ -106,6 +107,9 @@ export class WeaponRig {
    *   chest, not in the animated hand — the idle clip's hand hangs at the
    *   thigh, which read as a one-hand lug).
    * @param sprintWeight 0..1 — blends two-handers back onto the pumping hand.
+   * @param fingerBone index-finger base: bone origins are JOINTS, so the
+   *   hand bone alone is the wrist — lerping toward the finger base lands
+   *   hand-follow weapons in the palm instead of on the forearm.
    */
   update(
     dt: number,
@@ -117,6 +121,7 @@ export class WeaponRig {
     camPitch = 0,
     chestBone: THREE.Object3D | null = null,
     sprintWeight = 0,
+    fingerBone: THREE.Object3D | null = null,
   ): void {
     this.kickZ *= Math.exp(-14 * dt);
     this.aimBlend = THREE.MathUtils.clamp(
@@ -126,8 +131,13 @@ export class WeaponRig {
     );
     const g = this.guns.get(this.active);
     if (!g) return;
-    if (handBone) handBone.getWorldPosition(_handPos);
-    else _handPos.copy(this.holder.position);
+    if (handBone) {
+      handBone.getWorldPosition(_handPos);
+      if (fingerBone) {
+        fingerBone.getWorldPosition(_fingerPos);
+        _handPos.lerp(_fingerPos, 0.6); // wrist → mid-palm
+      }
+    } else _handPos.copy(this.holder.position);
 
     const def = WEAPONS[this.active];
     const tp = THROWABLE_POSES[this.active];

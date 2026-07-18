@@ -241,6 +241,12 @@ export class PlayerAvatar {
     return this.boneByName.get('Spine_03') ?? null;
   }
 
+  /** Index-finger base — bone origins sit at JOINTS, so Hand_R alone is the
+   * wrist; lerping toward this bone lands weapons in the palm. */
+  get fingerBone(): THREE.Object3D | null {
+    return this.boneByName.get('IndexFinger_01_R') ?? null;
+  }
+
   /**
    * Plant the RIGHT hand on the pistol grip of a chest-anchored long gun.
    * Mutually exclusive with the throw pose (Game gates them).

@@ -100,7 +100,16 @@ grip/foregrip, blending to hand-follow in sprint and to the aim clip in
 ADS; throw wind-up hand moved beside-and-behind the ear; S24 rewritten to
 accumulate travel-velocity heading in sub-steps — the bike turns >180° in
 the hold window and the old endpoint delta wrapped, which is how a bogus
-steering "fix" once passed CI). Remaining: playtest sign-off.
+steering "fix" once passed CI), fourth-playtest fix round (hand-follow
+weapons attach at the PALM — bone origins are joints, so the hand bone
+alone is the wrist and the pistol rode the forearm; throw wind-up runs
+BEFORE the rig reads the hand so the bottle rides the raised arm instead
+of floating at the hip; bike physics wheel radii measured from live-world
+bboxes after a matrix update and clamped to the smallest wheel — stale
+matrices had inflated them ~1.25-1.7x, floating the Synty moto 13cm and
+the user's bike 15cm above their tires; sleeping vehicles with zero wheel
+contacts self-heal by waking and dropping instead of freezing mid-air).
+Remaining: playtest sign-off.
 
 ### R3 — Vehicles as a real system
 - Enter/exit animations, visible rider on the bike, per-vehicle handling

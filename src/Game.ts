@@ -71,6 +71,7 @@ export class Game {
   private weapons!: WeaponSystem;
   private weaponRig!: WeaponRig;
   private handBone: THREE.Object3D | null = null;
+  private fingerBone: THREE.Object3D | null = null;
   private avatarHidden = false;
   private registry = new DamageRegistry();
   private fx!: FxPools;
@@ -640,6 +641,7 @@ export class Game {
 
     this.weaponRig = new WeaponRig(this.scene, assets);
     this.handBone = this.avatar.handBone;
+    this.fingerBone = this.avatar.fingerBone;
     this.weaponRig.setActive(this.weapons.current);
   }
 
@@ -1185,6 +1187,15 @@ export class Game {
     // Swap dip: 0 → 1 → 0 across the current lower/raise window.
     const swapLower =
       this.swapT > 0 ? Math.sin(Math.PI * (1 - this.swapT / this.swapTotal)) : 0;
+    // Throw wind-up FIRST: it moves the hand bone the rig then reads —
+    // updating the rig before this left the bottle floating at the hip
+    // while the arm was raised (round-4 playtest bug).
+    this.avatar.applyThrowPose(
+      this.equippedThrowable && this.player.aiming && !this.driving && !this.player.isRolling
+        ? 1
+        : 0,
+      dt,
+    );
     this.weaponRig.update(
       dt,
       this.handBone,
@@ -1195,6 +1206,7 @@ export class Game {
       this.cameraRig.pitch,
       this.avatar.chestBone,
       this.avatar.sprintWeight,
+      this.fingerBone,
     );
     // Procedural arm layer: two-hand grip on long guns, cocked throw arm.
     // Released while sprinting (arms pump), rolling, reloading (the left
@@ -1211,12 +1223,6 @@ export class Game {
     // chest anchor (gripWorld() is null in ADS — the aim clip owns the arm).
     const rgTarget = gripFree ? this.weaponRig.gripWorld(_gripR) : null;
     this.avatar.applyRightHandIK(rgTarget, 1 - this.avatar.sprintWeight, dt);
-    this.avatar.applyThrowPose(
-      this.equippedThrowable && this.player.aiming && !this.driving && !this.player.isRolling
-        ? 1
-        : 0,
-      dt,
-    );
     this.recoil.update(dt);
     for (const v of this.vehicles) v.updateVisuals(dt);
     this.cameraRig.update(

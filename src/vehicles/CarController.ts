@@ -209,7 +209,14 @@ export class CarController {
         this.body.setLinvel({ x: 0, y: 0, z: 0 }, false);
         this.body.setAngvel({ x: 0, y: 0, z: 0 }, false);
       }
-      return;
+      // Self-heal: never stay frozen hovering — a body asleep with no wheel
+      // contact wakes and drops (then re-sleeps grounded).
+      let sleepContacts = 0;
+      for (let i = 0; i < this.wheels.length; i++) {
+        if (this.controller.wheelIsInContact(i)) sleepContacts++;
+      }
+      if (sleepContacts === 0) this.body.wakeUp();
+      else return;
     }
     if (driven && this.body.isSleeping()) this.body.wakeUp();
 
