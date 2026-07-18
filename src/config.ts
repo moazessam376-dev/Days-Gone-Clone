@@ -148,6 +148,14 @@ export const HANDLING = {
   twoHandYawTilt: 0.45, // carry yaw offset (rad, + = muzzle swings left)
   twoHandPitch: -0.5, // overrides carryPitch for chest-anchored carry
   twoHandOffset: [0.05, -0.22, -0.24] as [number, number, number], // chest → gun origin, carry frame (-z = in front)
+  /** Long-gun ADS: the gun anchors to the chest in the AIM frame (stock at
+   * the right shoulder) and BOTH hands stay IK'd to grip/foregrip — the rig
+   * only ships pistol aim clips, so following the animated hand made every
+   * weapon read as the same one-hand pistol pose (round-6 playtest). */
+  twoHandAdsOffset: [0.17, -0.05, -0.3] as [number, number, number], // chest → gun origin, aim frame (-z = at the reticle)
+  /** Finger curl (rad per segment) wrapping a held grip — the rig's clips
+   * never animate fingers, so bind-pose hands read as open palms. */
+  gripCurl: { finger: 0.95, index: 0.7, thumb: 0.5 },
 };
 
 export const STAMINA = {

@@ -1224,6 +1224,10 @@ export class Game {
     // chest anchor (gripWorld() is null in ADS — the aim clip owns the arm).
     const rgTarget = gripFree ? this.weaponRig.gripWorld(_gripR) : null;
     this.avatar.applyRightHandIK(rgTarget, 1 - this.avatar.sprintWeight, dt);
+    // Fingers wrap whatever the hand is on: right hand around any held gun's
+    // grip, left hand only while it's actually planted on the foregrip.
+    this.avatar.applyHandGrip('R', this.equippedThrowable || this.driving ? 0 : 1, dt);
+    this.avatar.applyHandGrip('L', fgTarget ? 1 - this.avatar.sprintWeight : 0, dt);
     this.recoil.update(dt);
     for (const v of this.vehicles) v.updateVisuals(dt);
     this.cameraRig.update(

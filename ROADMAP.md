@@ -115,7 +115,18 @@ multi-source support in the export; the aim-hold freezes the clip at its
 cocked frame, the release plays cock→follow-through timed to the windup;
 per-bike rendered stance — the rigid bike model slides vertically to the
 measured physics-hub vs authored-hub gap so tires meet the ground on both
-bikes at any suspension load). Remaining: playtest sign-off.
+bikes at any suspension load), sixth-playtest fix round (long guns get a
+REAL two-hand ADS — the gun anchors to the chest in the aim frame with
+both hands IK'd to grip/foregrip, instead of riding the animated hand
+through the only aim clips the rig has, which are pistol clips (that was
+"all weapons aim the same"); procedural finger-curl grips both hands —
+no clip ever animates fingers, so every hand read as an open palm; bike
+wheel radii FINAL: per-wheel pivot height above the lowest tire VERTEX
+(`Box3.setFromObject(node, true)`) — the default corner-transformed bbox
+had inflated the moto's rotated wheel node ~1.4x, which is what the
+round-4/5 "fender" clamps were actually fighting; both bikes now rest
+within 3cm of exact tire contact; pause hint updated to the real binds).
+Remaining: playtest sign-off.
 
 ### R3 — Vehicles as a real system
 - Enter/exit animations, visible rider on the bike, per-vehicle handling

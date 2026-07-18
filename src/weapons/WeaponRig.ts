@@ -165,7 +165,21 @@ export class WeaponRig {
       chestBone!.getWorldPosition(_chestPos).add(_off.set(co[0], co[1], co[2]).applyQuaternion(_carryQ));
       _posCarry.lerpVectors(_chestPos, _posCarry, sprintWeight);
     }
-    _posAds.copy(_handPos).add(_off.set(ads.pos[0], ads.pos[1], ads.pos[2]).applyQuaternion(_adsQ));
+    if (twoHand) {
+      // ADS: stock at the right shoulder, not in the animated hand — the rig
+      // only has PISTOL aim clips, so hand-follow made rifles/shotguns aim
+      // one-handed. Both hands are IK'd onto the gun (grip + foregrip).
+      const ao = HANDLING.twoHandAdsOffset;
+      chestBone!
+        .getWorldPosition(_posAds)
+        .add(
+          _off
+            .set(ao[0] + ads.pos[0], ao[1] + ads.pos[1], ao[2] + ads.pos[2])
+            .applyQuaternion(_adsQ),
+        );
+    } else {
+      _posAds.copy(_handPos).add(_off.set(ads.pos[0], ads.pos[1], ads.pos[2]).applyQuaternion(_adsQ));
+    }
 
     this.holder.quaternion.copy(_carryQ).slerp(_adsQ, b);
     this.holder.position.lerpVectors(_posCarry, _posAds, b);
@@ -195,13 +209,13 @@ export class WeaponRig {
     return out.set(fg[0], fg[1], fg[2]).applyMatrix4(g.matrixWorld);
   }
 
-  /** World position of the pistol grip (right-hand IK target during the
-   * chest-anchored two-hand carry), or null when the gun follows the hand
-   * anyway (pistol / throwables / ADS). Call after update(). */
+  /** World position of the pistol grip (right-hand IK target while the long
+   * gun rides the chest anchor — carry AND ADS), or null when the gun follows
+   * the hand anyway (pistol / throwables). Call after update(). */
   gripWorld(out: THREE.Vector3): THREE.Vector3 | null {
     const def = WEAPONS[this.active];
     const g = this.guns.get(this.active);
-    if (!def?.pose.foregrip || !g || this.aimBlend > 0.02) return null;
+    if (!def?.pose.foregrip || !g) return null;
     const gp = def.pose.grip ?? [0, -0.04, 0.03];
     this.holder.updateMatrixWorld(true);
     return out.set(gp[0], gp[1], gp[2]).applyMatrix4(g.matrixWorld);

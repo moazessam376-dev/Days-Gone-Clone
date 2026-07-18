@@ -64,23 +64,10 @@ export class BikeController {
       // Wheel pivots: our bike export names them WheelF/WheelR; the Synty
       // motorbike keeps its FBX names (SM_Veh_Motorbike_Front_Wheel_01 …).
       if (/^Wheel[FR]$/.test(o.name) || /_(Front|Rear)_Wheel/i.test(o.name)) {
-        // Physics radius = the rendered wheel's actual half-extent (min of
-        // the two rolling-plane axes — attached fenders inflate one).
-        // Never trust userData.radius: its unit convention drifted from the
-        // export and floated the bike 15cm off the ground.
-        const wb = new THREE.Box3().setFromObject(o);
-        const radius = Math.max(
-          0.1,
-          Math.min(wb.max.y - wb.min.y, wb.max.z - wb.min.z) / 2,
-        );
-        this.spinWheels.push({ node: o, radius });
+        // Radius is measured below, after the model is centered.
+        this.spinWheels.push({ node: o, radius: 0.32 });
       }
     });
-    // A full fender wraps the wheel in BOTH rolling-plane axes (the moto's
-    // front read 0.41 vs its real 0.32 tire and sank into the terrain) —
-    // bike tires match front/rear, so clamp all to the smallest measured.
-    const minR = Math.min(...this.spinWheels.map((w) => w.radius));
-    for (const w of this.spinWheels) w.radius = minR;
     const box = new THREE.Box3().setFromObject(this.model);
     const center = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());
@@ -105,9 +92,22 @@ export class BikeController {
     // 0/2, undrivable). Only the oversized radii had masked this.
     this.root.updateMatrixWorld(true);
     const _wp = new THREE.Vector3();
+    const _wb = new THREE.Box3();
     const wheelInfo = this.spinWheels
       .map((w) => {
         w.node.getWorldPosition(_wp); // root is at origin → local offset
+        // Physics radius = pivot height above the wheel's lowest VERTEX,
+        // per wheel: exactly the pivot→ground distance in the authored
+        // stance, so the suspension's rest pose reproduces that stance and
+        // the tires meet the dirt on both bikes (round-5 clamped all radii
+        // to the smallest wheel and the bigger tire clipped the ground).
+        // `precise` matters: the default corner-transformed bbox inflated
+        // the moto's rotated front-wheel node to r=0.41 vs the true 0.30 —
+        // that phantom fender was why radii were ever clamped at all. And
+        // never derive the radius from bbox EXTENTS: the user-bike's front
+        // pivot sits 5cm off the tire center, so extent/2 lies there.
+        _wb.setFromObject(w.node, true);
+        w.radius = Math.max(0.1, _wp.y - _wb.min.y);
         return { y: _wp.y, z: _wp.z, radius: w.radius };
       })
       .sort((a, b) => b.z - a.z);

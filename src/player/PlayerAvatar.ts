@@ -130,7 +130,17 @@ export class PlayerAvatar {
     this.object.traverse((o) => {
       if ((o as THREE.Bone).isBone) this.boneByName.set(o.name, o);
     });
+    // Finger rest poses — the grip curl composes on top of these every frame
+    // (multiplying the live quaternion would accumulate: no clip ever writes
+    // fingers, so last frame's value persists in the mixer).
+    for (const [name, bone] of this.boneByName) {
+      if (/^(Finger|IndexFinger|Thumb)_0\d_[LR]$/.test(name)) {
+        this.fingerRest.set(name, bone.quaternion.clone());
+      }
+    }
   }
+
+  private fingerRest = new Map<string, THREE.Quaternion>();
 
   private boneByName = new Map<string, THREE.Object3D>();
 
@@ -268,6 +278,36 @@ export class PlayerAvatar {
    * wrist; lerping toward this bone lands weapons in the palm. */
   get fingerBone(): THREE.Object3D | null {
     return this.boneByName.get('IndexFinger_01_R') ?? null;
+  }
+
+  /** Smoothed grip-curl weights per hand. */
+  private curlWeight = { L: 0, R: 0 };
+
+  /**
+   * Curl the fingers around a held grip. The Synty rig's clips never animate
+   * fingers, so without this every hand reads as an open palm hovering next
+   * to the gun (round-6 playtest). Curl axis is local +X on BOTH hands
+   * (probed empirically — the reconstructed skeleton's axes aren't guessable).
+   * Call AFTER the mixer update; composes rest * curl so it never accumulates.
+   */
+  applyHandGrip(side: 'L' | 'R', weight: number, dt: number): void {
+    const w = (this.curlWeight[side] += (weight - this.curlWeight[side]) * Math.min(1, dt * 12));
+    if (w < 0.02) return;
+    const c = HANDLING.gripCurl;
+    for (const [prefix, amt] of [
+      ['Finger_0', c.finger],
+      ['IndexFinger_0', c.index],
+      ['Thumb_0', c.thumb],
+    ] as const) {
+      for (let i = 1; i <= 4; i++) {
+        const name = `${prefix}${i}_${side}`;
+        const rest = this.fingerRest.get(name);
+        if (!rest) continue;
+        const bone = this.boneByName.get(name)!;
+        _curlQ.setFromAxisAngle(_curlAxis, amt * w);
+        bone.quaternion.copy(rest).multiply(_curlQ);
+      }
+    }
   }
 
   /**
@@ -414,6 +454,8 @@ export class PlayerAvatar {
   }
 }
 
+const _curlAxis = new THREE.Vector3(1, 0, 0);
+const _curlQ = new THREE.Quaternion();
 const _ikS = new THREE.Vector3();
 const _ikE = new THREE.Vector3();
 const _ikW = new THREE.Vector3();
