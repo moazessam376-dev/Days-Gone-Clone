@@ -166,7 +166,22 @@ export class Town {
   /** Clone + ground + collide + register a model at (x, z). */
   private place(key: string, x: number, z: number, rot: number, spotShrink = 1): void {
     const { gltf, size } = this.measure(key);
-    const y = this.data.height(x, z);
+    // Ground at the LOWEST footprint corner, not the center: on a slope a
+    // center-height building floats off the downhill side (the R2 playtest
+    // drove a car clean under one). Uphill edges bury a little instead.
+    const cos = Math.cos(rot);
+    const sin = Math.sin(rot);
+    let y = this.data.height(x, z);
+    for (const [lx, lz] of [
+      [size.x / 2, size.z / 2],
+      [size.x / 2, -size.z / 2],
+      [-size.x / 2, size.z / 2],
+      [-size.x / 2, -size.z / 2],
+    ]) {
+      const wx = x + lx * cos + lz * sin;
+      const wz = z - lx * sin + lz * cos;
+      y = Math.min(y, this.data.height(wx, wz));
+    }
     const model = gltf.scene.clone(true);
     model.rotation.y = rot;
     model.position.set(x, y - 0.1, z); // exports are grounded at y=0

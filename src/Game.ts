@@ -1136,7 +1136,15 @@ export class Game {
     // Swap dip: 0 → 1 → 0 across the current lower/raise window.
     const swapLower =
       this.swapT > 0 ? Math.sin(Math.PI * (1 - this.swapT / this.swapTotal)) : 0;
-    this.weaponRig.update(dt, this.handBone, this.player.aiming, swapLower);
+    this.weaponRig.update(
+      dt,
+      this.handBone,
+      this.player.aiming,
+      swapLower,
+      this.player.model.rotation.y,
+      this.cameraRig.yaw,
+      this.cameraRig.pitch,
+    );
     this.recoil.update(dt);
     for (const v of this.vehicles) v.updateVisuals();
     this.cameraRig.update(

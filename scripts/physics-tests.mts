@@ -691,6 +691,91 @@ const scenarios: Scenario[] = [
                  liveAfterUnaimed, countAfterUnaimed, liveAfterThrow, countAfterThrow, backOnGun };
       `),
   },
+  {
+    name: 'S23 car parked on a steep slope stays put',
+    run: (page) =>
+      run(page, `
+        g.debugStep(5); clearEnemies();
+        // The R2 playtest launcher: parked across a hillside, chassis-up.y
+        // dips under the old 0.92 upright threshold and the righting torque
+        // pumped the contact solver until the car popped airborne. Find the
+        // steepest spot in the drivable area and park there.
+        // Steepest parkable spot in ~[17°, 29°] — beyond that a braked car
+        // may legitimately creep and the scenario would test friction, not
+        // the launcher.
+        let sx = 200, sz = 200, steep = 0;
+        for (let x = -380; x <= 380; x += 12) for (let z = -380; z <= 380; z += 12) {
+          const gx = (terrain(x + 2, z) - terrain(x - 2, z)) / 4;
+          const gz = (terrain(x, z + 2) - terrain(x, z - 2)) / 4;
+          const s = Math.hypot(gx, gz);
+          if (s > steep && s < 0.55) { steep = s; sx = x; sz = z; }
+        }
+        const y0 = terrain(sx, sz);
+        g.car.body.setTranslation({x: sx, y: y0 + 1.2, z: sz}, true);
+        g.car.body.setRotation({x: 0, y: 0.7071, z: 0, w: 0.7071}, true); // across the slope
+        g.car.body.setLinvel({x: 0, y: 0, z: 0}, true);
+        g.car.body.setAngvel({x: 0, y: 0, z: 0}, true);
+        g.player.body.setTranslation({x: sx + 4, y: terrain(sx + 4, sz) + 1.2, z: sz}, true);
+        g.debugStep(30); // settle
+        const p0 = g.car.body.translation();
+        let maxH = -1;
+        for (let f = 0; f < 300; f++) {
+          g.debugStep(1);
+          const t = g.car.body.translation();
+          const h = t.y - terrain(t.x, t.z);
+          if (h > maxH) maxH = h;
+        }
+        const p1 = g.car.body.translation();
+        const drift = Math.hypot(p1.x - p0.x, p1.z - p0.z);
+        return { pass: steep > 0.3 && maxH < 2.0 && drift < 2.0,
+                 slope: +steep.toFixed(2), maxHeightOverTerrain: +maxH.toFixed(2),
+                 drift: +drift.toFixed(2) };
+      `),
+    timeoutMs: 240_000,
+  },
+  {
+    name: 'S24 bike A-key steers the same way as the car',
+    run: (page) =>
+      run(page, `
+        g.debugStep(5); clearEnemies();
+        // The playtests always had the bike turning backwards (A went right):
+        // the steered wheel was the REAR one. Reference = the car, whose
+        // steering the user confirmed correct.
+        const heading = (body) => {
+          const r = body.rotation();
+          const fx = 2 * (r.x * r.z + r.w * r.y);
+          const fz = 1 - 2 * (r.x * r.x + r.y * r.y);
+          return Math.atan2(fx, fz);
+        };
+        const steerTest = (veh) => {
+          const cp = veh.body.translation();
+          g.player.body.setTranslation({x: cp.x + 2.2, y: cp.y + 0.3, z: cp.z}, true);
+          g.debugStep(5);
+          press('KeyE'); g.debugStep(2);
+          if (!g.driving || g.activeVehicle !== veh) return null;
+          down('KeyW');
+          for (let f = 0; f < 90; f++) g.debugStep(1); // get rolling
+          const h0 = heading(veh.body);
+          down('KeyA');
+          for (let f = 0; f < 90; f++) g.debugStep(1);
+          up('KeyA'); up('KeyW');
+          let dh = heading(veh.body) - h0;
+          while (dh > Math.PI) dh -= 2 * Math.PI;
+          while (dh < -Math.PI) dh += 2 * Math.PI;
+          press('KeyE'); g.debugStep(5);
+          return dh;
+        };
+        const dCar = steerTest(g.car);
+        softReset();
+        const dBike = steerTest(g.bike);
+        const pass = dCar !== null && dBike !== null &&
+          Math.abs(dCar) > 0.15 && Math.abs(dBike) > 0.15 &&
+          Math.sign(dCar) === Math.sign(dBike);
+        return { pass, carTurn: dCar === null ? 'no-board' : +dCar.toFixed(2),
+                 bikeTurn: dBike === null ? 'no-board' : +dBike.toFixed(2) };
+      `),
+    timeoutMs: 240_000,
+  },
 ];
 
 async function main(): Promise<void> {

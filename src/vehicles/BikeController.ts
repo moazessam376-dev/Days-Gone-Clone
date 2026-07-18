@@ -15,7 +15,10 @@ export const BIKE = {
   reverseForce: 1200,
   /** Top speed (m/s) — see CarController.maxSpeed for why this must exist. */
   maxSpeed: 24,
-  brakeForce: 10,
+  /** Hard cap on upward velocity (m/s) — see CarController.maxRiseSpeed. */
+  maxRiseSpeed: 6.5,
+  /** Parking brake — see CAR.brakeForce. */
+  brakeForce: 45,
   maxSteer: 0.7,
   steerSpeedFalloff: 14,
   leanMax: 0.42, // visual lean into corners (radians)
@@ -51,8 +54,17 @@ export class BikeController {
     if (preSize.x > preSize.z) this.model.rotation.y = Math.PI / 2; // align length to z
     this.model.traverse((o) => {
       if ((o as THREE.Mesh).isMesh) o.castShadow = true;
-      if (/^Wheel[FR]$/.test(o.name)) {
-        this.spinWheels.push({ node: o, radius: ((o.userData.radius as number) ?? 0.24) * scale });
+      // Wheel pivots: our bike export names them WheelF/WheelR; the Synty
+      // motorbike keeps its FBX names (SM_Veh_Motorbike_Front_Wheel_01 …).
+      if (/^Wheel[FR]$/.test(o.name) || /_(Front|Rear)_Wheel/i.test(o.name)) {
+        // userData.radius is in model units (needs the scale); a bbox measured
+        // after setScalar above is already in world units.
+        let radius = ((o.userData.radius as number) ?? 0) * scale;
+        if (!radius) {
+          const wb = new THREE.Box3().setFromObject(o);
+          radius = Math.max(0.1, (wb.max.y - wb.min.y) / 2);
+        }
+        this.spinWheels.push({ node: o, radius });
       }
     });
     const box = new THREE.Box3().setFromObject(this.model);
@@ -78,10 +90,35 @@ export class BikeController {
     );
 
     this.controller = physics.world.createVehicleController(this.body);
-    const radius = 0.32;
-    const halfZ = size.z / 2 - 0.25;
-    this.controller.addWheel({ x: 0, y: 0, z: -halfZ }, { x: 0, y: -1, z: 0 }, { x: -1, y: 0, z: 0 }, 0.4, radius);
-    this.controller.addWheel({ x: 0, y: 0, z: halfZ }, { x: 0, y: -1, z: 0 }, { x: -1, y: 0, z: 0 }, 0.4, radius);
+    // Suspension anchors + radii from the model's own wheel nodes so the
+    // physics stance matches the visual (a hardcoded 0.32 radius sank the
+    // big-wheeled bike into the ground). Fallback: bbox-derived guesses.
+    this.root.updateMatrixWorld(true);
+    const _wp = new THREE.Vector3();
+    const wheelInfo = this.spinWheels
+      .map((w) => {
+        w.node.getWorldPosition(_wp); // root is at origin → local offset
+        return { y: _wp.y, z: _wp.z, radius: w.radius };
+      })
+      .sort((a, b) => b.z - a.z);
+    const front = wheelInfo[0] ?? { y: -0.1, z: size.z / 2 - 0.25, radius: 0.32 };
+    const rear = wheelInfo[wheelInfo.length - 1] ?? { y: -0.1, z: -(size.z / 2 - 0.25), radius: 0.32 };
+    // Anchor sits suspSettle above the modeled wheel center: the spring
+    // settles near mid-travel with the wheels exactly where the model put them.
+    const suspSettle = 0.25;
+    const restLength = 0.4;
+    // Wheel 0 = FRONT (steered), wheel 1 = rear (driven). Both bike models'
+    // noses point +z after alignment — steering the -z wheel is rear-wheel
+    // steering, which reverses the felt A/D turn direction.
+    for (const w of [front, rear]) {
+      this.controller.addWheel(
+        { x: 0, y: w.y + suspSettle, z: w.z },
+        { x: 0, y: -1, z: 0 },
+        { x: -1, y: 0, z: 0 },
+        restLength,
+        w.radius,
+      );
+    }
     for (let i = 0; i < 2; i++) {
       this.controller.setWheelSuspensionStiffness(i, 30);
       this.controller.setWheelFrictionSlip(i, 10);
@@ -92,7 +129,8 @@ export class BikeController {
   }
 
   get speed(): number {
-    return this.controller.currentVehicleSpeed() * BIKE.forwardSign;
+    // Rapier reports negative when moving +z — see CarController.speed.
+    return -this.controller.currentVehicleSpeed() * BIKE.forwardSign;
   }
 
   get position(): THREE.Vector3 {
@@ -113,7 +151,12 @@ export class BikeController {
       else engine *= 1 - (spd / BIKE.maxSpeed) ** 3 * 0.7;
       const steerInput = (input.isDown('KeyA') ? 1 : 0) - (input.isDown('KeyD') ? 1 : 0);
       const speedScale = 1 / (1 + Math.abs(this.speed) / BIKE.steerSpeedFalloff);
-      steerTarget = steerInput * BIKE.maxSteer * speedScale * BIKE.forwardSign;
+      // NEGATED relative to the car: with roll/pitch locked (yaw-only body)
+      // Rapier's two-wheel vehicle yaws opposite to its steering angle —
+      // measured in the harness (S24) with steering on either wheel. The
+      // sign here is what makes A turn left like the car; don't "fix" it
+      // from geometry first principles again.
+      steerTarget = -steerInput * BIKE.maxSteer * speedScale * BIKE.forwardSign;
       const brake = input.isDown('Space') ? 40 : 0.3;
       this.controller.setWheelBrake(0, brake * 0.6);
       this.controller.setWheelBrake(1, brake);
@@ -134,6 +177,11 @@ export class BikeController {
     if (hSpeed > hCap) {
       const k = hCap / hSpeed;
       this.body.setLinvel({ x: hv.x * k, y: hv.y, z: hv.z * k }, true);
+    }
+    // Never fly (see CarController.maxRiseSpeed).
+    const vNow = this.body.linvel();
+    if (vNow.y > BIKE.maxRiseSpeed) {
+      this.body.setLinvel({ x: vNow.x, y: BIKE.maxRiseSpeed, z: vNow.z }, true);
     }
 
     // Visual cornering lean proportional to steer × speed.

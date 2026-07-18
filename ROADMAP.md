@@ -76,8 +76,13 @@ sectors), Hunter_Male_01 player (hat+beard baked, clips retargeted),
 civilian-12 zombie cast × 12 colorways, user's Bike.glb with spinning spoke
 wheels + Synty Motorbike_01 fallback parked beside it, Muscle_01 armored
 car, full pose-QA pass across handling states, licensed-asset distribution
-via the `synty-assets-v1` release. Remaining: full Synty town/world
-replacement (layout sketch → user check → build), final verification +
+via the `synty-assets-v1` release, Barricaded Main Street town + Synty
+forest, first-playtest fix round (world-space weapon orientation — carry
+low-ready / ADS tracks the reticle; bike steering un-reversed + stance from
+wheel nodes; car suspension retune — wheels seat in the fenders, springs no
+longer saturate; slope-park launch fixed by gating the upright assist on
+airborne wheels + vertical velocity caps; town buildings grounded at their
+lowest footprint corner; suite now 25 scenarios). Remaining: second
 playtest sign-off.
 
 ### R3 — Vehicles as a real system

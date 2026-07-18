@@ -4,7 +4,7 @@
  * radians consumed per shot and wrapped.
  */
 
-/** Grip transform in the hand-holder frame: position offset + euler (rad). */
+/** Grip offset in the gun's oriented frame + local euler tweak (rad). */
 export interface GripPose {
   pos: [number, number, number];
   rot: [number, number, number];
@@ -50,38 +50,35 @@ export interface WeaponDef {
   pose: WeaponPoses;
 }
 
-/** The classic fit: barrel along the hand's +X (see WeaponRig). Carry adds
- * the global HANDLING.carryPitch on top so the barrel-down angle is one
- * live-tunable dial across all weapons. */
-// Hand-frame axes (probed visually 2026-07-18): x = along the barrel
-// (+x back toward the body), y = fist-vertical (-y seats the gun DOWN into
-// the grip; 0 leaves it riding on top of the knuckles), z = diagonal.
+/** Offsets are in the GUN's oriented frame (x right, y up, z toward the
+ * stock — see WeaponRig): they slide the gun so its grip meets the palm.
+ * The gun's world ORIENTATION is composed by WeaponRig (character yaw +
+ * HANDLING.carryPitch in carry, exact camera aim in ADS) — rot here is only
+ * a local tweak on top. Exports are bbox-centered, so a gun whose grip sits
+ * toward the stock needs a small -z (forward) push. */
 const DEFAULT_POSE: WeaponPoses = {
-  carry: { pos: [0, -0.09, 0], rot: [0, -Math.PI / 2, 0] },
-  ads: { pos: [0, -0.09, 0], rot: [0, -Math.PI / 2, 0] },
+  carry: { pos: [0, 0.04, -0.12], rot: [0, 0, 0] },
+  ads: { pos: [0, 0.04, -0.12], rot: [0, 0, 0] },
 };
-
-// Long guns need the grip pulled back into the palm (their bbox center sits
-// mid-barrel). Tuned against the Hunter rig via scripts/pose-tune.mts
-// (R2 pose-QA pass, 2026-07-18); carry mirrors ads so the gun stays seated
-// through walk/sprint arm swings.
 const RIFLE_POSE: WeaponPoses = {
-  carry: { pos: [-0.11, -0.14, 0.03], rot: [0, -Math.PI / 2, 0] },
-  ads: { pos: [-0.11, -0.14, 0.03], rot: [0, -Math.PI / 2, 0] },
+  carry: { pos: [0, 0.04, -0.2], rot: [0, 0, 0] },
+  ads: { pos: [0, 0.04, -0.2], rot: [0, 0, 0] },
 };
 const SHOTGUN_POSE: WeaponPoses = {
-  carry: { pos: [-0.1, -0.12, 0.03], rot: [0, -Math.PI / 2, 0] },
-  ads: { pos: [-0.1, -0.12, 0.03], rot: [0, -Math.PI / 2, 0] },
+  carry: { pos: [0, 0.04, -0.16], rot: [0, 0, 0] },
+  ads: { pos: [0, 0.04, -0.16], rot: [0, 0, 0] },
 };
 const SAWNOFF_POSE: WeaponPoses = {
-  carry: { pos: [-0.07, -0.12, 0.02], rot: [0, -Math.PI / 2, 0] },
-  ads: { pos: [-0.07, -0.12, 0.02], rot: [0, -Math.PI / 2, 0] },
+  carry: { pos: [0, 0.03, -0.12], rot: [0, 0, 0] },
+  ads: { pos: [0, 0.03, -0.12], rot: [0, 0, 0] },
 };
 
-/** In-hand grip poses for throwable props (identity buries them in the fist). */
+/** In-hand grip poses for throwable props. Both exports have their origin at
+ * the model BASE (bbox min y = 0): the -y offset drops them so the palm wraps
+ * mid-body instead of holding them by the very bottom. */
 export const THROWABLE_POSES: Record<string, GripPose> = {
-  grenade: { pos: [0, -0.06, 0.01], rot: [0, 0, 0] },
-  molotov: { pos: [0.02, -0.05, 0.02], rot: [0.35, 0, 0.25] },
+  grenade: { pos: [0, -0.08, 0], rot: [0, 0, 0] },
+  molotov: { pos: [0, -0.15, 0], rot: [0.25, 0, 0.2] },
 };
 
 export const WEAPONS: Record<string, WeaponDef> = {

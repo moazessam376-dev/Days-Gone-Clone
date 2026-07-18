@@ -18,12 +18,20 @@ export const CAR = {
   /** Top speed (m/s). Without it engine force accumulates unbounded — the
    * playtests hit 40+ m/s and every terrain crest became a launch ramp. */
   maxSpeed: 22,
-  brakeForce: 15,
+  /** Parking brake. Must actually hold on hills: with real suspension travel
+   * (post maxSuspensionForce fix) the chassis no longer beaches on its own
+   * collider, so weak brakes let parked cars roll away downhill. */
+  brakeForce: 80,
   handbrakeForce: 120,
   maxSteer: 0.55,
   steerSpeedFalloff: 18,
   runOverSpeed: 2.5,
   maxAngvel: 6, // rad/s cap — no violent tumbles
+  /** Hard cap on upward velocity (m/s) — small crest hops ok, launches never. */
+  maxRiseSpeed: 6.5,
+  /** Suspension travel + where in it the springs settle (see constructor). */
+  suspRest: 0.4,
+  suspSettle: 0.2,
   airDamping: 2.5, // extra angular damping while airborne (per second)
   uprightTorque: 14, // rad/s² of righting acceleration when tipped
   uprightMaxUpY: 0.5, // consider "flipped" below this chassis-up.y
@@ -122,21 +130,31 @@ export class CarController {
       .sort((a, b) => Number(b.front) - Number(a.front) || a.c.x - b.c.x);
     const frontZ = order.filter((o) => o.front).reduce((acc, o) => acc + o.c.z, 0) / 2;
     this.forwardSign = frontZ >= 0 ? 1 : -1;
+    // Suspension geometry (probed 2026-07-18): Rapier's spring force scales
+    // with chassis mass, so settle compression ≈ (g/4) / stiffness. With
+    // stiffness 12.5 the springs settle ~0.2 into their 0.4 travel — anchors
+    // sit 0.2 above the modeled hubs so at rest the wheels are exactly where
+    // the model put them, with equal droop and compression headroom (full
+    // droop under throttle used to lift the fronts clean off the ground).
     const sortedWheels: THREE.Object3D[] = [];
     for (const { c, i } of order) {
       this.controller.addWheel(
-        { x: c.x, y: c.y + 0.15, z: c.z },
+        { x: c.x, y: c.y + CAR.suspSettle, z: c.z },
         { x: 0, y: -1, z: 0 },
         { x: -1, y: 0, z: 0 },
-        0.45,
+        CAR.suspRest,
         this.wheelRadius,
       );
       sortedWheels.push(wheelNodes[i]);
     }
     this.wheels = sortedWheels;
     for (let i = 0; i < this.wheels.length; i++) {
-      this.controller.setWheelSuspensionStiffness(i, 28);
+      this.controller.setWheelSuspensionStiffness(i, 12.5);
       this.controller.setWheelFrictionSlip(i, 12);
+      // The default max suspension force (~6 kN) saturates under this heavy
+      // chassis (~2.3 t → ~5.6 kN/wheel): springs ride bottomed-out and the
+      // wheels tuck up into the fenders. Give them real headroom.
+      this.controller.setWheelMaxSuspensionForce(i, 16000);
     }
 
     physics.syncObject(this.body, this.root);
@@ -144,7 +162,9 @@ export class CarController {
   }
 
   get speed(): number {
-    return this.controller.currentVehicleSpeed() * this.forwardSign;
+    // Rapier reports currentVehicleSpeed negative when moving along +z
+    // (probed 2026-07-18) — negate so nose-first motion reads positive.
+    return -this.controller.currentVehicleSpeed() * this.forwardSign;
   }
 
   get position(): THREE.Vector3 {
@@ -208,6 +228,13 @@ export class CarController {
       this.body.setAngvel({ x: av.x * s, y: av.y * s, z: av.z * s }, true);
       avLen = CAR.maxAngvel;
     }
+    // Vehicles must never fly: nothing legit accelerates a car upward faster
+    // than a small crest hop. (The launch pathways vary — solver kicks,
+    // interpenetration pops — this clamp ends all of them.)
+    const vNow = this.body.linvel();
+    if (vNow.y > CAR.maxRiseSpeed) {
+      this.body.setLinvel({ x: vNow.x, y: CAR.maxRiseSpeed, z: vNow.z }, true);
+    }
     let contacts = 0;
     for (let i = 0; i < this.wheels.length; i++) {
       if (this.controller.wheelIsInContact(i)) contacts++;
@@ -220,12 +247,19 @@ export class CarController {
     // chassis can't be torqued over its own roof edge (the contact solver
     // absorbs the spin), so if it stays flipped we snap it level after a
     // moment, keeping its yaw — the car must never end up undrivable.
+    //
+    // ONLY when the wheels are off the ground (contacts < 2): a car parked
+    // across a ~23° hillside has chassis-up.y < 0.92 while sitting on all
+    // four wheels, and torquing against pinned contacts pumps energy into
+    // the solver until the car pops airborne (the "boarding launch" — caught
+    // on video parked on a slope, 2026-07-18).
     const rot = this.body.rotation();
     _q.set(rot.x, rot.y, rot.z, rot.w);
     _up.set(0, 1, 0).applyQuaternion(_q);
     const lv = this.body.linvel();
     const slow = Math.hypot(lv.x, lv.z) < CAR.uprightMaxSpeed;
-    if (_up.y < 0.92 && slow) {
+    const wheelsFree = contacts < 2;
+    if (_up.y < 0.92 && slow && wheelsFree) {
       // Torque assist all the way back to level (also settles part-tips).
       _axis.crossVectors(_up, _worldUp);
       const len = _axis.length();
@@ -258,7 +292,17 @@ export class CarController {
   updateVisuals(): void {
     for (let i = 0; i < this.wheels.length; i++) {
       const conn = this.controller.wheelChassisConnectionPointCs(i);
-      const susp = this.controller.wheelSuspensionLength(i) ?? 0.3;
+      // Off the ground the suspension length reads 0/stale, which snapped the
+      // wheels up through the fenders whenever the car bounced — hang free
+      // wheels at full droop instead, and never let compression pull a wheel
+      // more than a whisker above its modeled stance (susp = 0.15 at rest).
+      const inContact = this.controller.wheelIsInContact(i);
+      const raw = this.controller.wheelSuspensionLength(i);
+      const susp = THREE.MathUtils.clamp(
+        inContact && raw != null ? raw : CAR.suspRest,
+        0.05,
+        CAR.suspRest,
+      );
       if (conn) this.wheels[i].position.set(conn.x, conn.y - susp, conn.z);
       const rot = this.controller.wheelRotation(i) ?? 0;
       const steer = this.controller.wheelSteering(i) ?? 0;
