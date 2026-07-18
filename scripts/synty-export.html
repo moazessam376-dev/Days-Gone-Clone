@@ -300,35 +300,78 @@ window.__bakeForDebug = async (fbxUrl, texUrl, animGlbUrl, clips, boneMap, opts 
   return await window.__bakeCore(target, skin, topBone, targetBones, animGlbUrl, clips, boneMap, opts, warnings);
 };
 
-/** Shared bake core: source load, rest snapshots, audit, clip bake, wrapper. */
+/** Shared bake core: source load, rest snapshots, audit, clip bake, wrapper.
+ * opts.extraAnims: additional sources baked into the same export —
+ * [{animGlb, clips, boneMap, srcYaw?, srcHip?, method?}] (e.g. the UAL2
+ * library whose Unreal-style rig differs from the Quaternius one). */
 window.__bakeCore = async (target, skin, topBone, targetBones, animGlbUrl, clips, boneMap, opts, warnings) => {
+  // --- target rest snapshots (bind pose), shared by every anim source ---
+  skin.skeleton.pose();
+  target.updateMatrixWorld(true);
+  const tgtRestWorldQ = new Map();
+  const tgtRestWorldP = new Map();
+  for (const b of targetBones) {
+    tgtRestWorldQ.set(b, b.getWorldQuaternion(new THREE.Quaternion()));
+    tgtRestWorldP.set(b, b.getWorldPosition(new THREE.Vector3()));
+  }
+  const outClips = [];
+  const restAudit = [];
+
+  const sources = [
+    { animGlb: animGlbUrl, clips, boneMap, srcYaw: opts.srcYaw, srcHip: opts.srcHip, method: opts.method, audit: true },
+    ...(opts.extraAnims ?? []),
+  ];
+  for (const srcSpec of sources) {
+    await window.__bakeFromSource(target, skin, topBone, targetBones, srcSpec, opts, warnings, tgtRestWorldQ, tgtRestWorldP, outClips, srcSpec.audit ? restAudit : []);
+  }
+
+  // Restore bind pose, then normalize overall height via root scale.
+  skin.skeleton.pose();
+  target.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(skin);
+  const size = new THREE.Vector3();
+  box.getSize(size);
+  let root = target;
+  if (opts.targetHeight) {
+    const s = opts.targetHeight / size.y;
+    // Scale a wrapper, not the bones — keeps animation tracks in rig units.
+    const wrapper = new THREE.Group();
+    wrapper.name = `${target.name}_scaled`;
+    wrapper.add(target);
+    target.scale.setScalar(s);
+    wrapper.updateMatrixWorld(true);
+    root = wrapper;
+  }
+  return {
+    root,
+    outClips,
+    warnings,
+    targetBones,
+    restAudit,
+    sizeRaw: [size.x, size.y, size.z],
+  };
+};
+
+window.__bakeFromSource = async (target, skin, topBone, targetBones, srcSpec, opts, warnings, tgtRestWorldQ, tgtRestWorldP, outClips, restAudit) => {
+  const { animGlb, clips, boneMap } = srcSpec;
   // --- source rig ---
-  const animGltf = await gltfLoader.loadAsync(animGlbUrl);
+  const animGltf = await gltfLoader.loadAsync(animGlb);
   const source = animGltf.scene;
   const srcBones = new Map();
   source.traverse((o) => { if (o.isBone && !srcBones.has(o.name)) srcBones.set(o.name, o); });
 
-  // --- rest pose snapshots (both skeletons at bind pose) ---
   // World-frame delta transfer requires both rigs to FACE THE SAME WAY at
   // rest; srcYaw pre-rotates the source rig into the target's frame (the
   // Quaternius rig faces -Z, Synty faces +Z → srcYaw = π).
-  if (opts.srcYaw) source.rotation.y = opts.srcYaw;
-  skin.skeleton.pose();
-  target.updateMatrixWorld(true);
+  if (srcSpec.srcYaw) source.rotation.y = srcSpec.srcYaw;
   source.traverse((o) => { if (o.isSkinnedMesh) o.skeleton.pose(); });
   source.updateMatrixWorld(true);
 
-  const tgtRestWorldQ = new Map();
-  const tgtRestLocalP = new Map();
-  for (const b of targetBones) {
-    tgtRestWorldQ.set(b, b.getWorldQuaternion(new THREE.Quaternion()));
-    tgtRestLocalP.set(b, b.position.clone());
-  }
   const srcRestWorldQ = new Map();
   for (const [, b] of srcBones) srcRestWorldQ.set(b, b.getWorldQuaternion(new THREE.Quaternion()));
 
   const hipName = opts.hip ?? 'Hips';
-  const srcHipName = opts.srcHip ?? 'DEF-hips';
+  const srcHipName = srcSpec.srcHip ?? 'DEF-hips';
   const tgtHip = targetBones.find((b) => b.name === hipName);
   const srcHip = srcBones.get(srcHipName);
   if (!tgtHip || !srcHip) {
@@ -338,7 +381,7 @@ window.__bakeCore = async (target, skin, topBone, targetBones, animGlbUrl, clips
       `srcBones[${srcBones.size}]=${[...srcBones.keys()].slice(0, 8).join(',')}`
     );
   }
-  const tgtHipRestWorldP = tgtHip.getWorldPosition(new THREE.Vector3());
+  const tgtHipRestWorldP = tgtRestWorldP.get(tgtHip).clone();
   const srcHipRestWorldP = srcHip.getWorldPosition(new THREE.Vector3());
   // Hip translation transfer ratio, in each rig's own units.
   const hipScale = tgtHipRestWorldP.y / Math.max(srcHipRestWorldP.y, 1e-6);
@@ -356,9 +399,7 @@ window.__bakeCore = async (target, skin, topBone, targetBones, animGlbUrl, clips
 
   // Rest-correspondence audit: with both rigs at bind and world-aligned, each
   // mapped bone's direction toward its first mapped child should agree.
-  const restAudit = [];
   {
-    const bp = new THREE.Vector3(), bc = new THREE.Vector3();
     const sp = new THREE.Vector3(), sc = new THREE.Vector3();
     const mapped = new Map(pairs);
     for (const [b, s] of pairs) {
@@ -366,31 +407,29 @@ window.__bakeCore = async (target, skin, topBone, targetBones, animGlbUrl, clips
       b.traverse((o) => { if (!childB && o !== b && mapped.has(o)) childB = o; });
       if (!childB) continue;
       const childS = mapped.get(childB);
-      b.getWorldPosition(bp); childB.getWorldPosition(bc);
+      const dB = tgtRestWorldP.get(childB).clone().sub(tgtRestWorldP.get(b)).normalize();
       s.getWorldPosition(sp); childS.getWorldPosition(sc);
-      const dB = bc.sub(bp).normalize();
       const dS = sc.sub(sp).normalize();
       restAudit.push({ bone: b.name, dot: +dB.dot(dS).toFixed(3), tgtDir: dB.toArray().map((v) => +v.toFixed(2)), srcDir: dS.toArray().map((v) => +v.toFixed(2)) });
     }
   }
 
-  // Swing-matching data (opts.method === 'swing'): for rigs whose REST POSES
+  // Swing-matching data (method === 'swing'): for rigs whose REST POSES
   // are different body poses (the Quaternius zombie binds in a zombie-arms
-  // pose, not a T-pose), rest-delta transfer is meaningless. Instead rotate
-  // each target bone so its world bone-direction (toward its first mapped
-  // child) tracks the source's animated direction absolutely.
+  // pose, not a T-pose; the UAL2 mannequin binds in an A-pose), rest-delta
+  // transfer is meaningless. Instead rotate each target bone so its world
+  // bone-direction (toward its first mapped child) tracks the source's
+  // animated direction absolutely.
   const mappedT = new Map(pairs);
   const pairChild = new Map();
   const tgtRestDir = new Map();
-  if (opts.method === 'swing') {
-    const bp = new THREE.Vector3(), bc = new THREE.Vector3();
-    for (const [b, s] of pairs) {
+  if (srcSpec.method === 'swing') {
+    for (const [b] of pairs) {
       let childB = null;
       b.traverse((o) => { if (!childB && o !== b && mappedT.has(o)) childB = o; });
       if (!childB) continue;
       pairChild.set(b, [childB, mappedT.get(childB)]);
-      b.getWorldPosition(bp); childB.getWorldPosition(bc);
-      tgtRestDir.set(b, bc.sub(bp).normalize().clone());
+      tgtRestDir.set(b, tgtRestWorldP.get(childB).clone().sub(tgtRestWorldP.get(b)).normalize());
     }
   }
 
@@ -401,7 +440,6 @@ window.__bakeCore = async (target, skin, topBone, targetBones, animGlbUrl, clips
   const _swing = new THREE.Quaternion();
   const _v = new THREE.Vector3();
   const _v2 = new THREE.Vector3();
-  const outClips = [];
   for (const c of clips) {
     const clip = THREE.AnimationClip.findByName(animGltf.animations, c.src);
     if (!clip) { warnings.push(`missing source clip ${c.src}`); continue; }
@@ -461,32 +499,6 @@ window.__bakeCore = async (target, skin, topBone, targetBones, animGlbUrl, clips
     tracks.push(new THREE.VectorKeyframeTrack(`${tgtHip.name}.position`, times, hipValues));
     outClips.push(new THREE.AnimationClip(c.out, clip.duration, tracks));
   }
-
-  // Restore bind pose, then normalize overall height via root scale.
-  skin.skeleton.pose();
-  target.updateMatrixWorld(true);
-  const box = new THREE.Box3().setFromObject(skin);
-  const size = new THREE.Vector3();
-  box.getSize(size);
-  let root = target;
-  if (opts.targetHeight) {
-    const s = opts.targetHeight / size.y;
-    // Scale a wrapper, not the bones — keeps animation tracks in rig units.
-    const wrapper = new THREE.Group();
-    wrapper.name = `${target.name}_scaled`;
-    wrapper.add(target);
-    target.scale.setScalar(s);
-    wrapper.updateMatrixWorld(true);
-    root = wrapper;
-  }
-  return {
-    root,
-    outClips,
-    warnings,
-    targetBones,
-    restAudit,
-    sizeRaw: [size.x, size.y, size.z],
-  };
 };
 
 window.exportSkinned = async (fbxUrl, texUrl, animGlbUrl, clips, boneMap, opts = {}) => {

@@ -1115,7 +1115,8 @@ export class Game {
       this.actionLock = ACTIONS.throwLock;
       this.throwTimer = ACTIONS.throwCooldown;
       this.combatFaceT = Math.max(this.combatFaceT, ACTIONS.throwLock);
-      this.avatar.playMelee(); // overhand swing doubles as the throw wind-up
+      // Real overhand release (falls back to the punch swing internally).
+      this.avatar.playThrowRelease(ACTIONS.throwWindup);
     }
 
     // Aim-to-shoot: an unaimed trigger pull fires nothing — with a gun the

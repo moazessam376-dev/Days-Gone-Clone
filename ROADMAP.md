@@ -108,8 +108,14 @@ of floating at the hip; bike physics wheel radii measured from live-world
 bboxes after a matrix update and clamped to the smallest wheel — stale
 matrices had inflated them ~1.25-1.7x, floating the Synty moto 13cm and
 the user's bike 15cm above their tires; sleeping vehicles with zero wheel
-contacts self-heal by waking and dropping instead of freezing mid-air).
-Remaining: playtest sign-off.
+contacts self-heal by waking and dropping instead of freezing mid-air),
+fifth-playtest fix round (REAL throw animation — the CC0 Quaternius UAL2
+OverhandThrow swing-retargeted onto the Synty rig via new `extraAnims`
+multi-source support in the export; the aim-hold freezes the clip at its
+cocked frame, the release plays cock→follow-through timed to the windup;
+per-bike rendered stance — the rigid bike model slides vertically to the
+measured physics-hub vs authored-hub gap so tires meet the ground on both
+bikes at any suspension load). Remaining: playtest sign-off.
 
 ### R3 — Vehicles as a real system
 - Enter/exit animations, visible rider on the bike, per-vehicle handling

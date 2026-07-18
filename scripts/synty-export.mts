@@ -68,6 +68,16 @@ interface Job {
   method?: 'delta' | 'swing';
   simplify?: number;
   attachments?: Array<{ fbx: string; bone: string }>;
+  /** Extra animation sources baked into the same skinned export (their own
+   * rig + boneMap, e.g. the CC0 UAL2 library's Unreal-style mannequin). */
+  extraAnims?: Array<{
+    animGlb: string;
+    clips: Array<{ src: string; out: string; fps?: number }>;
+    boneMap: Record<string, string>;
+    srcHip?: string;
+    srcYaw?: number;
+    method?: 'delta' | 'swing';
+  }>;
 }
 
 function serve() {
@@ -176,7 +186,7 @@ async function main() {
           (fbx, t, anim, clips, boneMap, opts) =>
             (window as any).exportSkinned(fbx, t, anim, clips, boneMap, opts),
           url(m.fbx), tex, url(m.animGlb!), m.clips ?? [], m.boneMap ?? {},
-          { targetHeight: m.targetHeight, texSize: m.texSize, mesh: m.mesh, hip: m.hip, srcHip: m.srcHip, srcYaw: m.srcYaw, method: m.method, attachments: (m.attachments ?? []).map((a) => ({ url: url(a.fbx), bone: a.bone })) },
+          { targetHeight: m.targetHeight, texSize: m.texSize, mesh: m.mesh, hip: m.hip, srcHip: m.srcHip, srcYaw: m.srcYaw, method: m.method, attachments: (m.attachments ?? []).map((a) => ({ url: url(a.fbx), bone: a.bone })), extraAnims: (m.extraAnims ?? []).map((e) => ({ ...e, animGlb: url(e.animGlb) })) },
         );
       } else {
         result = await page.evaluate(

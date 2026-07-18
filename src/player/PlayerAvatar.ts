@@ -9,6 +9,11 @@ const UPPER_BONE_RE =
   /(spine[._]?0{1,2}[23]|neck|head|clavicle|shoulder|upper_arm|forearm|elbow|hand|f_index|f_middle|f_ring|f_pinky|thumb|finger_0)/i;
 /** Everything else (hips, spine 01, legs, feet) keeps playing locomotion. */
 
+/** OverhandThrow (1.33s) landmarks, found by frame-stepping the retargeted
+ * clip: arm fully cocked overhead at 0.35s, bottle leaves the hand ~0.6s. */
+const THROW_COCK_T = 0.35;
+const THROW_RELEASE_T = 0.6;
+
 export interface AvatarState {
   speed: number;
   aiming: boolean;
@@ -108,6 +113,19 @@ export class PlayerAvatar {
     this.reloadAction.setLoop(THREE.LoopOnce, 1);
     this.reloadBaseDuration = clip('Pistol_Reload').duration;
 
+    // Real throw animation (UAL2 OverhandThrow retargeted in the export).
+    // Aiming HOLDS the clip at its cocked frame; the release plays through.
+    // Optional so an older cached player.glb without the clip still boots —
+    // applyThrowPose falls back to the procedural arm.
+    try {
+      const throwClip = maskClip(clip('OverhandThrow'), true, 'upper');
+      this.throwAction = this.mixer.clipAction(throwClip);
+      this.throwAction.setLoop(THREE.LoopOnce, 1);
+      this.throwAction.clampWhenFinished = true;
+    } catch {
+      this.throwAction = null;
+    }
+
     // Arm bones for the procedural layers (two-hand grips, throw wind-up).
     this.object.traverse((o) => {
       if ((o as THREE.Bone).isBone) this.boneByName.set(o.name, o);
@@ -120,6 +138,8 @@ export class PlayerAvatar {
   private reloadAction!: THREE.AnimationAction;
   private meleeAction!: THREE.AnimationAction;
   private reloadBaseDuration = 1;
+  private throwAction: THREE.AnimationAction | null = null;
+  private throwReleasing = 0;
 
   /** Right-hand bone — mount point for weapon models. */
   get handBone(): THREE.Object3D | null {
@@ -201,7 +221,10 @@ export class PlayerAvatar {
     this.setTarget('sprint', wSprint * (1 - a) * rollSuppress);
     this.setTarget('idle_lower', (wIdle + wJog + wSprint) * a * rollSuppress);
     this.setTarget('walk_lower', wWalk * a * rollSuppress);
-    this.setTarget('idle_upper', a * throwing * rollSuppress);
+    // With the real OverhandThrow clip the wind-up owns the whole upper
+    // body — idle_upper at equal weight would average it down to a half-
+    // raised arm. Keep idle_upper only for the procedural fallback.
+    this.setTarget('idle_upper', this.throwAction ? 0 : a * throwing * rollSuppress);
     // Carry: partial neutral aim pose on the upper body (PropertyMixer
     // normalizes by cumulative weight, so legs stay full locomotion).
     const carry =
@@ -272,23 +295,61 @@ export class PlayerAvatar {
   }
 
   /**
-   * Cock the RIGHT arm beside the head for the throwable wind-up; the hand
-   * bone drags the bottle prop with it via WeaponRig's hand-follow.
+   * Throw wind-up. With the retargeted UAL2 OverhandThrow clip the aim-hold
+   * FREEZES the clip at its cocked frame (weight-blended in/out); the bottle
+   * follows the hand bone via WeaponRig's hand-follow. Fallback when the
+   * clip is missing: the old procedural cocked-arm IK.
    */
   applyThrowPose(weight: number, dt: number): void {
     this.ikWeightR += (weight - this.ikWeightR) * Math.min(1, dt * 12);
+    if (this.throwAction) {
+      if (this.throwReleasing > 0) {
+        // Release in flight — it owns the action until the clip finishes.
+        this.throwReleasing -= dt;
+        if (this.throwReleasing <= 0) this.throwAction.stop();
+        return;
+      }
+      if (this.ikWeightR < 0.02) {
+        this.throwAction.setEffectiveWeight(0);
+        return;
+      }
+      const a = this.throwAction;
+      if (!a.isRunning()) a.play();
+      a.paused = true;
+      a.time = THROW_COCK_T;
+      a.setEffectiveWeight(this.ikWeightR);
+      return;
+    }
     if (this.ikWeightR < 0.02) return;
     const head = this.boneByName.get('Head');
     if (!head) return;
     head.getWorldPosition(_ikTarget);
     this.object.getWorldQuaternion(_charQ);
     // Beside-and-BEHIND the ear, raised — a real wind-up. Model space:
-    // +x = character right, +z = behind (the rig faces -z). The old
-    // -0.12 z put the hand IN FRONT of the face, which read on camera as
-    // the arm crossing to the left (round-3 playtest bug).
+    // +x = character right, +z = behind (the rig faces -z).
     _ikOffset.set(0.34, 0.28, 0.16).applyQuaternion(_charQ);
     _ikTarget.add(_ikOffset);
     this.solveArm('R', _ikTarget, this.ikWeightR);
+  }
+
+  /**
+   * Play the throw release: from the cocked frame through the follow-through.
+   * @param windup seconds until the projectile leaves the hand — the clip's
+   *   cock→release span is time-scaled to land exactly on it.
+   */
+  playThrowRelease(windup: number): void {
+    if (!this.throwAction) {
+      this.playMelee(); // legacy fallback: overhand punch as the swing
+      return;
+    }
+    const a = this.throwAction;
+    a.reset();
+    a.time = THROW_COCK_T;
+    a.paused = false;
+    a.timeScale = (THROW_RELEASE_T - THROW_COCK_T) / Math.max(windup, 0.05);
+    a.setEffectiveWeight(1);
+    a.play();
+    this.throwReleasing = (a.getClip().duration - THROW_COCK_T) / a.timeScale;
   }
 
   private solveArm(side: 'L' | 'R', target: THREE.Vector3, weight: number): void {

@@ -40,6 +40,9 @@ export class BikeController {
   private lean = 0;
   /** Named wheel pivots (WheelF/WheelR in the exported GLB) spun by speed. */
   private spinWheels: Array<{ node: THREE.Object3D; radius: number }> = [];
+  private wheelHubY: number[] = [];
+  private modelBaseY = 0;
+  private modelLift = 0;
   /** Chassis footprint half-extents (for the zombie steering obstacle). */
   readonly halfExtents = { hw: 0.45, hd: 1.15 };
 
@@ -82,6 +85,7 @@ export class BikeController {
     const center = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());
     this.model.position.sub(center);
+    this.modelBaseY = this.model.position.y;
     this.root.add(this.model);
 
     this.body = physics.world.createRigidBody(
@@ -136,6 +140,9 @@ export class BikeController {
         restLength,
         w.radius,
       );
+      // Authored hub height per wheel — updateVisuals compares it with the
+      // live suspension to keep the rendered tires ON the ground.
+      this.wheelHubY.push(w.y);
     }
     for (let i = 0; i < 2; i++) {
       this.controller.setWheelSuspensionStiffness(i, 30);
@@ -235,8 +242,28 @@ export class BikeController {
     }
   }
 
-  updateVisuals(_dt = 0): void {
+  updateVisuals(dt = 0): void {
     this.model.rotation.z = this.lean;
+    // The bike model is RIGID (no per-wheel articulation), so the rendered
+    // stance depends only on the body height — which the solver sets from
+    // suspension equilibrium, NOT from the authored geometry. Slide the
+    // whole model vertically by the measured physics-hub vs authored-hub
+    // gap so the tires always meet the ground, per bike, at any load.
+    let sum = 0;
+    let n = 0;
+    for (let i = 0; i < this.wheelHubY.length; i++) {
+      if (!this.controller.wheelIsInContact(i)) continue;
+      const L = this.controller.wheelSuspensionLength(i);
+      const anchor = this.controller.wheelChassisConnectionPointCs(i);
+      if (L == null || !anchor) continue;
+      sum += anchor.y - L - this.wheelHubY[i];
+      n++;
+    }
+    if (n > 0) {
+      const target = sum / n;
+      this.modelLift += (target - this.modelLift) * Math.min(1, dt * 10 || 0.2);
+      this.model.position.y = this.modelBaseY + this.modelLift;
+    }
   }
 
   linvel(): { x: number; z: number } {

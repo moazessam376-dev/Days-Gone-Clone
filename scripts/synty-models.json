@@ -1,1610 +1,1653 @@
 {
-  "models": [
+ "models": [
+  {
+   "name": "wep_revolver",
+   "kind": "static",
+   "out": "weapons/revolver.glb",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Wep_Revolver_01.fbx",
+   "center": true,
+   "scale": 0.01,
+   "texSize": 512,
+   "rotY": 3.14159265
+  },
+  {
+   "name": "wep_rifle",
+   "kind": "static",
+   "out": "weapons/rifle.glb",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Wep_AssaultRifle_01.fbx",
+   "center": true,
+   "scale": 0.01,
+   "texSize": 512,
+   "rotY": 3.14159265
+  },
+  {
+   "name": "wep_shotgun",
+   "kind": "static",
+   "out": "weapons/shotgun.glb",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Wep_Shotgun_01.fbx",
+   "center": true,
+   "scale": 0.01,
+   "texSize": 512,
+   "rotY": 3.14159265
+  },
+  {
+   "name": "wep_sawnoff",
+   "kind": "static",
+   "out": "weapons/sawnoff.glb",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Wep_Hybrid_02.fbx",
+   "center": true,
+   "scale": 0.01,
+   "texSize": 512,
+   "rotY": 3.14159265,
+   "meshes": [
+    "SM_Wep_Hybrid_02"
+   ]
+  },
+  {
+   "name": "wep_grenade",
+   "kind": "static",
+   "out": "weapons/grenade.glb",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Wep_Grenade_01.fbx",
+   "center": true,
+   "scale": 0.01,
+   "texSize": 512,
+   "rotY": 3.14159265
+  },
+  {
+   "name": "wep_molotov",
+   "kind": "static",
+   "out": "weapons/molotov.glb",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Wep_Molotov_01.fbx",
+   "center": true,
+   "scale": 0.01,
+   "texSize": 512,
+   "rotY": 3.14159265
+  },
+  {
+   "name": "chr_player",
+   "kind": "skinned",
+   "out": "characters/player.glb",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/Characters.fbx",
+   "mesh": "SM_Chr_Hunter_Male_01",
+   "animGlb": "public/assets/models/player_base.glb",
+   "targetHeight": 1.8,
+   "hip": "Hips",
+   "srcHip": "DEF-hips",
+   "texSize": 1024,
+   "clips": [
     {
-      "name": "wep_revolver",
-      "kind": "static",
-      "out": "weapons/revolver.glb",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Wep_Revolver_01.fbx",
-      "center": true,
-      "scale": 0.01,
-      "texSize": 512,
-      "rotY": 3.14159265
+     "src": "Rig|Idle_Loop",
+     "out": "Rig|Idle_Loop"
     },
     {
-      "name": "wep_rifle",
-      "kind": "static",
-      "out": "weapons/rifle.glb",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Wep_AssaultRifle_01.fbx",
-      "center": true,
-      "scale": 0.01,
-      "texSize": 512,
-      "rotY": 3.14159265
+     "src": "Rig|Walk_Loop",
+     "out": "Rig|Walk_Loop"
     },
     {
-      "name": "wep_shotgun",
-      "kind": "static",
-      "out": "weapons/shotgun.glb",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Wep_Shotgun_01.fbx",
-      "center": true,
-      "scale": 0.01,
-      "texSize": 512,
-      "rotY": 3.14159265
+     "src": "Rig|Jog_Fwd_Loop",
+     "out": "Rig|Jog_Fwd_Loop"
     },
     {
-      "name": "wep_sawnoff",
-      "kind": "static",
-      "out": "weapons/sawnoff.glb",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Wep_Hybrid_02.fbx",
-      "center": true,
-      "scale": 0.01,
-      "texSize": 512,
-      "rotY": 3.14159265,
-      "meshes": [
-        "SM_Wep_Hybrid_02"
-      ]
+     "src": "Rig|Sprint_Loop",
+     "out": "Rig|Sprint_Loop"
     },
     {
-      "name": "wep_grenade",
-      "kind": "static",
-      "out": "weapons/grenade.glb",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Wep_Grenade_01.fbx",
-      "center": true,
-      "scale": 0.01,
-      "texSize": 512,
-      "rotY": 3.14159265
+     "src": "Rig|Pistol_Aim_Down",
+     "out": "Rig|Pistol_Aim_Down"
     },
     {
-      "name": "wep_molotov",
-      "kind": "static",
-      "out": "weapons/molotov.glb",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Wep_Molotov_01.fbx",
-      "center": true,
-      "scale": 0.01,
-      "texSize": 512,
-      "rotY": 3.14159265
+     "src": "Rig|Pistol_Aim_Neutral",
+     "out": "Rig|Pistol_Aim_Neutral"
     },
     {
-      "name": "chr_player",
-      "kind": "skinned",
-      "out": "characters/player.glb",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/Characters.fbx",
-      "mesh": "SM_Chr_Hunter_Male_01",
-      "animGlb": "public/assets/models/player_base.glb",
-      "targetHeight": 1.8,
-      "hip": "Hips",
-      "srcHip": "DEF-hips",
-      "texSize": 1024,
-      "clips": [
-        {
-          "src": "Rig|Idle_Loop",
-          "out": "Rig|Idle_Loop"
-        },
-        {
-          "src": "Rig|Walk_Loop",
-          "out": "Rig|Walk_Loop"
-        },
-        {
-          "src": "Rig|Jog_Fwd_Loop",
-          "out": "Rig|Jog_Fwd_Loop"
-        },
-        {
-          "src": "Rig|Sprint_Loop",
-          "out": "Rig|Sprint_Loop"
-        },
-        {
-          "src": "Rig|Pistol_Aim_Down",
-          "out": "Rig|Pistol_Aim_Down"
-        },
-        {
-          "src": "Rig|Pistol_Aim_Neutral",
-          "out": "Rig|Pistol_Aim_Neutral"
-        },
-        {
-          "src": "Rig|Pistol_Aim_Up",
-          "out": "Rig|Pistol_Aim_Up"
-        },
-        {
-          "src": "Rig|Roll",
-          "out": "Rig|Roll"
-        },
-        {
-          "src": "Rig|Pistol_Shoot",
-          "out": "Rig|Pistol_Shoot"
-        },
-        {
-          "src": "Rig|Punch_Cross",
-          "out": "Rig|Punch_Cross"
-        },
-        {
-          "src": "Rig|Pistol_Reload",
-          "out": "Rig|Pistol_Reload"
-        },
-        {
-          "src": "Rig|Death01",
-          "out": "Rig|Death01"
-        },
-        {
-          "src": "Rig|Hit_Chest",
-          "out": "Rig|Hit_Chest"
-        },
-        {
-          "src": "Rig|Driving_Loop",
-          "out": "Rig|Driving_Loop"
-        }
-      ],
-      "boneMap": {
-        "Root": "root",
-        "Hips": "DEF-hips",
-        "Spine_01": "DEF-spine001",
-        "Spine_02": "DEF-spine002",
-        "Spine_03": "DEF-spine003",
-        "Neck": "DEF-neck",
-        "Head": "DEF-head",
-        "Clavicle_L": "DEF-shoulderL",
-        "Clavicle_R": "DEF-shoulderR",
-        "Shoulder_L": "DEF-upper_armL",
-        "Shoulder_R": "DEF-upper_armR",
-        "Elbow_L": "DEF-forearmL",
-        "Elbow_R": "DEF-forearmR",
-        "Hand_L": "DEF-handL",
-        "Hand_R": "DEF-handR",
-        "UpperLeg_L": "DEF-thighL",
-        "UpperLeg_R": "DEF-thighR",
-        "LowerLeg_L": "DEF-shinL",
-        "LowerLeg_R": "DEF-shinR",
-        "Ankle_L": "DEF-footL",
-        "Ankle_R": "DEF-footR",
-        "Ball_L": "DEF-toeL",
-        "Ball_R": "DEF-toeR",
-        "Thumb_01_L": "DEF-thumb01L",
-        "IndexFinger_01_L": "DEF-f_index01L",
-        "Finger_01_L": "DEF-f_middle01L",
-        "Thumb_02_L": "DEF-thumb02L",
-        "IndexFinger_02_L": "DEF-f_index02L",
-        "Finger_02_L": "DEF-f_middle02L",
-        "Thumb_03_L": "DEF-thumb03L",
-        "IndexFinger_03_L": "DEF-f_index03L",
-        "Finger_03_L": "DEF-f_middle03L",
-        "Thumb_01_R": "DEF-thumb01R",
-        "IndexFinger_01_R": "DEF-f_index01R",
-        "Finger_01_R": "DEF-f_middle01R",
-        "Thumb_02_R": "DEF-thumb02R",
-        "IndexFinger_02_R": "DEF-f_index02R",
-        "Finger_02_R": "DEF-f_middle02R",
-        "Thumb_03_R": "DEF-thumb03R",
-        "IndexFinger_03_R": "DEF-f_index03R",
-        "Finger_03_R": "DEF-f_middle03R"
-      },
-      "srcYaw": 3.14159265,
-      "attachments": [
-        {
-          "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Chr_Attach_Hunter_Male_Hat_01.fbx",
-          "bone": "Head"
-        },
-        {
-          "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Chr_Attach_Hunter_Male_Beard_01.fbx",
-          "bone": "Head"
-        }
-      ]
+     "src": "Rig|Pistol_Aim_Up",
+     "out": "Rig|Pistol_Aim_Up"
     },
     {
-      "name": "test_identity",
-      "kind": "skinned",
-      "out": "characters/_identity_test.glb",
-      "fbx": "public/assets/models/player_base.glb",
-      "animGlb": "public/assets/models/player_base.glb",
-      "hip": "DEF-hips",
-      "srcHip": "DEF-hips",
-      "clips": [
-        {
-          "src": "Rig|Idle_Loop",
-          "out": "Rig|Idle_Loop"
-        },
-        {
-          "src": "Rig|Sprint_Loop",
-          "out": "Rig|Sprint_Loop"
-        },
-        {
-          "src": "Rig|Pistol_Aim_Neutral",
-          "out": "Rig|Pistol_Aim_Neutral"
-        }
-      ],
-      "boneMap": {
-        "root": "root",
-        "DEF-hips": "DEF-hips",
-        "DEF-spine001": "DEF-spine001",
-        "DEF-spine002": "DEF-spine002",
-        "DEF-spine003": "DEF-spine003",
-        "DEF-neck": "DEF-neck",
-        "DEF-head": "DEF-head",
-        "DEF-shoulderL": "DEF-shoulderL",
-        "DEF-upper_armL": "DEF-upper_armL",
-        "DEF-forearmL": "DEF-forearmL",
-        "DEF-handL": "DEF-handL",
-        "DEF-f_index01L": "DEF-f_index01L",
-        "DEF-f_index02L": "DEF-f_index02L",
-        "DEF-f_index03L": "DEF-f_index03L",
-        "DEF-f_middle01L": "DEF-f_middle01L",
-        "DEF-f_middle02L": "DEF-f_middle02L",
-        "DEF-f_middle03L": "DEF-f_middle03L",
-        "DEF-f_pinky01L": "DEF-f_pinky01L",
-        "DEF-f_pinky02L": "DEF-f_pinky02L",
-        "DEF-f_pinky03L": "DEF-f_pinky03L",
-        "DEF-f_ring01L": "DEF-f_ring01L",
-        "DEF-f_ring02L": "DEF-f_ring02L",
-        "DEF-f_ring03L": "DEF-f_ring03L",
-        "DEF-thumb01L": "DEF-thumb01L",
-        "DEF-thumb02L": "DEF-thumb02L",
-        "DEF-thumb03L": "DEF-thumb03L",
-        "DEF-shoulderR": "DEF-shoulderR",
-        "DEF-upper_armR": "DEF-upper_armR",
-        "DEF-forearmR": "DEF-forearmR",
-        "DEF-handR": "DEF-handR",
-        "DEF-f_index01R": "DEF-f_index01R",
-        "DEF-f_index02R": "DEF-f_index02R",
-        "DEF-f_index03R": "DEF-f_index03R",
-        "DEF-f_middle01R": "DEF-f_middle01R",
-        "DEF-f_middle02R": "DEF-f_middle02R",
-        "DEF-f_middle03R": "DEF-f_middle03R",
-        "DEF-f_pinky01R": "DEF-f_pinky01R",
-        "DEF-f_pinky02R": "DEF-f_pinky02R",
-        "DEF-f_pinky03R": "DEF-f_pinky03R",
-        "DEF-f_ring01R": "DEF-f_ring01R",
-        "DEF-f_ring02R": "DEF-f_ring02R",
-        "DEF-f_ring03R": "DEF-f_ring03R",
-        "DEF-thumb01R": "DEF-thumb01R",
-        "DEF-thumb02R": "DEF-thumb02R",
-        "DEF-thumb03R": "DEF-thumb03R",
-        "DEF-thighL": "DEF-thighL",
-        "DEF-shinL": "DEF-shinL",
-        "DEF-footL": "DEF-footL",
-        "DEF-toeL": "DEF-toeL",
-        "DEF-thighR": "DEF-thighR",
-        "DEF-shinR": "DEF-shinR",
-        "DEF-footR": "DEF-footR",
-        "DEF-toeR": "DEF-toeR"
-      }
+     "src": "Rig|Roll",
+     "out": "Rig|Roll"
     },
     {
-      "name": "zmb_hobo_male_01",
-      "kind": "skinned",
-      "out": "zombies/hobo_male_01.glb",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonZombies/Models/Zombies.fbx",
-      "mesh": "Zombie_Hobo_Male_01",
-      "tex": "assets/raw/synty/staged/Assets/PolygonZombies/Textures/PolygonZombie_Texture_01_A.png",
-      "animGlb": "public/assets/models/zombie.glb",
-      "targetHeight": 1.75,
-      "hip": "Hips",
-      "srcHip": "Hips",
-      "srcYaw": 0,
-      "texSize": 64,
-      "clips": [
-        {
-          "src": "Zombie|ZombieIdle",
-          "out": "Zombie|ZombieIdle"
-        },
-        {
-          "src": "Zombie|ZombieWalk",
-          "out": "Zombie|ZombieWalk"
-        },
-        {
-          "src": "Zombie|ZombieRun",
-          "out": "Zombie|ZombieRun"
-        },
-        {
-          "src": "Zombie|ZombieBite",
-          "out": "Zombie|ZombieBite"
-        },
-        {
-          "src": "Zombie|ZombieCrawl",
-          "out": "Zombie|ZombieCrawl"
-        }
-      ],
-      "boneMap": {
-        "Hips": "Hips",
-        "Spine_01": "Spine",
-        "Spine_02": "Spine1",
-        "Spine_03": "Spine2",
-        "Neck": "Neck",
-        "Head": "Head",
-        "Clavicle_L": "LeftShoulder",
-        "Shoulder_L": "LeftArm",
-        "Elbow_L": "LeftForeArm",
-        "Hand_L": "LeftHand",
-        "Clavicle_R": "RightShoulder",
-        "Shoulder_R": "RightArm",
-        "Elbow_R": "RightForeArm",
-        "Hand_R": "RightHand",
-        "UpperLeg_L": "LeftUpLeg",
-        "LowerLeg_L": "LeftLeg",
-        "Ankle_L": "LeftFoot",
-        "Ball_L": "LeftToeBase",
-        "UpperLeg_R": "RightUpLeg",
-        "LowerLeg_R": "RightLeg",
-        "Ankle_R": "RightFoot",
-        "Ball_R": "RightToeBase",
-        "Thumb_01_L": "LeftHandThumb1",
-        "Thumb_02_L": "LeftHandThumb2",
-        "Thumb_03_L": "LeftHandThumb3",
-        "IndexFinger_01_L": "LeftHandIndex1",
-        "Finger_01_L": "LeftHandIndex1",
-        "IndexFinger_02_L": "LeftHandIndex2",
-        "Finger_02_L": "LeftHandIndex2",
-        "IndexFinger_03_L": "LeftHandIndex3",
-        "Finger_03_L": "LeftHandIndex3",
-        "IndexFinger_04_L": "LeftHandIndex4",
-        "Finger_04_L": "LeftHandIndex4",
-        "Thumb_01_R": "RightHandThumb1",
-        "Thumb_02_R": "RightHandThumb2",
-        "Thumb_03_R": "RightHandThumb3",
-        "IndexFinger_01_R": "RightHandIndex1",
-        "Finger_01_R": "RightHandIndex1",
-        "IndexFinger_02_R": "RightHandIndex2",
-        "Finger_02_R": "RightHandIndex2",
-        "IndexFinger_03_R": "RightHandIndex3",
-        "Finger_03_R": "RightHandIndex3",
-        "IndexFinger_04_R": "RightHandIndex4",
-        "Finger_04_R": "RightHandIndex4"
-      },
-      "method": "swing"
+     "src": "Rig|Pistol_Shoot",
+     "out": "Rig|Pistol_Shoot"
     },
     {
-      "name": "zmb_hoodie_male_01",
-      "kind": "skinned",
-      "out": "zombies/hoodie_male_01.glb",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonZombies/Models/Zombies.fbx",
-      "mesh": "Zombie_Hoodie_Male_01",
-      "tex": "assets/raw/synty/staged/Assets/PolygonZombies/Textures/PolygonZombie_Texture_01_A.png",
-      "animGlb": "public/assets/models/zombie.glb",
-      "targetHeight": 1.75,
-      "hip": "Hips",
-      "srcHip": "Hips",
-      "srcYaw": 0,
-      "texSize": 64,
-      "clips": [
-        {
-          "src": "Zombie|ZombieIdle",
-          "out": "Zombie|ZombieIdle"
-        },
-        {
-          "src": "Zombie|ZombieWalk",
-          "out": "Zombie|ZombieWalk"
-        },
-        {
-          "src": "Zombie|ZombieRun",
-          "out": "Zombie|ZombieRun"
-        },
-        {
-          "src": "Zombie|ZombieBite",
-          "out": "Zombie|ZombieBite"
-        },
-        {
-          "src": "Zombie|ZombieCrawl",
-          "out": "Zombie|ZombieCrawl"
-        }
-      ],
-      "boneMap": {
-        "Hips": "Hips",
-        "Spine_01": "Spine",
-        "Spine_02": "Spine1",
-        "Spine_03": "Spine2",
-        "Neck": "Neck",
-        "Head": "Head",
-        "Clavicle_L": "LeftShoulder",
-        "Shoulder_L": "LeftArm",
-        "Elbow_L": "LeftForeArm",
-        "Hand_L": "LeftHand",
-        "Clavicle_R": "RightShoulder",
-        "Shoulder_R": "RightArm",
-        "Elbow_R": "RightForeArm",
-        "Hand_R": "RightHand",
-        "UpperLeg_L": "LeftUpLeg",
-        "LowerLeg_L": "LeftLeg",
-        "Ankle_L": "LeftFoot",
-        "Ball_L": "LeftToeBase",
-        "UpperLeg_R": "RightUpLeg",
-        "LowerLeg_R": "RightLeg",
-        "Ankle_R": "RightFoot",
-        "Ball_R": "RightToeBase",
-        "Thumb_01_L": "LeftHandThumb1",
-        "Thumb_02_L": "LeftHandThumb2",
-        "Thumb_03_L": "LeftHandThumb3",
-        "IndexFinger_01_L": "LeftHandIndex1",
-        "Finger_01_L": "LeftHandIndex1",
-        "IndexFinger_02_L": "LeftHandIndex2",
-        "Finger_02_L": "LeftHandIndex2",
-        "IndexFinger_03_L": "LeftHandIndex3",
-        "Finger_03_L": "LeftHandIndex3",
-        "IndexFinger_04_L": "LeftHandIndex4",
-        "Finger_04_L": "LeftHandIndex4",
-        "Thumb_01_R": "RightHandThumb1",
-        "Thumb_02_R": "RightHandThumb2",
-        "Thumb_03_R": "RightHandThumb3",
-        "IndexFinger_01_R": "RightHandIndex1",
-        "Finger_01_R": "RightHandIndex1",
-        "IndexFinger_02_R": "RightHandIndex2",
-        "Finger_02_R": "RightHandIndex2",
-        "IndexFinger_03_R": "RightHandIndex3",
-        "Finger_03_R": "RightHandIndex3",
-        "IndexFinger_04_R": "RightHandIndex4",
-        "Finger_04_R": "RightHandIndex4"
-      },
-      "method": "swing"
+     "src": "Rig|Punch_Cross",
+     "out": "Rig|Punch_Cross"
     },
     {
-      "name": "zmb_jacket_male_01",
-      "kind": "skinned",
-      "out": "zombies/jacket_male_01.glb",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonZombies/Models/Zombies.fbx",
-      "mesh": "Zombie_Jacket_Male_01",
-      "tex": "assets/raw/synty/staged/Assets/PolygonZombies/Textures/PolygonZombie_Texture_01_A.png",
-      "animGlb": "public/assets/models/zombie.glb",
-      "targetHeight": 1.75,
-      "hip": "Hips",
-      "srcHip": "Hips",
-      "srcYaw": 0,
-      "texSize": 64,
-      "clips": [
-        {
-          "src": "Zombie|ZombieIdle",
-          "out": "Zombie|ZombieIdle"
-        },
-        {
-          "src": "Zombie|ZombieWalk",
-          "out": "Zombie|ZombieWalk"
-        },
-        {
-          "src": "Zombie|ZombieRun",
-          "out": "Zombie|ZombieRun"
-        },
-        {
-          "src": "Zombie|ZombieBite",
-          "out": "Zombie|ZombieBite"
-        },
-        {
-          "src": "Zombie|ZombieCrawl",
-          "out": "Zombie|ZombieCrawl"
-        }
-      ],
-      "boneMap": {
-        "Hips": "Hips",
-        "Spine_01": "Spine",
-        "Spine_02": "Spine1",
-        "Spine_03": "Spine2",
-        "Neck": "Neck",
-        "Head": "Head",
-        "Clavicle_L": "LeftShoulder",
-        "Shoulder_L": "LeftArm",
-        "Elbow_L": "LeftForeArm",
-        "Hand_L": "LeftHand",
-        "Clavicle_R": "RightShoulder",
-        "Shoulder_R": "RightArm",
-        "Elbow_R": "RightForeArm",
-        "Hand_R": "RightHand",
-        "UpperLeg_L": "LeftUpLeg",
-        "LowerLeg_L": "LeftLeg",
-        "Ankle_L": "LeftFoot",
-        "Ball_L": "LeftToeBase",
-        "UpperLeg_R": "RightUpLeg",
-        "LowerLeg_R": "RightLeg",
-        "Ankle_R": "RightFoot",
-        "Ball_R": "RightToeBase",
-        "Thumb_01_L": "LeftHandThumb1",
-        "Thumb_02_L": "LeftHandThumb2",
-        "Thumb_03_L": "LeftHandThumb3",
-        "IndexFinger_01_L": "LeftHandIndex1",
-        "Finger_01_L": "LeftHandIndex1",
-        "IndexFinger_02_L": "LeftHandIndex2",
-        "Finger_02_L": "LeftHandIndex2",
-        "IndexFinger_03_L": "LeftHandIndex3",
-        "Finger_03_L": "LeftHandIndex3",
-        "IndexFinger_04_L": "LeftHandIndex4",
-        "Finger_04_L": "LeftHandIndex4",
-        "Thumb_01_R": "RightHandThumb1",
-        "Thumb_02_R": "RightHandThumb2",
-        "Thumb_03_R": "RightHandThumb3",
-        "IndexFinger_01_R": "RightHandIndex1",
-        "Finger_01_R": "RightHandIndex1",
-        "IndexFinger_02_R": "RightHandIndex2",
-        "Finger_02_R": "RightHandIndex2",
-        "IndexFinger_03_R": "RightHandIndex3",
-        "Finger_03_R": "RightHandIndex3",
-        "IndexFinger_04_R": "RightHandIndex4",
-        "Finger_04_R": "RightHandIndex4"
-      },
-      "method": "swing"
+     "src": "Rig|Pistol_Reload",
+     "out": "Rig|Pistol_Reload"
     },
     {
-      "name": "zmb_jacket_female_01",
-      "kind": "skinned",
-      "out": "zombies/jacket_female_01.glb",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonZombies/Models/Zombies.fbx",
-      "mesh": "Zombie_Jacket_Female_01",
-      "tex": "assets/raw/synty/staged/Assets/PolygonZombies/Textures/PolygonZombie_Texture_01_A.png",
-      "animGlb": "public/assets/models/zombie.glb",
-      "targetHeight": 1.75,
-      "hip": "Hips",
-      "srcHip": "Hips",
-      "srcYaw": 0,
-      "texSize": 64,
-      "clips": [
-        {
-          "src": "Zombie|ZombieIdle",
-          "out": "Zombie|ZombieIdle"
-        },
-        {
-          "src": "Zombie|ZombieWalk",
-          "out": "Zombie|ZombieWalk"
-        },
-        {
-          "src": "Zombie|ZombieRun",
-          "out": "Zombie|ZombieRun"
-        },
-        {
-          "src": "Zombie|ZombieBite",
-          "out": "Zombie|ZombieBite"
-        },
-        {
-          "src": "Zombie|ZombieCrawl",
-          "out": "Zombie|ZombieCrawl"
-        }
-      ],
-      "boneMap": {
-        "Hips": "Hips",
-        "Spine_01": "Spine",
-        "Spine_02": "Spine1",
-        "Spine_03": "Spine2",
-        "Neck": "Neck",
-        "Head": "Head",
-        "Clavicle_L": "LeftShoulder",
-        "Shoulder_L": "LeftArm",
-        "Elbow_L": "LeftForeArm",
-        "Hand_L": "LeftHand",
-        "Clavicle_R": "RightShoulder",
-        "Shoulder_R": "RightArm",
-        "Elbow_R": "RightForeArm",
-        "Hand_R": "RightHand",
-        "UpperLeg_L": "LeftUpLeg",
-        "LowerLeg_L": "LeftLeg",
-        "Ankle_L": "LeftFoot",
-        "Ball_L": "LeftToeBase",
-        "UpperLeg_R": "RightUpLeg",
-        "LowerLeg_R": "RightLeg",
-        "Ankle_R": "RightFoot",
-        "Ball_R": "RightToeBase",
-        "Thumb_01_L": "LeftHandThumb1",
-        "Thumb_02_L": "LeftHandThumb2",
-        "Thumb_03_L": "LeftHandThumb3",
-        "IndexFinger_01_L": "LeftHandIndex1",
-        "Finger_01_L": "LeftHandIndex1",
-        "IndexFinger_02_L": "LeftHandIndex2",
-        "Finger_02_L": "LeftHandIndex2",
-        "IndexFinger_03_L": "LeftHandIndex3",
-        "Finger_03_L": "LeftHandIndex3",
-        "IndexFinger_04_L": "LeftHandIndex4",
-        "Finger_04_L": "LeftHandIndex4",
-        "Thumb_01_R": "RightHandThumb1",
-        "Thumb_02_R": "RightHandThumb2",
-        "Thumb_03_R": "RightHandThumb3",
-        "IndexFinger_01_R": "RightHandIndex1",
-        "Finger_01_R": "RightHandIndex1",
-        "IndexFinger_02_R": "RightHandIndex2",
-        "Finger_02_R": "RightHandIndex2",
-        "IndexFinger_03_R": "RightHandIndex3",
-        "Finger_03_R": "RightHandIndex3",
-        "IndexFinger_04_R": "RightHandIndex4",
-        "Finger_04_R": "RightHandIndex4"
-      },
-      "method": "swing"
+     "src": "Rig|Death01",
+     "out": "Rig|Death01"
     },
     {
-      "name": "zmb_coat_female_01",
-      "kind": "skinned",
-      "out": "zombies/coat_female_01.glb",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonZombies/Models/Zombies.fbx",
-      "mesh": "Zombie_Coat_Female_01",
-      "tex": "assets/raw/synty/staged/Assets/PolygonZombies/Textures/PolygonZombie_Texture_01_A.png",
-      "animGlb": "public/assets/models/zombie.glb",
-      "targetHeight": 1.75,
-      "hip": "Hips",
-      "srcHip": "Hips",
-      "srcYaw": 0,
-      "texSize": 64,
-      "clips": [
-        {
-          "src": "Zombie|ZombieIdle",
-          "out": "Zombie|ZombieIdle"
-        },
-        {
-          "src": "Zombie|ZombieWalk",
-          "out": "Zombie|ZombieWalk"
-        },
-        {
-          "src": "Zombie|ZombieRun",
-          "out": "Zombie|ZombieRun"
-        },
-        {
-          "src": "Zombie|ZombieBite",
-          "out": "Zombie|ZombieBite"
-        },
-        {
-          "src": "Zombie|ZombieCrawl",
-          "out": "Zombie|ZombieCrawl"
-        }
-      ],
-      "boneMap": {
-        "Hips": "Hips",
-        "Spine_01": "Spine",
-        "Spine_02": "Spine1",
-        "Spine_03": "Spine2",
-        "Neck": "Neck",
-        "Head": "Head",
-        "Clavicle_L": "LeftShoulder",
-        "Shoulder_L": "LeftArm",
-        "Elbow_L": "LeftForeArm",
-        "Hand_L": "LeftHand",
-        "Clavicle_R": "RightShoulder",
-        "Shoulder_R": "RightArm",
-        "Elbow_R": "RightForeArm",
-        "Hand_R": "RightHand",
-        "UpperLeg_L": "LeftUpLeg",
-        "LowerLeg_L": "LeftLeg",
-        "Ankle_L": "LeftFoot",
-        "Ball_L": "LeftToeBase",
-        "UpperLeg_R": "RightUpLeg",
-        "LowerLeg_R": "RightLeg",
-        "Ankle_R": "RightFoot",
-        "Ball_R": "RightToeBase",
-        "Thumb_01_L": "LeftHandThumb1",
-        "Thumb_02_L": "LeftHandThumb2",
-        "Thumb_03_L": "LeftHandThumb3",
-        "IndexFinger_01_L": "LeftHandIndex1",
-        "Finger_01_L": "LeftHandIndex1",
-        "IndexFinger_02_L": "LeftHandIndex2",
-        "Finger_02_L": "LeftHandIndex2",
-        "IndexFinger_03_L": "LeftHandIndex3",
-        "Finger_03_L": "LeftHandIndex3",
-        "IndexFinger_04_L": "LeftHandIndex4",
-        "Finger_04_L": "LeftHandIndex4",
-        "Thumb_01_R": "RightHandThumb1",
-        "Thumb_02_R": "RightHandThumb2",
-        "Thumb_03_R": "RightHandThumb3",
-        "IndexFinger_01_R": "RightHandIndex1",
-        "Finger_01_R": "RightHandIndex1",
-        "IndexFinger_02_R": "RightHandIndex2",
-        "Finger_02_R": "RightHandIndex2",
-        "IndexFinger_03_R": "RightHandIndex3",
-        "Finger_03_R": "RightHandIndex3",
-        "IndexFinger_04_R": "RightHandIndex4",
-        "Finger_04_R": "RightHandIndex4"
-      },
-      "method": "swing"
+     "src": "Rig|Hit_Chest",
+     "out": "Rig|Hit_Chest"
     },
     {
-      "name": "zmb_punk_male_01",
-      "kind": "skinned",
-      "out": "zombies/punk_male_01.glb",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonZombies/Models/Zombies.fbx",
-      "mesh": "Zombie_Punk_Male_01",
-      "tex": "assets/raw/synty/staged/Assets/PolygonZombies/Textures/PolygonZombie_Texture_01_A.png",
-      "animGlb": "public/assets/models/zombie.glb",
-      "targetHeight": 1.75,
-      "hip": "Hips",
-      "srcHip": "Hips",
-      "srcYaw": 0,
-      "texSize": 64,
-      "clips": [
-        {
-          "src": "Zombie|ZombieIdle",
-          "out": "Zombie|ZombieIdle"
-        },
-        {
-          "src": "Zombie|ZombieWalk",
-          "out": "Zombie|ZombieWalk"
-        },
-        {
-          "src": "Zombie|ZombieRun",
-          "out": "Zombie|ZombieRun"
-        },
-        {
-          "src": "Zombie|ZombieBite",
-          "out": "Zombie|ZombieBite"
-        },
-        {
-          "src": "Zombie|ZombieCrawl",
-          "out": "Zombie|ZombieCrawl"
-        }
-      ],
-      "boneMap": {
-        "Hips": "Hips",
-        "Spine_01": "Spine",
-        "Spine_02": "Spine1",
-        "Spine_03": "Spine2",
-        "Neck": "Neck",
-        "Head": "Head",
-        "Clavicle_L": "LeftShoulder",
-        "Shoulder_L": "LeftArm",
-        "Elbow_L": "LeftForeArm",
-        "Hand_L": "LeftHand",
-        "Clavicle_R": "RightShoulder",
-        "Shoulder_R": "RightArm",
-        "Elbow_R": "RightForeArm",
-        "Hand_R": "RightHand",
-        "UpperLeg_L": "LeftUpLeg",
-        "LowerLeg_L": "LeftLeg",
-        "Ankle_L": "LeftFoot",
-        "Ball_L": "LeftToeBase",
-        "UpperLeg_R": "RightUpLeg",
-        "LowerLeg_R": "RightLeg",
-        "Ankle_R": "RightFoot",
-        "Ball_R": "RightToeBase",
-        "Thumb_01_L": "LeftHandThumb1",
-        "Thumb_02_L": "LeftHandThumb2",
-        "Thumb_03_L": "LeftHandThumb3",
-        "IndexFinger_01_L": "LeftHandIndex1",
-        "Finger_01_L": "LeftHandIndex1",
-        "IndexFinger_02_L": "LeftHandIndex2",
-        "Finger_02_L": "LeftHandIndex2",
-        "IndexFinger_03_L": "LeftHandIndex3",
-        "Finger_03_L": "LeftHandIndex3",
-        "IndexFinger_04_L": "LeftHandIndex4",
-        "Finger_04_L": "LeftHandIndex4",
-        "Thumb_01_R": "RightHandThumb1",
-        "Thumb_02_R": "RightHandThumb2",
-        "Thumb_03_R": "RightHandThumb3",
-        "IndexFinger_01_R": "RightHandIndex1",
-        "Finger_01_R": "RightHandIndex1",
-        "IndexFinger_02_R": "RightHandIndex2",
-        "Finger_02_R": "RightHandIndex2",
-        "IndexFinger_03_R": "RightHandIndex3",
-        "Finger_03_R": "RightHandIndex3",
-        "IndexFinger_04_R": "RightHandIndex4",
-        "Finger_04_R": "RightHandIndex4"
-      },
-      "method": "swing"
-    },
-    {
-      "name": "zmb_roadworker_male_01",
-      "kind": "skinned",
-      "out": "zombies/roadworker_male_01.glb",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonZombies/Models/Zombies.fbx",
-      "mesh": "Zombie_Roadworker_Male_01",
-      "tex": "assets/raw/synty/staged/Assets/PolygonZombies/Textures/PolygonZombie_Texture_01_A.png",
-      "animGlb": "public/assets/models/zombie.glb",
-      "targetHeight": 1.75,
-      "hip": "Hips",
-      "srcHip": "Hips",
-      "srcYaw": 0,
-      "texSize": 64,
-      "clips": [
-        {
-          "src": "Zombie|ZombieIdle",
-          "out": "Zombie|ZombieIdle"
-        },
-        {
-          "src": "Zombie|ZombieWalk",
-          "out": "Zombie|ZombieWalk"
-        },
-        {
-          "src": "Zombie|ZombieRun",
-          "out": "Zombie|ZombieRun"
-        },
-        {
-          "src": "Zombie|ZombieBite",
-          "out": "Zombie|ZombieBite"
-        },
-        {
-          "src": "Zombie|ZombieCrawl",
-          "out": "Zombie|ZombieCrawl"
-        }
-      ],
-      "boneMap": {
-        "Hips": "Hips",
-        "Spine_01": "Spine",
-        "Spine_02": "Spine1",
-        "Spine_03": "Spine2",
-        "Neck": "Neck",
-        "Head": "Head",
-        "Clavicle_L": "LeftShoulder",
-        "Shoulder_L": "LeftArm",
-        "Elbow_L": "LeftForeArm",
-        "Hand_L": "LeftHand",
-        "Clavicle_R": "RightShoulder",
-        "Shoulder_R": "RightArm",
-        "Elbow_R": "RightForeArm",
-        "Hand_R": "RightHand",
-        "UpperLeg_L": "LeftUpLeg",
-        "LowerLeg_L": "LeftLeg",
-        "Ankle_L": "LeftFoot",
-        "Ball_L": "LeftToeBase",
-        "UpperLeg_R": "RightUpLeg",
-        "LowerLeg_R": "RightLeg",
-        "Ankle_R": "RightFoot",
-        "Ball_R": "RightToeBase",
-        "Thumb_01_L": "LeftHandThumb1",
-        "Thumb_02_L": "LeftHandThumb2",
-        "Thumb_03_L": "LeftHandThumb3",
-        "IndexFinger_01_L": "LeftHandIndex1",
-        "Finger_01_L": "LeftHandIndex1",
-        "IndexFinger_02_L": "LeftHandIndex2",
-        "Finger_02_L": "LeftHandIndex2",
-        "IndexFinger_03_L": "LeftHandIndex3",
-        "Finger_03_L": "LeftHandIndex3",
-        "IndexFinger_04_L": "LeftHandIndex4",
-        "Finger_04_L": "LeftHandIndex4",
-        "Thumb_01_R": "RightHandThumb1",
-        "Thumb_02_R": "RightHandThumb2",
-        "Thumb_03_R": "RightHandThumb3",
-        "IndexFinger_01_R": "RightHandIndex1",
-        "Finger_01_R": "RightHandIndex1",
-        "IndexFinger_02_R": "RightHandIndex2",
-        "Finger_02_R": "RightHandIndex2",
-        "IndexFinger_03_R": "RightHandIndex3",
-        "Finger_03_R": "RightHandIndex3",
-        "IndexFinger_04_R": "RightHandIndex4",
-        "Finger_04_R": "RightHandIndex4"
-      },
-      "method": "swing"
-    },
-    {
-      "name": "zmb_businessman_male_01",
-      "kind": "skinned",
-      "out": "zombies/businessman_male_01.glb",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonZombies/Models/Zombies.fbx",
-      "mesh": "Zombie_Businessman_Male_01",
-      "tex": "assets/raw/synty/staged/Assets/PolygonZombies/Textures/PolygonZombie_Texture_01_A.png",
-      "animGlb": "public/assets/models/zombie.glb",
-      "targetHeight": 1.75,
-      "hip": "Hips",
-      "srcHip": "Hips",
-      "srcYaw": 0,
-      "texSize": 64,
-      "clips": [
-        {
-          "src": "Zombie|ZombieIdle",
-          "out": "Zombie|ZombieIdle"
-        },
-        {
-          "src": "Zombie|ZombieWalk",
-          "out": "Zombie|ZombieWalk"
-        },
-        {
-          "src": "Zombie|ZombieRun",
-          "out": "Zombie|ZombieRun"
-        },
-        {
-          "src": "Zombie|ZombieBite",
-          "out": "Zombie|ZombieBite"
-        },
-        {
-          "src": "Zombie|ZombieCrawl",
-          "out": "Zombie|ZombieCrawl"
-        }
-      ],
-      "boneMap": {
-        "Hips": "Hips",
-        "Spine_01": "Spine",
-        "Spine_02": "Spine1",
-        "Spine_03": "Spine2",
-        "Neck": "Neck",
-        "Head": "Head",
-        "Clavicle_L": "LeftShoulder",
-        "Shoulder_L": "LeftArm",
-        "Elbow_L": "LeftForeArm",
-        "Hand_L": "LeftHand",
-        "Clavicle_R": "RightShoulder",
-        "Shoulder_R": "RightArm",
-        "Elbow_R": "RightForeArm",
-        "Hand_R": "RightHand",
-        "UpperLeg_L": "LeftUpLeg",
-        "LowerLeg_L": "LeftLeg",
-        "Ankle_L": "LeftFoot",
-        "Ball_L": "LeftToeBase",
-        "UpperLeg_R": "RightUpLeg",
-        "LowerLeg_R": "RightLeg",
-        "Ankle_R": "RightFoot",
-        "Ball_R": "RightToeBase",
-        "Thumb_01_L": "LeftHandThumb1",
-        "Thumb_02_L": "LeftHandThumb2",
-        "Thumb_03_L": "LeftHandThumb3",
-        "IndexFinger_01_L": "LeftHandIndex1",
-        "Finger_01_L": "LeftHandIndex1",
-        "IndexFinger_02_L": "LeftHandIndex2",
-        "Finger_02_L": "LeftHandIndex2",
-        "IndexFinger_03_L": "LeftHandIndex3",
-        "Finger_03_L": "LeftHandIndex3",
-        "IndexFinger_04_L": "LeftHandIndex4",
-        "Finger_04_L": "LeftHandIndex4",
-        "Thumb_01_R": "RightHandThumb1",
-        "Thumb_02_R": "RightHandThumb2",
-        "Thumb_03_R": "RightHandThumb3",
-        "IndexFinger_01_R": "RightHandIndex1",
-        "Finger_01_R": "RightHandIndex1",
-        "IndexFinger_02_R": "RightHandIndex2",
-        "Finger_02_R": "RightHandIndex2",
-        "IndexFinger_03_R": "RightHandIndex3",
-        "Finger_03_R": "RightHandIndex3",
-        "IndexFinger_04_R": "RightHandIndex4",
-        "Finger_04_R": "RightHandIndex4"
-      },
-      "method": "swing"
-    },
-    {
-      "name": "zmb_shopkeeper_female_01",
-      "kind": "skinned",
-      "out": "zombies/shopkeeper_female_01.glb",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonZombies/Models/Zombies.fbx",
-      "mesh": "Zombie_ShopKeeper_Female_01",
-      "tex": "assets/raw/synty/staged/Assets/PolygonZombies/Textures/PolygonZombie_Texture_01_A.png",
-      "animGlb": "public/assets/models/zombie.glb",
-      "targetHeight": 1.75,
-      "hip": "Hips",
-      "srcHip": "Hips",
-      "srcYaw": 0,
-      "texSize": 64,
-      "clips": [
-        {
-          "src": "Zombie|ZombieIdle",
-          "out": "Zombie|ZombieIdle"
-        },
-        {
-          "src": "Zombie|ZombieWalk",
-          "out": "Zombie|ZombieWalk"
-        },
-        {
-          "src": "Zombie|ZombieRun",
-          "out": "Zombie|ZombieRun"
-        },
-        {
-          "src": "Zombie|ZombieBite",
-          "out": "Zombie|ZombieBite"
-        },
-        {
-          "src": "Zombie|ZombieCrawl",
-          "out": "Zombie|ZombieCrawl"
-        }
-      ],
-      "boneMap": {
-        "Hips": "Hips",
-        "Spine_01": "Spine",
-        "Spine_02": "Spine1",
-        "Spine_03": "Spine2",
-        "Neck": "Neck",
-        "Head": "Head",
-        "Clavicle_L": "LeftShoulder",
-        "Shoulder_L": "LeftArm",
-        "Elbow_L": "LeftForeArm",
-        "Hand_L": "LeftHand",
-        "Clavicle_R": "RightShoulder",
-        "Shoulder_R": "RightArm",
-        "Elbow_R": "RightForeArm",
-        "Hand_R": "RightHand",
-        "UpperLeg_L": "LeftUpLeg",
-        "LowerLeg_L": "LeftLeg",
-        "Ankle_L": "LeftFoot",
-        "Ball_L": "LeftToeBase",
-        "UpperLeg_R": "RightUpLeg",
-        "LowerLeg_R": "RightLeg",
-        "Ankle_R": "RightFoot",
-        "Ball_R": "RightToeBase",
-        "Thumb_01_L": "LeftHandThumb1",
-        "Thumb_02_L": "LeftHandThumb2",
-        "Thumb_03_L": "LeftHandThumb3",
-        "IndexFinger_01_L": "LeftHandIndex1",
-        "Finger_01_L": "LeftHandIndex1",
-        "IndexFinger_02_L": "LeftHandIndex2",
-        "Finger_02_L": "LeftHandIndex2",
-        "IndexFinger_03_L": "LeftHandIndex3",
-        "Finger_03_L": "LeftHandIndex3",
-        "IndexFinger_04_L": "LeftHandIndex4",
-        "Finger_04_L": "LeftHandIndex4",
-        "Thumb_01_R": "RightHandThumb1",
-        "Thumb_02_R": "RightHandThumb2",
-        "Thumb_03_R": "RightHandThumb3",
-        "IndexFinger_01_R": "RightHandIndex1",
-        "Finger_01_R": "RightHandIndex1",
-        "IndexFinger_02_R": "RightHandIndex2",
-        "Finger_02_R": "RightHandIndex2",
-        "IndexFinger_03_R": "RightHandIndex3",
-        "Finger_03_R": "RightHandIndex3",
-        "IndexFinger_04_R": "RightHandIndex4",
-        "Finger_04_R": "RightHandIndex4"
-      },
-      "method": "swing"
-    },
-    {
-      "name": "zmb_tourist_male_01",
-      "kind": "skinned",
-      "out": "zombies/tourist_male_01.glb",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonZombies/Models/Zombies.fbx",
-      "mesh": "Zombie_Tourist_Male_01",
-      "tex": "assets/raw/synty/staged/Assets/PolygonZombies/Textures/PolygonZombie_Texture_01_A.png",
-      "animGlb": "public/assets/models/zombie.glb",
-      "targetHeight": 1.75,
-      "hip": "Hips",
-      "srcHip": "Hips",
-      "srcYaw": 0,
-      "texSize": 64,
-      "clips": [
-        {
-          "src": "Zombie|ZombieIdle",
-          "out": "Zombie|ZombieIdle"
-        },
-        {
-          "src": "Zombie|ZombieWalk",
-          "out": "Zombie|ZombieWalk"
-        },
-        {
-          "src": "Zombie|ZombieRun",
-          "out": "Zombie|ZombieRun"
-        },
-        {
-          "src": "Zombie|ZombieBite",
-          "out": "Zombie|ZombieBite"
-        },
-        {
-          "src": "Zombie|ZombieCrawl",
-          "out": "Zombie|ZombieCrawl"
-        }
-      ],
-      "boneMap": {
-        "Hips": "Hips",
-        "Spine_01": "Spine",
-        "Spine_02": "Spine1",
-        "Spine_03": "Spine2",
-        "Neck": "Neck",
-        "Head": "Head",
-        "Clavicle_L": "LeftShoulder",
-        "Shoulder_L": "LeftArm",
-        "Elbow_L": "LeftForeArm",
-        "Hand_L": "LeftHand",
-        "Clavicle_R": "RightShoulder",
-        "Shoulder_R": "RightArm",
-        "Elbow_R": "RightForeArm",
-        "Hand_R": "RightHand",
-        "UpperLeg_L": "LeftUpLeg",
-        "LowerLeg_L": "LeftLeg",
-        "Ankle_L": "LeftFoot",
-        "Ball_L": "LeftToeBase",
-        "UpperLeg_R": "RightUpLeg",
-        "LowerLeg_R": "RightLeg",
-        "Ankle_R": "RightFoot",
-        "Ball_R": "RightToeBase",
-        "Thumb_01_L": "LeftHandThumb1",
-        "Thumb_02_L": "LeftHandThumb2",
-        "Thumb_03_L": "LeftHandThumb3",
-        "IndexFinger_01_L": "LeftHandIndex1",
-        "Finger_01_L": "LeftHandIndex1",
-        "IndexFinger_02_L": "LeftHandIndex2",
-        "Finger_02_L": "LeftHandIndex2",
-        "IndexFinger_03_L": "LeftHandIndex3",
-        "Finger_03_L": "LeftHandIndex3",
-        "IndexFinger_04_L": "LeftHandIndex4",
-        "Finger_04_L": "LeftHandIndex4",
-        "Thumb_01_R": "RightHandThumb1",
-        "Thumb_02_R": "RightHandThumb2",
-        "Thumb_03_R": "RightHandThumb3",
-        "IndexFinger_01_R": "RightHandIndex1",
-        "Finger_01_R": "RightHandIndex1",
-        "IndexFinger_02_R": "RightHandIndex2",
-        "Finger_02_R": "RightHandIndex2",
-        "IndexFinger_03_R": "RightHandIndex3",
-        "Finger_03_R": "RightHandIndex3",
-        "IndexFinger_04_R": "RightHandIndex4",
-        "Finger_04_R": "RightHandIndex4"
-      },
-      "method": "swing"
-    },
-    {
-      "name": "zmb_father_male_01",
-      "kind": "skinned",
-      "out": "zombies/father_male_01.glb",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonZombies/Models/Zombies.fbx",
-      "mesh": "Zombie_Father_Male_01",
-      "tex": "assets/raw/synty/staged/Assets/PolygonZombies/Textures/PolygonZombie_Texture_01_A.png",
-      "animGlb": "public/assets/models/zombie.glb",
-      "targetHeight": 1.75,
-      "hip": "Hips",
-      "srcHip": "Hips",
-      "srcYaw": 0,
-      "texSize": 64,
-      "clips": [
-        {
-          "src": "Zombie|ZombieIdle",
-          "out": "Zombie|ZombieIdle"
-        },
-        {
-          "src": "Zombie|ZombieWalk",
-          "out": "Zombie|ZombieWalk"
-        },
-        {
-          "src": "Zombie|ZombieRun",
-          "out": "Zombie|ZombieRun"
-        },
-        {
-          "src": "Zombie|ZombieBite",
-          "out": "Zombie|ZombieBite"
-        },
-        {
-          "src": "Zombie|ZombieCrawl",
-          "out": "Zombie|ZombieCrawl"
-        }
-      ],
-      "boneMap": {
-        "Hips": "Hips",
-        "Spine_01": "Spine",
-        "Spine_02": "Spine1",
-        "Spine_03": "Spine2",
-        "Neck": "Neck",
-        "Head": "Head",
-        "Clavicle_L": "LeftShoulder",
-        "Shoulder_L": "LeftArm",
-        "Elbow_L": "LeftForeArm",
-        "Hand_L": "LeftHand",
-        "Clavicle_R": "RightShoulder",
-        "Shoulder_R": "RightArm",
-        "Elbow_R": "RightForeArm",
-        "Hand_R": "RightHand",
-        "UpperLeg_L": "LeftUpLeg",
-        "LowerLeg_L": "LeftLeg",
-        "Ankle_L": "LeftFoot",
-        "Ball_L": "LeftToeBase",
-        "UpperLeg_R": "RightUpLeg",
-        "LowerLeg_R": "RightLeg",
-        "Ankle_R": "RightFoot",
-        "Ball_R": "RightToeBase",
-        "Thumb_01_L": "LeftHandThumb1",
-        "Thumb_02_L": "LeftHandThumb2",
-        "Thumb_03_L": "LeftHandThumb3",
-        "IndexFinger_01_L": "LeftHandIndex1",
-        "Finger_01_L": "LeftHandIndex1",
-        "IndexFinger_02_L": "LeftHandIndex2",
-        "Finger_02_L": "LeftHandIndex2",
-        "IndexFinger_03_L": "LeftHandIndex3",
-        "Finger_03_L": "LeftHandIndex3",
-        "IndexFinger_04_L": "LeftHandIndex4",
-        "Finger_04_L": "LeftHandIndex4",
-        "Thumb_01_R": "RightHandThumb1",
-        "Thumb_02_R": "RightHandThumb2",
-        "Thumb_03_R": "RightHandThumb3",
-        "IndexFinger_01_R": "RightHandIndex1",
-        "Finger_01_R": "RightHandIndex1",
-        "IndexFinger_02_R": "RightHandIndex2",
-        "Finger_02_R": "RightHandIndex2",
-        "IndexFinger_03_R": "RightHandIndex3",
-        "Finger_03_R": "RightHandIndex3",
-        "IndexFinger_04_R": "RightHandIndex4",
-        "Finger_04_R": "RightHandIndex4"
-      },
-      "method": "swing"
-    },
-    {
-      "name": "zmb_mother_female_01",
-      "kind": "skinned",
-      "out": "zombies/mother_female_01.glb",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonZombies/Models/Zombies.fbx",
-      "mesh": "Zombie_Mother_Female_01",
-      "tex": "assets/raw/synty/staged/Assets/PolygonZombies/Textures/PolygonZombie_Texture_01_A.png",
-      "animGlb": "public/assets/models/zombie.glb",
-      "targetHeight": 1.75,
-      "hip": "Hips",
-      "srcHip": "Hips",
-      "srcYaw": 0,
-      "texSize": 64,
-      "clips": [
-        {
-          "src": "Zombie|ZombieIdle",
-          "out": "Zombie|ZombieIdle"
-        },
-        {
-          "src": "Zombie|ZombieWalk",
-          "out": "Zombie|ZombieWalk"
-        },
-        {
-          "src": "Zombie|ZombieRun",
-          "out": "Zombie|ZombieRun"
-        },
-        {
-          "src": "Zombie|ZombieBite",
-          "out": "Zombie|ZombieBite"
-        },
-        {
-          "src": "Zombie|ZombieCrawl",
-          "out": "Zombie|ZombieCrawl"
-        }
-      ],
-      "boneMap": {
-        "Hips": "Hips",
-        "Spine_01": "Spine",
-        "Spine_02": "Spine1",
-        "Spine_03": "Spine2",
-        "Neck": "Neck",
-        "Head": "Head",
-        "Clavicle_L": "LeftShoulder",
-        "Shoulder_L": "LeftArm",
-        "Elbow_L": "LeftForeArm",
-        "Hand_L": "LeftHand",
-        "Clavicle_R": "RightShoulder",
-        "Shoulder_R": "RightArm",
-        "Elbow_R": "RightForeArm",
-        "Hand_R": "RightHand",
-        "UpperLeg_L": "LeftUpLeg",
-        "LowerLeg_L": "LeftLeg",
-        "Ankle_L": "LeftFoot",
-        "Ball_L": "LeftToeBase",
-        "UpperLeg_R": "RightUpLeg",
-        "LowerLeg_R": "RightLeg",
-        "Ankle_R": "RightFoot",
-        "Ball_R": "RightToeBase",
-        "Thumb_01_L": "LeftHandThumb1",
-        "Thumb_02_L": "LeftHandThumb2",
-        "Thumb_03_L": "LeftHandThumb3",
-        "IndexFinger_01_L": "LeftHandIndex1",
-        "Finger_01_L": "LeftHandIndex1",
-        "IndexFinger_02_L": "LeftHandIndex2",
-        "Finger_02_L": "LeftHandIndex2",
-        "IndexFinger_03_L": "LeftHandIndex3",
-        "Finger_03_L": "LeftHandIndex3",
-        "IndexFinger_04_L": "LeftHandIndex4",
-        "Finger_04_L": "LeftHandIndex4",
-        "Thumb_01_R": "RightHandThumb1",
-        "Thumb_02_R": "RightHandThumb2",
-        "Thumb_03_R": "RightHandThumb3",
-        "IndexFinger_01_R": "RightHandIndex1",
-        "Finger_01_R": "RightHandIndex1",
-        "IndexFinger_02_R": "RightHandIndex2",
-        "Finger_02_R": "RightHandIndex2",
-        "IndexFinger_03_R": "RightHandIndex3",
-        "Finger_03_R": "RightHandIndex3",
-        "IndexFinger_04_R": "RightHandIndex4",
-        "Finger_04_R": "RightHandIndex4"
-      },
-      "method": "swing"
-    },
-    {
-      "name": "ztex_01_a",
-      "kind": "texture",
-      "out": "textures/zombie_01_a.png",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonZombies/Textures/PolygonZombie_Texture_01_A.png",
-      "texSize": 512
-    },
-    {
-      "name": "ztex_01_b",
-      "kind": "texture",
-      "out": "textures/zombie_01_b.png",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonZombies/Textures/PolygonZombie_Texture_01_B.png",
-      "texSize": 512
-    },
-    {
-      "name": "ztex_01_c",
-      "kind": "texture",
-      "out": "textures/zombie_01_c.png",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonZombies/Textures/PolygonZombie_Texture_01_C.png",
-      "texSize": 512
-    },
-    {
-      "name": "ztex_02_a",
-      "kind": "texture",
-      "out": "textures/zombie_02_a.png",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonZombies/Textures/Alts/PolygonZombie_Texture_02_A.png",
-      "texSize": 512
-    },
-    {
-      "name": "ztex_02_b",
-      "kind": "texture",
-      "out": "textures/zombie_02_b.png",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonZombies/Textures/Alts/PolygonZombie_Texture_02_B.png",
-      "texSize": 512
-    },
-    {
-      "name": "ztex_02_c",
-      "kind": "texture",
-      "out": "textures/zombie_02_c.png",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonZombies/Textures/Alts/PolygonZombie_Texture_02_C.png",
-      "texSize": 512
-    },
-    {
-      "name": "ztex_03_a",
-      "kind": "texture",
-      "out": "textures/zombie_03_a.png",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonZombies/Textures/Alts/PolygonZombie_Texture_03_A.png",
-      "texSize": 512
-    },
-    {
-      "name": "ztex_03_b",
-      "kind": "texture",
-      "out": "textures/zombie_03_b.png",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonZombies/Textures/Alts/PolygonZombie_Texture_03_B.png",
-      "texSize": 512
-    },
-    {
-      "name": "ztex_03_c",
-      "kind": "texture",
-      "out": "textures/zombie_03_c.png",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonZombies/Textures/Alts/PolygonZombie_Texture_03_C.png",
-      "texSize": 512
-    },
-    {
-      "name": "ztex_04_a",
-      "kind": "texture",
-      "out": "textures/zombie_04_a.png",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonZombies/Textures/Alts/PolygonZombie_Texture_04_A.png",
-      "texSize": 512
-    },
-    {
-      "name": "ztex_04_b",
-      "kind": "texture",
-      "out": "textures/zombie_04_b.png",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonZombies/Textures/Alts/PolygonZombie_Texture_04_B.png",
-      "texSize": 512
-    },
-    {
-      "name": "ztex_04_c",
-      "kind": "texture",
-      "out": "textures/zombie_04_c.png",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonZombies/Textures/Alts/PolygonZombie_Texture_04_C.png",
-      "texSize": 512
-    },
-    {
-      "name": "veh_muscle",
-      "kind": "static",
-      "out": "vehicles/muscle.glb",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Veh_Muscle_01.fbx",
-      "scale": 0.01,
-      "texSize": 1024
-    },
-    {
-      "name": "veh_motorbike",
-      "kind": "static",
-      "out": "vehicles/motorbike_synty.glb",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Veh_Motorbike_01.fbx",
-      "scale": 0.01,
-      "texSize": 1024
-    },
-    {
-      "name": "wld_diner",
-      "kind": "static",
-      "out": "world/diner.glb",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Bld_Diner_01.fbx",
-      "scale": 0.01,
-      "groundY": true,
-      "center": true,
-      "texSize": 1024
-    },
-    {
-      "name": "wld_cafe",
-      "kind": "static",
-      "out": "world/cafe.glb",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Bld_Cafe_01.fbx",
-      "scale": 0.01,
-      "groundY": true,
-      "center": true,
-      "texSize": 1024
-    },
-    {
-      "name": "wld_church",
-      "kind": "static",
-      "out": "world/church.glb",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Bld_Church_01.fbx",
-      "scale": 0.01,
-      "groundY": true,
-      "center": true,
-      "texSize": 1024
-    },
-    {
-      "name": "wld_autorepair",
-      "kind": "static",
-      "out": "world/autorepair.glb",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Bld_AutoRepair_01.fbx",
-      "scale": 0.01,
-      "groundY": true,
-      "center": true,
-      "texSize": 1024
-    },
-    {
-      "name": "wld_shop_s1",
-      "kind": "static",
-      "out": "world/shop_s1.glb",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Bld_Shop_Small_01.fbx",
-      "scale": 0.01,
-      "groundY": true,
-      "center": true,
-      "texSize": 1024
-    },
-    {
-      "name": "wld_shop_s2",
-      "kind": "static",
-      "out": "world/shop_s2.glb",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Bld_Shop_Small_02.fbx",
-      "scale": 0.01,
-      "groundY": true,
-      "center": true,
-      "texSize": 1024
-    },
-    {
-      "name": "wld_shop_m1",
-      "kind": "static",
-      "out": "world/shop_m1.glb",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Bld_Shop_Medium_01.fbx",
-      "scale": 0.01,
-      "groundY": true,
-      "center": true,
-      "texSize": 1024
-    },
-    {
-      "name": "wld_commercial_s",
-      "kind": "static",
-      "out": "world/commercial_s.glb",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Bld_Commercial_Small_01.fbx",
-      "scale": 0.01,
-      "groundY": true,
-      "center": true,
-      "texSize": 1024
-    },
-    {
-      "name": "wld_apartment",
-      "kind": "static",
-      "out": "world/apartment.glb",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Bld_Apartment_01.fbx",
-      "scale": 0.01,
-      "groundY": true,
-      "center": true,
-      "texSize": 1024
-    },
-    {
-      "name": "wld_motel",
-      "kind": "static",
-      "out": "world/motel.glb",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Bld_Motel_01.fbx",
-      "scale": 0.01,
-      "groundY": true,
-      "center": true,
-      "texSize": 1024
-    },
-    {
-      "name": "wld_house1",
-      "kind": "static",
-      "out": "world/house1.glb",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Bld_House_01.fbx",
-      "scale": 0.01,
-      "groundY": true,
-      "center": true,
-      "texSize": 1024
-    },
-    {
-      "name": "wld_house2",
-      "kind": "static",
-      "out": "world/house2.glb",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Bld_House_02.fbx",
-      "scale": 0.01,
-      "groundY": true,
-      "center": true,
-      "texSize": 1024
-    },
-    {
-      "name": "wld_house3",
-      "kind": "static",
-      "out": "world/house3.glb",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Bld_House_03.fbx",
-      "scale": 0.01,
-      "groundY": true,
-      "center": true,
-      "texSize": 1024
-    },
-    {
-      "name": "wld_house_burnt",
-      "kind": "static",
-      "out": "world/house_burnt.glb",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Bld_House_Burnt_01.fbx",
-      "scale": 0.01,
-      "groundY": true,
-      "center": true,
-      "texSize": 1024
-    },
-    {
-      "name": "wld_barricade1",
-      "kind": "static",
-      "out": "world/barricade1.glb",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Prop_Barricade_01.fbx",
-      "scale": 0.01,
-      "groundY": true,
-      "center": true,
-      "texSize": 512
-    },
-    {
-      "name": "wld_barricade_wire",
-      "kind": "static",
-      "out": "world/barricade_wire.glb",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Prop_Barricade_Wired_01.fbx",
-      "scale": 0.01,
-      "groundY": true,
-      "center": true,
-      "texSize": 512
-    },
-    {
-      "name": "wld_barricade_conc",
-      "kind": "static",
-      "out": "world/barricade_conc.glb",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Prop_Barricade_Concrete_01.fbx",
-      "scale": 0.01,
-      "groundY": true,
-      "center": true,
-      "texSize": 512
-    },
-    {
-      "name": "wld_wreck_car",
-      "kind": "static",
-      "out": "world/wreck_car.glb",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Veh_Car_Medium_01.fbx",
-      "scale": 0.01,
-      "groundY": true,
-      "center": true,
-      "texSize": 512
-    },
-    {
-      "name": "wld_wreck_ute",
-      "kind": "static",
-      "out": "world/wreck_ute.glb",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Veh_Ute_01.fbx",
-      "scale": 0.01,
-      "groundY": true,
-      "center": true,
-      "texSize": 512
-    },
-    {
-      "name": "wld_tree1",
-      "kind": "static",
-      "out": "world/tree1.glb",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Env_Tree_01.fbx",
-      "scale": 0.01,
-      "groundY": true,
-      "center": true,
-      "texSize": 512,
-      "simplify": 0.3
-    },
-    {
-      "name": "wld_tree2",
-      "kind": "static",
-      "out": "world/tree2.glb",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Env_Tree_02.fbx",
-      "scale": 0.01,
-      "groundY": true,
-      "center": true,
-      "texSize": 512,
-      "simplify": 0.3
-    },
-    {
-      "name": "wld_tree_dead",
-      "kind": "static",
-      "out": "world/tree_dead.glb",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Env_Tree_Dead_01.fbx",
-      "scale": 0.01,
-      "groundY": true,
-      "center": true,
-      "texSize": 512,
-      "simplify": 0.3
-    },
-    {
-      "name": "wld_rock1",
-      "kind": "static",
-      "out": "world/rock1.glb",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Env_Rock_01.fbx",
-      "scale": 0.01,
-      "groundY": true,
-      "center": true,
-      "texSize": 512,
-      "simplify": 0.3
-    },
-    {
-      "name": "wld_rock2",
-      "kind": "static",
-      "out": "world/rock2.glb",
-      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Env_Rock_02.fbx",
-      "scale": 0.01,
-      "groundY": true,
-      "center": true,
-      "texSize": 512,
-      "simplify": 0.3
+     "src": "Rig|Driving_Loop",
+     "out": "Rig|Driving_Loop"
     }
-  ]
+   ],
+   "boneMap": {
+    "Root": "root",
+    "Hips": "DEF-hips",
+    "Spine_01": "DEF-spine001",
+    "Spine_02": "DEF-spine002",
+    "Spine_03": "DEF-spine003",
+    "Neck": "DEF-neck",
+    "Head": "DEF-head",
+    "Clavicle_L": "DEF-shoulderL",
+    "Clavicle_R": "DEF-shoulderR",
+    "Shoulder_L": "DEF-upper_armL",
+    "Shoulder_R": "DEF-upper_armR",
+    "Elbow_L": "DEF-forearmL",
+    "Elbow_R": "DEF-forearmR",
+    "Hand_L": "DEF-handL",
+    "Hand_R": "DEF-handR",
+    "UpperLeg_L": "DEF-thighL",
+    "UpperLeg_R": "DEF-thighR",
+    "LowerLeg_L": "DEF-shinL",
+    "LowerLeg_R": "DEF-shinR",
+    "Ankle_L": "DEF-footL",
+    "Ankle_R": "DEF-footR",
+    "Ball_L": "DEF-toeL",
+    "Ball_R": "DEF-toeR",
+    "Thumb_01_L": "DEF-thumb01L",
+    "IndexFinger_01_L": "DEF-f_index01L",
+    "Finger_01_L": "DEF-f_middle01L",
+    "Thumb_02_L": "DEF-thumb02L",
+    "IndexFinger_02_L": "DEF-f_index02L",
+    "Finger_02_L": "DEF-f_middle02L",
+    "Thumb_03_L": "DEF-thumb03L",
+    "IndexFinger_03_L": "DEF-f_index03L",
+    "Finger_03_L": "DEF-f_middle03L",
+    "Thumb_01_R": "DEF-thumb01R",
+    "IndexFinger_01_R": "DEF-f_index01R",
+    "Finger_01_R": "DEF-f_middle01R",
+    "Thumb_02_R": "DEF-thumb02R",
+    "IndexFinger_02_R": "DEF-f_index02R",
+    "Finger_02_R": "DEF-f_middle02R",
+    "Thumb_03_R": "DEF-thumb03R",
+    "IndexFinger_03_R": "DEF-f_index03R",
+    "Finger_03_R": "DEF-f_middle03R"
+   },
+   "srcYaw": 3.14159265,
+   "attachments": [
+    {
+     "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Chr_Attach_Hunter_Male_Hat_01.fbx",
+     "bone": "Head"
+    },
+    {
+     "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Chr_Attach_Hunter_Male_Beard_01.fbx",
+     "bone": "Head"
+    }
+   ],
+   "extraAnims": [
+    {
+     "animGlb": "assets/raw/ual2.glb",
+     "srcHip": "pelvis",
+     "method": "swing",
+     "clips": [
+      {
+       "src": "OverhandThrow",
+       "out": "Rig|OverhandThrow"
+      }
+     ],
+     "boneMap": {
+      "Hips": "pelvis",
+      "Spine_01": "spine_01",
+      "Spine_02": "spine_02",
+      "Spine_03": "spine_03",
+      "Neck": "neck_01",
+      "Head": "Head",
+      "Clavicle_L": "clavicle_l",
+      "Shoulder_L": "upperarm_l",
+      "Elbow_L": "lowerarm_l",
+      "Hand_L": "hand_l",
+      "Clavicle_R": "clavicle_r",
+      "Shoulder_R": "upperarm_r",
+      "Elbow_R": "lowerarm_r",
+      "Hand_R": "hand_r",
+      "UpperLeg_L": "thigh_l",
+      "LowerLeg_L": "calf_l",
+      "Ankle_L": "foot_l",
+      "Ball_L": "ball_l",
+      "UpperLeg_R": "thigh_r",
+      "LowerLeg_R": "calf_r",
+      "Ankle_R": "foot_r",
+      "Ball_R": "ball_r",
+      "IndexFinger_01_R": "index_01_r",
+      "IndexFinger_02_R": "index_02_r",
+      "Thumb_01_R": "thumb_01_r",
+      "Thumb_02_R": "thumb_02_r",
+      "Finger_01_R": "middle_01_r",
+      "Finger_02_R": "middle_02_r"
+     }
+    }
+   ]
+  },
+  {
+   "name": "test_identity",
+   "kind": "skinned",
+   "out": "characters/_identity_test.glb",
+   "fbx": "public/assets/models/player_base.glb",
+   "animGlb": "public/assets/models/player_base.glb",
+   "hip": "DEF-hips",
+   "srcHip": "DEF-hips",
+   "clips": [
+    {
+     "src": "Rig|Idle_Loop",
+     "out": "Rig|Idle_Loop"
+    },
+    {
+     "src": "Rig|Sprint_Loop",
+     "out": "Rig|Sprint_Loop"
+    },
+    {
+     "src": "Rig|Pistol_Aim_Neutral",
+     "out": "Rig|Pistol_Aim_Neutral"
+    }
+   ],
+   "boneMap": {
+    "root": "root",
+    "DEF-hips": "DEF-hips",
+    "DEF-spine001": "DEF-spine001",
+    "DEF-spine002": "DEF-spine002",
+    "DEF-spine003": "DEF-spine003",
+    "DEF-neck": "DEF-neck",
+    "DEF-head": "DEF-head",
+    "DEF-shoulderL": "DEF-shoulderL",
+    "DEF-upper_armL": "DEF-upper_armL",
+    "DEF-forearmL": "DEF-forearmL",
+    "DEF-handL": "DEF-handL",
+    "DEF-f_index01L": "DEF-f_index01L",
+    "DEF-f_index02L": "DEF-f_index02L",
+    "DEF-f_index03L": "DEF-f_index03L",
+    "DEF-f_middle01L": "DEF-f_middle01L",
+    "DEF-f_middle02L": "DEF-f_middle02L",
+    "DEF-f_middle03L": "DEF-f_middle03L",
+    "DEF-f_pinky01L": "DEF-f_pinky01L",
+    "DEF-f_pinky02L": "DEF-f_pinky02L",
+    "DEF-f_pinky03L": "DEF-f_pinky03L",
+    "DEF-f_ring01L": "DEF-f_ring01L",
+    "DEF-f_ring02L": "DEF-f_ring02L",
+    "DEF-f_ring03L": "DEF-f_ring03L",
+    "DEF-thumb01L": "DEF-thumb01L",
+    "DEF-thumb02L": "DEF-thumb02L",
+    "DEF-thumb03L": "DEF-thumb03L",
+    "DEF-shoulderR": "DEF-shoulderR",
+    "DEF-upper_armR": "DEF-upper_armR",
+    "DEF-forearmR": "DEF-forearmR",
+    "DEF-handR": "DEF-handR",
+    "DEF-f_index01R": "DEF-f_index01R",
+    "DEF-f_index02R": "DEF-f_index02R",
+    "DEF-f_index03R": "DEF-f_index03R",
+    "DEF-f_middle01R": "DEF-f_middle01R",
+    "DEF-f_middle02R": "DEF-f_middle02R",
+    "DEF-f_middle03R": "DEF-f_middle03R",
+    "DEF-f_pinky01R": "DEF-f_pinky01R",
+    "DEF-f_pinky02R": "DEF-f_pinky02R",
+    "DEF-f_pinky03R": "DEF-f_pinky03R",
+    "DEF-f_ring01R": "DEF-f_ring01R",
+    "DEF-f_ring02R": "DEF-f_ring02R",
+    "DEF-f_ring03R": "DEF-f_ring03R",
+    "DEF-thumb01R": "DEF-thumb01R",
+    "DEF-thumb02R": "DEF-thumb02R",
+    "DEF-thumb03R": "DEF-thumb03R",
+    "DEF-thighL": "DEF-thighL",
+    "DEF-shinL": "DEF-shinL",
+    "DEF-footL": "DEF-footL",
+    "DEF-toeL": "DEF-toeL",
+    "DEF-thighR": "DEF-thighR",
+    "DEF-shinR": "DEF-shinR",
+    "DEF-footR": "DEF-footR",
+    "DEF-toeR": "DEF-toeR"
+   }
+  },
+  {
+   "name": "zmb_hobo_male_01",
+   "kind": "skinned",
+   "out": "zombies/hobo_male_01.glb",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonZombies/Models/Zombies.fbx",
+   "mesh": "Zombie_Hobo_Male_01",
+   "tex": "assets/raw/synty/staged/Assets/PolygonZombies/Textures/PolygonZombie_Texture_01_A.png",
+   "animGlb": "public/assets/models/zombie.glb",
+   "targetHeight": 1.75,
+   "hip": "Hips",
+   "srcHip": "Hips",
+   "srcYaw": 0,
+   "texSize": 64,
+   "clips": [
+    {
+     "src": "Zombie|ZombieIdle",
+     "out": "Zombie|ZombieIdle"
+    },
+    {
+     "src": "Zombie|ZombieWalk",
+     "out": "Zombie|ZombieWalk"
+    },
+    {
+     "src": "Zombie|ZombieRun",
+     "out": "Zombie|ZombieRun"
+    },
+    {
+     "src": "Zombie|ZombieBite",
+     "out": "Zombie|ZombieBite"
+    },
+    {
+     "src": "Zombie|ZombieCrawl",
+     "out": "Zombie|ZombieCrawl"
+    }
+   ],
+   "boneMap": {
+    "Hips": "Hips",
+    "Spine_01": "Spine",
+    "Spine_02": "Spine1",
+    "Spine_03": "Spine2",
+    "Neck": "Neck",
+    "Head": "Head",
+    "Clavicle_L": "LeftShoulder",
+    "Shoulder_L": "LeftArm",
+    "Elbow_L": "LeftForeArm",
+    "Hand_L": "LeftHand",
+    "Clavicle_R": "RightShoulder",
+    "Shoulder_R": "RightArm",
+    "Elbow_R": "RightForeArm",
+    "Hand_R": "RightHand",
+    "UpperLeg_L": "LeftUpLeg",
+    "LowerLeg_L": "LeftLeg",
+    "Ankle_L": "LeftFoot",
+    "Ball_L": "LeftToeBase",
+    "UpperLeg_R": "RightUpLeg",
+    "LowerLeg_R": "RightLeg",
+    "Ankle_R": "RightFoot",
+    "Ball_R": "RightToeBase",
+    "Thumb_01_L": "LeftHandThumb1",
+    "Thumb_02_L": "LeftHandThumb2",
+    "Thumb_03_L": "LeftHandThumb3",
+    "IndexFinger_01_L": "LeftHandIndex1",
+    "Finger_01_L": "LeftHandIndex1",
+    "IndexFinger_02_L": "LeftHandIndex2",
+    "Finger_02_L": "LeftHandIndex2",
+    "IndexFinger_03_L": "LeftHandIndex3",
+    "Finger_03_L": "LeftHandIndex3",
+    "IndexFinger_04_L": "LeftHandIndex4",
+    "Finger_04_L": "LeftHandIndex4",
+    "Thumb_01_R": "RightHandThumb1",
+    "Thumb_02_R": "RightHandThumb2",
+    "Thumb_03_R": "RightHandThumb3",
+    "IndexFinger_01_R": "RightHandIndex1",
+    "Finger_01_R": "RightHandIndex1",
+    "IndexFinger_02_R": "RightHandIndex2",
+    "Finger_02_R": "RightHandIndex2",
+    "IndexFinger_03_R": "RightHandIndex3",
+    "Finger_03_R": "RightHandIndex3",
+    "IndexFinger_04_R": "RightHandIndex4",
+    "Finger_04_R": "RightHandIndex4"
+   },
+   "method": "swing"
+  },
+  {
+   "name": "zmb_hoodie_male_01",
+   "kind": "skinned",
+   "out": "zombies/hoodie_male_01.glb",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonZombies/Models/Zombies.fbx",
+   "mesh": "Zombie_Hoodie_Male_01",
+   "tex": "assets/raw/synty/staged/Assets/PolygonZombies/Textures/PolygonZombie_Texture_01_A.png",
+   "animGlb": "public/assets/models/zombie.glb",
+   "targetHeight": 1.75,
+   "hip": "Hips",
+   "srcHip": "Hips",
+   "srcYaw": 0,
+   "texSize": 64,
+   "clips": [
+    {
+     "src": "Zombie|ZombieIdle",
+     "out": "Zombie|ZombieIdle"
+    },
+    {
+     "src": "Zombie|ZombieWalk",
+     "out": "Zombie|ZombieWalk"
+    },
+    {
+     "src": "Zombie|ZombieRun",
+     "out": "Zombie|ZombieRun"
+    },
+    {
+     "src": "Zombie|ZombieBite",
+     "out": "Zombie|ZombieBite"
+    },
+    {
+     "src": "Zombie|ZombieCrawl",
+     "out": "Zombie|ZombieCrawl"
+    }
+   ],
+   "boneMap": {
+    "Hips": "Hips",
+    "Spine_01": "Spine",
+    "Spine_02": "Spine1",
+    "Spine_03": "Spine2",
+    "Neck": "Neck",
+    "Head": "Head",
+    "Clavicle_L": "LeftShoulder",
+    "Shoulder_L": "LeftArm",
+    "Elbow_L": "LeftForeArm",
+    "Hand_L": "LeftHand",
+    "Clavicle_R": "RightShoulder",
+    "Shoulder_R": "RightArm",
+    "Elbow_R": "RightForeArm",
+    "Hand_R": "RightHand",
+    "UpperLeg_L": "LeftUpLeg",
+    "LowerLeg_L": "LeftLeg",
+    "Ankle_L": "LeftFoot",
+    "Ball_L": "LeftToeBase",
+    "UpperLeg_R": "RightUpLeg",
+    "LowerLeg_R": "RightLeg",
+    "Ankle_R": "RightFoot",
+    "Ball_R": "RightToeBase",
+    "Thumb_01_L": "LeftHandThumb1",
+    "Thumb_02_L": "LeftHandThumb2",
+    "Thumb_03_L": "LeftHandThumb3",
+    "IndexFinger_01_L": "LeftHandIndex1",
+    "Finger_01_L": "LeftHandIndex1",
+    "IndexFinger_02_L": "LeftHandIndex2",
+    "Finger_02_L": "LeftHandIndex2",
+    "IndexFinger_03_L": "LeftHandIndex3",
+    "Finger_03_L": "LeftHandIndex3",
+    "IndexFinger_04_L": "LeftHandIndex4",
+    "Finger_04_L": "LeftHandIndex4",
+    "Thumb_01_R": "RightHandThumb1",
+    "Thumb_02_R": "RightHandThumb2",
+    "Thumb_03_R": "RightHandThumb3",
+    "IndexFinger_01_R": "RightHandIndex1",
+    "Finger_01_R": "RightHandIndex1",
+    "IndexFinger_02_R": "RightHandIndex2",
+    "Finger_02_R": "RightHandIndex2",
+    "IndexFinger_03_R": "RightHandIndex3",
+    "Finger_03_R": "RightHandIndex3",
+    "IndexFinger_04_R": "RightHandIndex4",
+    "Finger_04_R": "RightHandIndex4"
+   },
+   "method": "swing"
+  },
+  {
+   "name": "zmb_jacket_male_01",
+   "kind": "skinned",
+   "out": "zombies/jacket_male_01.glb",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonZombies/Models/Zombies.fbx",
+   "mesh": "Zombie_Jacket_Male_01",
+   "tex": "assets/raw/synty/staged/Assets/PolygonZombies/Textures/PolygonZombie_Texture_01_A.png",
+   "animGlb": "public/assets/models/zombie.glb",
+   "targetHeight": 1.75,
+   "hip": "Hips",
+   "srcHip": "Hips",
+   "srcYaw": 0,
+   "texSize": 64,
+   "clips": [
+    {
+     "src": "Zombie|ZombieIdle",
+     "out": "Zombie|ZombieIdle"
+    },
+    {
+     "src": "Zombie|ZombieWalk",
+     "out": "Zombie|ZombieWalk"
+    },
+    {
+     "src": "Zombie|ZombieRun",
+     "out": "Zombie|ZombieRun"
+    },
+    {
+     "src": "Zombie|ZombieBite",
+     "out": "Zombie|ZombieBite"
+    },
+    {
+     "src": "Zombie|ZombieCrawl",
+     "out": "Zombie|ZombieCrawl"
+    }
+   ],
+   "boneMap": {
+    "Hips": "Hips",
+    "Spine_01": "Spine",
+    "Spine_02": "Spine1",
+    "Spine_03": "Spine2",
+    "Neck": "Neck",
+    "Head": "Head",
+    "Clavicle_L": "LeftShoulder",
+    "Shoulder_L": "LeftArm",
+    "Elbow_L": "LeftForeArm",
+    "Hand_L": "LeftHand",
+    "Clavicle_R": "RightShoulder",
+    "Shoulder_R": "RightArm",
+    "Elbow_R": "RightForeArm",
+    "Hand_R": "RightHand",
+    "UpperLeg_L": "LeftUpLeg",
+    "LowerLeg_L": "LeftLeg",
+    "Ankle_L": "LeftFoot",
+    "Ball_L": "LeftToeBase",
+    "UpperLeg_R": "RightUpLeg",
+    "LowerLeg_R": "RightLeg",
+    "Ankle_R": "RightFoot",
+    "Ball_R": "RightToeBase",
+    "Thumb_01_L": "LeftHandThumb1",
+    "Thumb_02_L": "LeftHandThumb2",
+    "Thumb_03_L": "LeftHandThumb3",
+    "IndexFinger_01_L": "LeftHandIndex1",
+    "Finger_01_L": "LeftHandIndex1",
+    "IndexFinger_02_L": "LeftHandIndex2",
+    "Finger_02_L": "LeftHandIndex2",
+    "IndexFinger_03_L": "LeftHandIndex3",
+    "Finger_03_L": "LeftHandIndex3",
+    "IndexFinger_04_L": "LeftHandIndex4",
+    "Finger_04_L": "LeftHandIndex4",
+    "Thumb_01_R": "RightHandThumb1",
+    "Thumb_02_R": "RightHandThumb2",
+    "Thumb_03_R": "RightHandThumb3",
+    "IndexFinger_01_R": "RightHandIndex1",
+    "Finger_01_R": "RightHandIndex1",
+    "IndexFinger_02_R": "RightHandIndex2",
+    "Finger_02_R": "RightHandIndex2",
+    "IndexFinger_03_R": "RightHandIndex3",
+    "Finger_03_R": "RightHandIndex3",
+    "IndexFinger_04_R": "RightHandIndex4",
+    "Finger_04_R": "RightHandIndex4"
+   },
+   "method": "swing"
+  },
+  {
+   "name": "zmb_jacket_female_01",
+   "kind": "skinned",
+   "out": "zombies/jacket_female_01.glb",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonZombies/Models/Zombies.fbx",
+   "mesh": "Zombie_Jacket_Female_01",
+   "tex": "assets/raw/synty/staged/Assets/PolygonZombies/Textures/PolygonZombie_Texture_01_A.png",
+   "animGlb": "public/assets/models/zombie.glb",
+   "targetHeight": 1.75,
+   "hip": "Hips",
+   "srcHip": "Hips",
+   "srcYaw": 0,
+   "texSize": 64,
+   "clips": [
+    {
+     "src": "Zombie|ZombieIdle",
+     "out": "Zombie|ZombieIdle"
+    },
+    {
+     "src": "Zombie|ZombieWalk",
+     "out": "Zombie|ZombieWalk"
+    },
+    {
+     "src": "Zombie|ZombieRun",
+     "out": "Zombie|ZombieRun"
+    },
+    {
+     "src": "Zombie|ZombieBite",
+     "out": "Zombie|ZombieBite"
+    },
+    {
+     "src": "Zombie|ZombieCrawl",
+     "out": "Zombie|ZombieCrawl"
+    }
+   ],
+   "boneMap": {
+    "Hips": "Hips",
+    "Spine_01": "Spine",
+    "Spine_02": "Spine1",
+    "Spine_03": "Spine2",
+    "Neck": "Neck",
+    "Head": "Head",
+    "Clavicle_L": "LeftShoulder",
+    "Shoulder_L": "LeftArm",
+    "Elbow_L": "LeftForeArm",
+    "Hand_L": "LeftHand",
+    "Clavicle_R": "RightShoulder",
+    "Shoulder_R": "RightArm",
+    "Elbow_R": "RightForeArm",
+    "Hand_R": "RightHand",
+    "UpperLeg_L": "LeftUpLeg",
+    "LowerLeg_L": "LeftLeg",
+    "Ankle_L": "LeftFoot",
+    "Ball_L": "LeftToeBase",
+    "UpperLeg_R": "RightUpLeg",
+    "LowerLeg_R": "RightLeg",
+    "Ankle_R": "RightFoot",
+    "Ball_R": "RightToeBase",
+    "Thumb_01_L": "LeftHandThumb1",
+    "Thumb_02_L": "LeftHandThumb2",
+    "Thumb_03_L": "LeftHandThumb3",
+    "IndexFinger_01_L": "LeftHandIndex1",
+    "Finger_01_L": "LeftHandIndex1",
+    "IndexFinger_02_L": "LeftHandIndex2",
+    "Finger_02_L": "LeftHandIndex2",
+    "IndexFinger_03_L": "LeftHandIndex3",
+    "Finger_03_L": "LeftHandIndex3",
+    "IndexFinger_04_L": "LeftHandIndex4",
+    "Finger_04_L": "LeftHandIndex4",
+    "Thumb_01_R": "RightHandThumb1",
+    "Thumb_02_R": "RightHandThumb2",
+    "Thumb_03_R": "RightHandThumb3",
+    "IndexFinger_01_R": "RightHandIndex1",
+    "Finger_01_R": "RightHandIndex1",
+    "IndexFinger_02_R": "RightHandIndex2",
+    "Finger_02_R": "RightHandIndex2",
+    "IndexFinger_03_R": "RightHandIndex3",
+    "Finger_03_R": "RightHandIndex3",
+    "IndexFinger_04_R": "RightHandIndex4",
+    "Finger_04_R": "RightHandIndex4"
+   },
+   "method": "swing"
+  },
+  {
+   "name": "zmb_coat_female_01",
+   "kind": "skinned",
+   "out": "zombies/coat_female_01.glb",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonZombies/Models/Zombies.fbx",
+   "mesh": "Zombie_Coat_Female_01",
+   "tex": "assets/raw/synty/staged/Assets/PolygonZombies/Textures/PolygonZombie_Texture_01_A.png",
+   "animGlb": "public/assets/models/zombie.glb",
+   "targetHeight": 1.75,
+   "hip": "Hips",
+   "srcHip": "Hips",
+   "srcYaw": 0,
+   "texSize": 64,
+   "clips": [
+    {
+     "src": "Zombie|ZombieIdle",
+     "out": "Zombie|ZombieIdle"
+    },
+    {
+     "src": "Zombie|ZombieWalk",
+     "out": "Zombie|ZombieWalk"
+    },
+    {
+     "src": "Zombie|ZombieRun",
+     "out": "Zombie|ZombieRun"
+    },
+    {
+     "src": "Zombie|ZombieBite",
+     "out": "Zombie|ZombieBite"
+    },
+    {
+     "src": "Zombie|ZombieCrawl",
+     "out": "Zombie|ZombieCrawl"
+    }
+   ],
+   "boneMap": {
+    "Hips": "Hips",
+    "Spine_01": "Spine",
+    "Spine_02": "Spine1",
+    "Spine_03": "Spine2",
+    "Neck": "Neck",
+    "Head": "Head",
+    "Clavicle_L": "LeftShoulder",
+    "Shoulder_L": "LeftArm",
+    "Elbow_L": "LeftForeArm",
+    "Hand_L": "LeftHand",
+    "Clavicle_R": "RightShoulder",
+    "Shoulder_R": "RightArm",
+    "Elbow_R": "RightForeArm",
+    "Hand_R": "RightHand",
+    "UpperLeg_L": "LeftUpLeg",
+    "LowerLeg_L": "LeftLeg",
+    "Ankle_L": "LeftFoot",
+    "Ball_L": "LeftToeBase",
+    "UpperLeg_R": "RightUpLeg",
+    "LowerLeg_R": "RightLeg",
+    "Ankle_R": "RightFoot",
+    "Ball_R": "RightToeBase",
+    "Thumb_01_L": "LeftHandThumb1",
+    "Thumb_02_L": "LeftHandThumb2",
+    "Thumb_03_L": "LeftHandThumb3",
+    "IndexFinger_01_L": "LeftHandIndex1",
+    "Finger_01_L": "LeftHandIndex1",
+    "IndexFinger_02_L": "LeftHandIndex2",
+    "Finger_02_L": "LeftHandIndex2",
+    "IndexFinger_03_L": "LeftHandIndex3",
+    "Finger_03_L": "LeftHandIndex3",
+    "IndexFinger_04_L": "LeftHandIndex4",
+    "Finger_04_L": "LeftHandIndex4",
+    "Thumb_01_R": "RightHandThumb1",
+    "Thumb_02_R": "RightHandThumb2",
+    "Thumb_03_R": "RightHandThumb3",
+    "IndexFinger_01_R": "RightHandIndex1",
+    "Finger_01_R": "RightHandIndex1",
+    "IndexFinger_02_R": "RightHandIndex2",
+    "Finger_02_R": "RightHandIndex2",
+    "IndexFinger_03_R": "RightHandIndex3",
+    "Finger_03_R": "RightHandIndex3",
+    "IndexFinger_04_R": "RightHandIndex4",
+    "Finger_04_R": "RightHandIndex4"
+   },
+   "method": "swing"
+  },
+  {
+   "name": "zmb_punk_male_01",
+   "kind": "skinned",
+   "out": "zombies/punk_male_01.glb",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonZombies/Models/Zombies.fbx",
+   "mesh": "Zombie_Punk_Male_01",
+   "tex": "assets/raw/synty/staged/Assets/PolygonZombies/Textures/PolygonZombie_Texture_01_A.png",
+   "animGlb": "public/assets/models/zombie.glb",
+   "targetHeight": 1.75,
+   "hip": "Hips",
+   "srcHip": "Hips",
+   "srcYaw": 0,
+   "texSize": 64,
+   "clips": [
+    {
+     "src": "Zombie|ZombieIdle",
+     "out": "Zombie|ZombieIdle"
+    },
+    {
+     "src": "Zombie|ZombieWalk",
+     "out": "Zombie|ZombieWalk"
+    },
+    {
+     "src": "Zombie|ZombieRun",
+     "out": "Zombie|ZombieRun"
+    },
+    {
+     "src": "Zombie|ZombieBite",
+     "out": "Zombie|ZombieBite"
+    },
+    {
+     "src": "Zombie|ZombieCrawl",
+     "out": "Zombie|ZombieCrawl"
+    }
+   ],
+   "boneMap": {
+    "Hips": "Hips",
+    "Spine_01": "Spine",
+    "Spine_02": "Spine1",
+    "Spine_03": "Spine2",
+    "Neck": "Neck",
+    "Head": "Head",
+    "Clavicle_L": "LeftShoulder",
+    "Shoulder_L": "LeftArm",
+    "Elbow_L": "LeftForeArm",
+    "Hand_L": "LeftHand",
+    "Clavicle_R": "RightShoulder",
+    "Shoulder_R": "RightArm",
+    "Elbow_R": "RightForeArm",
+    "Hand_R": "RightHand",
+    "UpperLeg_L": "LeftUpLeg",
+    "LowerLeg_L": "LeftLeg",
+    "Ankle_L": "LeftFoot",
+    "Ball_L": "LeftToeBase",
+    "UpperLeg_R": "RightUpLeg",
+    "LowerLeg_R": "RightLeg",
+    "Ankle_R": "RightFoot",
+    "Ball_R": "RightToeBase",
+    "Thumb_01_L": "LeftHandThumb1",
+    "Thumb_02_L": "LeftHandThumb2",
+    "Thumb_03_L": "LeftHandThumb3",
+    "IndexFinger_01_L": "LeftHandIndex1",
+    "Finger_01_L": "LeftHandIndex1",
+    "IndexFinger_02_L": "LeftHandIndex2",
+    "Finger_02_L": "LeftHandIndex2",
+    "IndexFinger_03_L": "LeftHandIndex3",
+    "Finger_03_L": "LeftHandIndex3",
+    "IndexFinger_04_L": "LeftHandIndex4",
+    "Finger_04_L": "LeftHandIndex4",
+    "Thumb_01_R": "RightHandThumb1",
+    "Thumb_02_R": "RightHandThumb2",
+    "Thumb_03_R": "RightHandThumb3",
+    "IndexFinger_01_R": "RightHandIndex1",
+    "Finger_01_R": "RightHandIndex1",
+    "IndexFinger_02_R": "RightHandIndex2",
+    "Finger_02_R": "RightHandIndex2",
+    "IndexFinger_03_R": "RightHandIndex3",
+    "Finger_03_R": "RightHandIndex3",
+    "IndexFinger_04_R": "RightHandIndex4",
+    "Finger_04_R": "RightHandIndex4"
+   },
+   "method": "swing"
+  },
+  {
+   "name": "zmb_roadworker_male_01",
+   "kind": "skinned",
+   "out": "zombies/roadworker_male_01.glb",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonZombies/Models/Zombies.fbx",
+   "mesh": "Zombie_Roadworker_Male_01",
+   "tex": "assets/raw/synty/staged/Assets/PolygonZombies/Textures/PolygonZombie_Texture_01_A.png",
+   "animGlb": "public/assets/models/zombie.glb",
+   "targetHeight": 1.75,
+   "hip": "Hips",
+   "srcHip": "Hips",
+   "srcYaw": 0,
+   "texSize": 64,
+   "clips": [
+    {
+     "src": "Zombie|ZombieIdle",
+     "out": "Zombie|ZombieIdle"
+    },
+    {
+     "src": "Zombie|ZombieWalk",
+     "out": "Zombie|ZombieWalk"
+    },
+    {
+     "src": "Zombie|ZombieRun",
+     "out": "Zombie|ZombieRun"
+    },
+    {
+     "src": "Zombie|ZombieBite",
+     "out": "Zombie|ZombieBite"
+    },
+    {
+     "src": "Zombie|ZombieCrawl",
+     "out": "Zombie|ZombieCrawl"
+    }
+   ],
+   "boneMap": {
+    "Hips": "Hips",
+    "Spine_01": "Spine",
+    "Spine_02": "Spine1",
+    "Spine_03": "Spine2",
+    "Neck": "Neck",
+    "Head": "Head",
+    "Clavicle_L": "LeftShoulder",
+    "Shoulder_L": "LeftArm",
+    "Elbow_L": "LeftForeArm",
+    "Hand_L": "LeftHand",
+    "Clavicle_R": "RightShoulder",
+    "Shoulder_R": "RightArm",
+    "Elbow_R": "RightForeArm",
+    "Hand_R": "RightHand",
+    "UpperLeg_L": "LeftUpLeg",
+    "LowerLeg_L": "LeftLeg",
+    "Ankle_L": "LeftFoot",
+    "Ball_L": "LeftToeBase",
+    "UpperLeg_R": "RightUpLeg",
+    "LowerLeg_R": "RightLeg",
+    "Ankle_R": "RightFoot",
+    "Ball_R": "RightToeBase",
+    "Thumb_01_L": "LeftHandThumb1",
+    "Thumb_02_L": "LeftHandThumb2",
+    "Thumb_03_L": "LeftHandThumb3",
+    "IndexFinger_01_L": "LeftHandIndex1",
+    "Finger_01_L": "LeftHandIndex1",
+    "IndexFinger_02_L": "LeftHandIndex2",
+    "Finger_02_L": "LeftHandIndex2",
+    "IndexFinger_03_L": "LeftHandIndex3",
+    "Finger_03_L": "LeftHandIndex3",
+    "IndexFinger_04_L": "LeftHandIndex4",
+    "Finger_04_L": "LeftHandIndex4",
+    "Thumb_01_R": "RightHandThumb1",
+    "Thumb_02_R": "RightHandThumb2",
+    "Thumb_03_R": "RightHandThumb3",
+    "IndexFinger_01_R": "RightHandIndex1",
+    "Finger_01_R": "RightHandIndex1",
+    "IndexFinger_02_R": "RightHandIndex2",
+    "Finger_02_R": "RightHandIndex2",
+    "IndexFinger_03_R": "RightHandIndex3",
+    "Finger_03_R": "RightHandIndex3",
+    "IndexFinger_04_R": "RightHandIndex4",
+    "Finger_04_R": "RightHandIndex4"
+   },
+   "method": "swing"
+  },
+  {
+   "name": "zmb_businessman_male_01",
+   "kind": "skinned",
+   "out": "zombies/businessman_male_01.glb",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonZombies/Models/Zombies.fbx",
+   "mesh": "Zombie_Businessman_Male_01",
+   "tex": "assets/raw/synty/staged/Assets/PolygonZombies/Textures/PolygonZombie_Texture_01_A.png",
+   "animGlb": "public/assets/models/zombie.glb",
+   "targetHeight": 1.75,
+   "hip": "Hips",
+   "srcHip": "Hips",
+   "srcYaw": 0,
+   "texSize": 64,
+   "clips": [
+    {
+     "src": "Zombie|ZombieIdle",
+     "out": "Zombie|ZombieIdle"
+    },
+    {
+     "src": "Zombie|ZombieWalk",
+     "out": "Zombie|ZombieWalk"
+    },
+    {
+     "src": "Zombie|ZombieRun",
+     "out": "Zombie|ZombieRun"
+    },
+    {
+     "src": "Zombie|ZombieBite",
+     "out": "Zombie|ZombieBite"
+    },
+    {
+     "src": "Zombie|ZombieCrawl",
+     "out": "Zombie|ZombieCrawl"
+    }
+   ],
+   "boneMap": {
+    "Hips": "Hips",
+    "Spine_01": "Spine",
+    "Spine_02": "Spine1",
+    "Spine_03": "Spine2",
+    "Neck": "Neck",
+    "Head": "Head",
+    "Clavicle_L": "LeftShoulder",
+    "Shoulder_L": "LeftArm",
+    "Elbow_L": "LeftForeArm",
+    "Hand_L": "LeftHand",
+    "Clavicle_R": "RightShoulder",
+    "Shoulder_R": "RightArm",
+    "Elbow_R": "RightForeArm",
+    "Hand_R": "RightHand",
+    "UpperLeg_L": "LeftUpLeg",
+    "LowerLeg_L": "LeftLeg",
+    "Ankle_L": "LeftFoot",
+    "Ball_L": "LeftToeBase",
+    "UpperLeg_R": "RightUpLeg",
+    "LowerLeg_R": "RightLeg",
+    "Ankle_R": "RightFoot",
+    "Ball_R": "RightToeBase",
+    "Thumb_01_L": "LeftHandThumb1",
+    "Thumb_02_L": "LeftHandThumb2",
+    "Thumb_03_L": "LeftHandThumb3",
+    "IndexFinger_01_L": "LeftHandIndex1",
+    "Finger_01_L": "LeftHandIndex1",
+    "IndexFinger_02_L": "LeftHandIndex2",
+    "Finger_02_L": "LeftHandIndex2",
+    "IndexFinger_03_L": "LeftHandIndex3",
+    "Finger_03_L": "LeftHandIndex3",
+    "IndexFinger_04_L": "LeftHandIndex4",
+    "Finger_04_L": "LeftHandIndex4",
+    "Thumb_01_R": "RightHandThumb1",
+    "Thumb_02_R": "RightHandThumb2",
+    "Thumb_03_R": "RightHandThumb3",
+    "IndexFinger_01_R": "RightHandIndex1",
+    "Finger_01_R": "RightHandIndex1",
+    "IndexFinger_02_R": "RightHandIndex2",
+    "Finger_02_R": "RightHandIndex2",
+    "IndexFinger_03_R": "RightHandIndex3",
+    "Finger_03_R": "RightHandIndex3",
+    "IndexFinger_04_R": "RightHandIndex4",
+    "Finger_04_R": "RightHandIndex4"
+   },
+   "method": "swing"
+  },
+  {
+   "name": "zmb_shopkeeper_female_01",
+   "kind": "skinned",
+   "out": "zombies/shopkeeper_female_01.glb",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonZombies/Models/Zombies.fbx",
+   "mesh": "Zombie_ShopKeeper_Female_01",
+   "tex": "assets/raw/synty/staged/Assets/PolygonZombies/Textures/PolygonZombie_Texture_01_A.png",
+   "animGlb": "public/assets/models/zombie.glb",
+   "targetHeight": 1.75,
+   "hip": "Hips",
+   "srcHip": "Hips",
+   "srcYaw": 0,
+   "texSize": 64,
+   "clips": [
+    {
+     "src": "Zombie|ZombieIdle",
+     "out": "Zombie|ZombieIdle"
+    },
+    {
+     "src": "Zombie|ZombieWalk",
+     "out": "Zombie|ZombieWalk"
+    },
+    {
+     "src": "Zombie|ZombieRun",
+     "out": "Zombie|ZombieRun"
+    },
+    {
+     "src": "Zombie|ZombieBite",
+     "out": "Zombie|ZombieBite"
+    },
+    {
+     "src": "Zombie|ZombieCrawl",
+     "out": "Zombie|ZombieCrawl"
+    }
+   ],
+   "boneMap": {
+    "Hips": "Hips",
+    "Spine_01": "Spine",
+    "Spine_02": "Spine1",
+    "Spine_03": "Spine2",
+    "Neck": "Neck",
+    "Head": "Head",
+    "Clavicle_L": "LeftShoulder",
+    "Shoulder_L": "LeftArm",
+    "Elbow_L": "LeftForeArm",
+    "Hand_L": "LeftHand",
+    "Clavicle_R": "RightShoulder",
+    "Shoulder_R": "RightArm",
+    "Elbow_R": "RightForeArm",
+    "Hand_R": "RightHand",
+    "UpperLeg_L": "LeftUpLeg",
+    "LowerLeg_L": "LeftLeg",
+    "Ankle_L": "LeftFoot",
+    "Ball_L": "LeftToeBase",
+    "UpperLeg_R": "RightUpLeg",
+    "LowerLeg_R": "RightLeg",
+    "Ankle_R": "RightFoot",
+    "Ball_R": "RightToeBase",
+    "Thumb_01_L": "LeftHandThumb1",
+    "Thumb_02_L": "LeftHandThumb2",
+    "Thumb_03_L": "LeftHandThumb3",
+    "IndexFinger_01_L": "LeftHandIndex1",
+    "Finger_01_L": "LeftHandIndex1",
+    "IndexFinger_02_L": "LeftHandIndex2",
+    "Finger_02_L": "LeftHandIndex2",
+    "IndexFinger_03_L": "LeftHandIndex3",
+    "Finger_03_L": "LeftHandIndex3",
+    "IndexFinger_04_L": "LeftHandIndex4",
+    "Finger_04_L": "LeftHandIndex4",
+    "Thumb_01_R": "RightHandThumb1",
+    "Thumb_02_R": "RightHandThumb2",
+    "Thumb_03_R": "RightHandThumb3",
+    "IndexFinger_01_R": "RightHandIndex1",
+    "Finger_01_R": "RightHandIndex1",
+    "IndexFinger_02_R": "RightHandIndex2",
+    "Finger_02_R": "RightHandIndex2",
+    "IndexFinger_03_R": "RightHandIndex3",
+    "Finger_03_R": "RightHandIndex3",
+    "IndexFinger_04_R": "RightHandIndex4",
+    "Finger_04_R": "RightHandIndex4"
+   },
+   "method": "swing"
+  },
+  {
+   "name": "zmb_tourist_male_01",
+   "kind": "skinned",
+   "out": "zombies/tourist_male_01.glb",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonZombies/Models/Zombies.fbx",
+   "mesh": "Zombie_Tourist_Male_01",
+   "tex": "assets/raw/synty/staged/Assets/PolygonZombies/Textures/PolygonZombie_Texture_01_A.png",
+   "animGlb": "public/assets/models/zombie.glb",
+   "targetHeight": 1.75,
+   "hip": "Hips",
+   "srcHip": "Hips",
+   "srcYaw": 0,
+   "texSize": 64,
+   "clips": [
+    {
+     "src": "Zombie|ZombieIdle",
+     "out": "Zombie|ZombieIdle"
+    },
+    {
+     "src": "Zombie|ZombieWalk",
+     "out": "Zombie|ZombieWalk"
+    },
+    {
+     "src": "Zombie|ZombieRun",
+     "out": "Zombie|ZombieRun"
+    },
+    {
+     "src": "Zombie|ZombieBite",
+     "out": "Zombie|ZombieBite"
+    },
+    {
+     "src": "Zombie|ZombieCrawl",
+     "out": "Zombie|ZombieCrawl"
+    }
+   ],
+   "boneMap": {
+    "Hips": "Hips",
+    "Spine_01": "Spine",
+    "Spine_02": "Spine1",
+    "Spine_03": "Spine2",
+    "Neck": "Neck",
+    "Head": "Head",
+    "Clavicle_L": "LeftShoulder",
+    "Shoulder_L": "LeftArm",
+    "Elbow_L": "LeftForeArm",
+    "Hand_L": "LeftHand",
+    "Clavicle_R": "RightShoulder",
+    "Shoulder_R": "RightArm",
+    "Elbow_R": "RightForeArm",
+    "Hand_R": "RightHand",
+    "UpperLeg_L": "LeftUpLeg",
+    "LowerLeg_L": "LeftLeg",
+    "Ankle_L": "LeftFoot",
+    "Ball_L": "LeftToeBase",
+    "UpperLeg_R": "RightUpLeg",
+    "LowerLeg_R": "RightLeg",
+    "Ankle_R": "RightFoot",
+    "Ball_R": "RightToeBase",
+    "Thumb_01_L": "LeftHandThumb1",
+    "Thumb_02_L": "LeftHandThumb2",
+    "Thumb_03_L": "LeftHandThumb3",
+    "IndexFinger_01_L": "LeftHandIndex1",
+    "Finger_01_L": "LeftHandIndex1",
+    "IndexFinger_02_L": "LeftHandIndex2",
+    "Finger_02_L": "LeftHandIndex2",
+    "IndexFinger_03_L": "LeftHandIndex3",
+    "Finger_03_L": "LeftHandIndex3",
+    "IndexFinger_04_L": "LeftHandIndex4",
+    "Finger_04_L": "LeftHandIndex4",
+    "Thumb_01_R": "RightHandThumb1",
+    "Thumb_02_R": "RightHandThumb2",
+    "Thumb_03_R": "RightHandThumb3",
+    "IndexFinger_01_R": "RightHandIndex1",
+    "Finger_01_R": "RightHandIndex1",
+    "IndexFinger_02_R": "RightHandIndex2",
+    "Finger_02_R": "RightHandIndex2",
+    "IndexFinger_03_R": "RightHandIndex3",
+    "Finger_03_R": "RightHandIndex3",
+    "IndexFinger_04_R": "RightHandIndex4",
+    "Finger_04_R": "RightHandIndex4"
+   },
+   "method": "swing"
+  },
+  {
+   "name": "zmb_father_male_01",
+   "kind": "skinned",
+   "out": "zombies/father_male_01.glb",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonZombies/Models/Zombies.fbx",
+   "mesh": "Zombie_Father_Male_01",
+   "tex": "assets/raw/synty/staged/Assets/PolygonZombies/Textures/PolygonZombie_Texture_01_A.png",
+   "animGlb": "public/assets/models/zombie.glb",
+   "targetHeight": 1.75,
+   "hip": "Hips",
+   "srcHip": "Hips",
+   "srcYaw": 0,
+   "texSize": 64,
+   "clips": [
+    {
+     "src": "Zombie|ZombieIdle",
+     "out": "Zombie|ZombieIdle"
+    },
+    {
+     "src": "Zombie|ZombieWalk",
+     "out": "Zombie|ZombieWalk"
+    },
+    {
+     "src": "Zombie|ZombieRun",
+     "out": "Zombie|ZombieRun"
+    },
+    {
+     "src": "Zombie|ZombieBite",
+     "out": "Zombie|ZombieBite"
+    },
+    {
+     "src": "Zombie|ZombieCrawl",
+     "out": "Zombie|ZombieCrawl"
+    }
+   ],
+   "boneMap": {
+    "Hips": "Hips",
+    "Spine_01": "Spine",
+    "Spine_02": "Spine1",
+    "Spine_03": "Spine2",
+    "Neck": "Neck",
+    "Head": "Head",
+    "Clavicle_L": "LeftShoulder",
+    "Shoulder_L": "LeftArm",
+    "Elbow_L": "LeftForeArm",
+    "Hand_L": "LeftHand",
+    "Clavicle_R": "RightShoulder",
+    "Shoulder_R": "RightArm",
+    "Elbow_R": "RightForeArm",
+    "Hand_R": "RightHand",
+    "UpperLeg_L": "LeftUpLeg",
+    "LowerLeg_L": "LeftLeg",
+    "Ankle_L": "LeftFoot",
+    "Ball_L": "LeftToeBase",
+    "UpperLeg_R": "RightUpLeg",
+    "LowerLeg_R": "RightLeg",
+    "Ankle_R": "RightFoot",
+    "Ball_R": "RightToeBase",
+    "Thumb_01_L": "LeftHandThumb1",
+    "Thumb_02_L": "LeftHandThumb2",
+    "Thumb_03_L": "LeftHandThumb3",
+    "IndexFinger_01_L": "LeftHandIndex1",
+    "Finger_01_L": "LeftHandIndex1",
+    "IndexFinger_02_L": "LeftHandIndex2",
+    "Finger_02_L": "LeftHandIndex2",
+    "IndexFinger_03_L": "LeftHandIndex3",
+    "Finger_03_L": "LeftHandIndex3",
+    "IndexFinger_04_L": "LeftHandIndex4",
+    "Finger_04_L": "LeftHandIndex4",
+    "Thumb_01_R": "RightHandThumb1",
+    "Thumb_02_R": "RightHandThumb2",
+    "Thumb_03_R": "RightHandThumb3",
+    "IndexFinger_01_R": "RightHandIndex1",
+    "Finger_01_R": "RightHandIndex1",
+    "IndexFinger_02_R": "RightHandIndex2",
+    "Finger_02_R": "RightHandIndex2",
+    "IndexFinger_03_R": "RightHandIndex3",
+    "Finger_03_R": "RightHandIndex3",
+    "IndexFinger_04_R": "RightHandIndex4",
+    "Finger_04_R": "RightHandIndex4"
+   },
+   "method": "swing"
+  },
+  {
+   "name": "zmb_mother_female_01",
+   "kind": "skinned",
+   "out": "zombies/mother_female_01.glb",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonZombies/Models/Zombies.fbx",
+   "mesh": "Zombie_Mother_Female_01",
+   "tex": "assets/raw/synty/staged/Assets/PolygonZombies/Textures/PolygonZombie_Texture_01_A.png",
+   "animGlb": "public/assets/models/zombie.glb",
+   "targetHeight": 1.75,
+   "hip": "Hips",
+   "srcHip": "Hips",
+   "srcYaw": 0,
+   "texSize": 64,
+   "clips": [
+    {
+     "src": "Zombie|ZombieIdle",
+     "out": "Zombie|ZombieIdle"
+    },
+    {
+     "src": "Zombie|ZombieWalk",
+     "out": "Zombie|ZombieWalk"
+    },
+    {
+     "src": "Zombie|ZombieRun",
+     "out": "Zombie|ZombieRun"
+    },
+    {
+     "src": "Zombie|ZombieBite",
+     "out": "Zombie|ZombieBite"
+    },
+    {
+     "src": "Zombie|ZombieCrawl",
+     "out": "Zombie|ZombieCrawl"
+    }
+   ],
+   "boneMap": {
+    "Hips": "Hips",
+    "Spine_01": "Spine",
+    "Spine_02": "Spine1",
+    "Spine_03": "Spine2",
+    "Neck": "Neck",
+    "Head": "Head",
+    "Clavicle_L": "LeftShoulder",
+    "Shoulder_L": "LeftArm",
+    "Elbow_L": "LeftForeArm",
+    "Hand_L": "LeftHand",
+    "Clavicle_R": "RightShoulder",
+    "Shoulder_R": "RightArm",
+    "Elbow_R": "RightForeArm",
+    "Hand_R": "RightHand",
+    "UpperLeg_L": "LeftUpLeg",
+    "LowerLeg_L": "LeftLeg",
+    "Ankle_L": "LeftFoot",
+    "Ball_L": "LeftToeBase",
+    "UpperLeg_R": "RightUpLeg",
+    "LowerLeg_R": "RightLeg",
+    "Ankle_R": "RightFoot",
+    "Ball_R": "RightToeBase",
+    "Thumb_01_L": "LeftHandThumb1",
+    "Thumb_02_L": "LeftHandThumb2",
+    "Thumb_03_L": "LeftHandThumb3",
+    "IndexFinger_01_L": "LeftHandIndex1",
+    "Finger_01_L": "LeftHandIndex1",
+    "IndexFinger_02_L": "LeftHandIndex2",
+    "Finger_02_L": "LeftHandIndex2",
+    "IndexFinger_03_L": "LeftHandIndex3",
+    "Finger_03_L": "LeftHandIndex3",
+    "IndexFinger_04_L": "LeftHandIndex4",
+    "Finger_04_L": "LeftHandIndex4",
+    "Thumb_01_R": "RightHandThumb1",
+    "Thumb_02_R": "RightHandThumb2",
+    "Thumb_03_R": "RightHandThumb3",
+    "IndexFinger_01_R": "RightHandIndex1",
+    "Finger_01_R": "RightHandIndex1",
+    "IndexFinger_02_R": "RightHandIndex2",
+    "Finger_02_R": "RightHandIndex2",
+    "IndexFinger_03_R": "RightHandIndex3",
+    "Finger_03_R": "RightHandIndex3",
+    "IndexFinger_04_R": "RightHandIndex4",
+    "Finger_04_R": "RightHandIndex4"
+   },
+   "method": "swing"
+  },
+  {
+   "name": "ztex_01_a",
+   "kind": "texture",
+   "out": "textures/zombie_01_a.png",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonZombies/Textures/PolygonZombie_Texture_01_A.png",
+   "texSize": 512
+  },
+  {
+   "name": "ztex_01_b",
+   "kind": "texture",
+   "out": "textures/zombie_01_b.png",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonZombies/Textures/PolygonZombie_Texture_01_B.png",
+   "texSize": 512
+  },
+  {
+   "name": "ztex_01_c",
+   "kind": "texture",
+   "out": "textures/zombie_01_c.png",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonZombies/Textures/PolygonZombie_Texture_01_C.png",
+   "texSize": 512
+  },
+  {
+   "name": "ztex_02_a",
+   "kind": "texture",
+   "out": "textures/zombie_02_a.png",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonZombies/Textures/Alts/PolygonZombie_Texture_02_A.png",
+   "texSize": 512
+  },
+  {
+   "name": "ztex_02_b",
+   "kind": "texture",
+   "out": "textures/zombie_02_b.png",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonZombies/Textures/Alts/PolygonZombie_Texture_02_B.png",
+   "texSize": 512
+  },
+  {
+   "name": "ztex_02_c",
+   "kind": "texture",
+   "out": "textures/zombie_02_c.png",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonZombies/Textures/Alts/PolygonZombie_Texture_02_C.png",
+   "texSize": 512
+  },
+  {
+   "name": "ztex_03_a",
+   "kind": "texture",
+   "out": "textures/zombie_03_a.png",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonZombies/Textures/Alts/PolygonZombie_Texture_03_A.png",
+   "texSize": 512
+  },
+  {
+   "name": "ztex_03_b",
+   "kind": "texture",
+   "out": "textures/zombie_03_b.png",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonZombies/Textures/Alts/PolygonZombie_Texture_03_B.png",
+   "texSize": 512
+  },
+  {
+   "name": "ztex_03_c",
+   "kind": "texture",
+   "out": "textures/zombie_03_c.png",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonZombies/Textures/Alts/PolygonZombie_Texture_03_C.png",
+   "texSize": 512
+  },
+  {
+   "name": "ztex_04_a",
+   "kind": "texture",
+   "out": "textures/zombie_04_a.png",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonZombies/Textures/Alts/PolygonZombie_Texture_04_A.png",
+   "texSize": 512
+  },
+  {
+   "name": "ztex_04_b",
+   "kind": "texture",
+   "out": "textures/zombie_04_b.png",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonZombies/Textures/Alts/PolygonZombie_Texture_04_B.png",
+   "texSize": 512
+  },
+  {
+   "name": "ztex_04_c",
+   "kind": "texture",
+   "out": "textures/zombie_04_c.png",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonZombies/Textures/Alts/PolygonZombie_Texture_04_C.png",
+   "texSize": 512
+  },
+  {
+   "name": "veh_muscle",
+   "kind": "static",
+   "out": "vehicles/muscle.glb",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Veh_Muscle_01.fbx",
+   "scale": 0.01,
+   "texSize": 1024
+  },
+  {
+   "name": "veh_motorbike",
+   "kind": "static",
+   "out": "vehicles/motorbike_synty.glb",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Veh_Motorbike_01.fbx",
+   "scale": 0.01,
+   "texSize": 1024
+  },
+  {
+   "name": "wld_diner",
+   "kind": "static",
+   "out": "world/diner.glb",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Bld_Diner_01.fbx",
+   "scale": 0.01,
+   "groundY": true,
+   "center": true,
+   "texSize": 1024
+  },
+  {
+   "name": "wld_cafe",
+   "kind": "static",
+   "out": "world/cafe.glb",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Bld_Cafe_01.fbx",
+   "scale": 0.01,
+   "groundY": true,
+   "center": true,
+   "texSize": 1024
+  },
+  {
+   "name": "wld_church",
+   "kind": "static",
+   "out": "world/church.glb",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Bld_Church_01.fbx",
+   "scale": 0.01,
+   "groundY": true,
+   "center": true,
+   "texSize": 1024
+  },
+  {
+   "name": "wld_autorepair",
+   "kind": "static",
+   "out": "world/autorepair.glb",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Bld_AutoRepair_01.fbx",
+   "scale": 0.01,
+   "groundY": true,
+   "center": true,
+   "texSize": 1024
+  },
+  {
+   "name": "wld_shop_s1",
+   "kind": "static",
+   "out": "world/shop_s1.glb",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Bld_Shop_Small_01.fbx",
+   "scale": 0.01,
+   "groundY": true,
+   "center": true,
+   "texSize": 1024
+  },
+  {
+   "name": "wld_shop_s2",
+   "kind": "static",
+   "out": "world/shop_s2.glb",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Bld_Shop_Small_02.fbx",
+   "scale": 0.01,
+   "groundY": true,
+   "center": true,
+   "texSize": 1024
+  },
+  {
+   "name": "wld_shop_m1",
+   "kind": "static",
+   "out": "world/shop_m1.glb",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Bld_Shop_Medium_01.fbx",
+   "scale": 0.01,
+   "groundY": true,
+   "center": true,
+   "texSize": 1024
+  },
+  {
+   "name": "wld_commercial_s",
+   "kind": "static",
+   "out": "world/commercial_s.glb",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Bld_Commercial_Small_01.fbx",
+   "scale": 0.01,
+   "groundY": true,
+   "center": true,
+   "texSize": 1024
+  },
+  {
+   "name": "wld_apartment",
+   "kind": "static",
+   "out": "world/apartment.glb",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Bld_Apartment_01.fbx",
+   "scale": 0.01,
+   "groundY": true,
+   "center": true,
+   "texSize": 1024
+  },
+  {
+   "name": "wld_motel",
+   "kind": "static",
+   "out": "world/motel.glb",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Bld_Motel_01.fbx",
+   "scale": 0.01,
+   "groundY": true,
+   "center": true,
+   "texSize": 1024
+  },
+  {
+   "name": "wld_house1",
+   "kind": "static",
+   "out": "world/house1.glb",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Bld_House_01.fbx",
+   "scale": 0.01,
+   "groundY": true,
+   "center": true,
+   "texSize": 1024
+  },
+  {
+   "name": "wld_house2",
+   "kind": "static",
+   "out": "world/house2.glb",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Bld_House_02.fbx",
+   "scale": 0.01,
+   "groundY": true,
+   "center": true,
+   "texSize": 1024
+  },
+  {
+   "name": "wld_house3",
+   "kind": "static",
+   "out": "world/house3.glb",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Bld_House_03.fbx",
+   "scale": 0.01,
+   "groundY": true,
+   "center": true,
+   "texSize": 1024
+  },
+  {
+   "name": "wld_house_burnt",
+   "kind": "static",
+   "out": "world/house_burnt.glb",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Bld_House_Burnt_01.fbx",
+   "scale": 0.01,
+   "groundY": true,
+   "center": true,
+   "texSize": 1024
+  },
+  {
+   "name": "wld_barricade1",
+   "kind": "static",
+   "out": "world/barricade1.glb",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Prop_Barricade_01.fbx",
+   "scale": 0.01,
+   "groundY": true,
+   "center": true,
+   "texSize": 512
+  },
+  {
+   "name": "wld_barricade_wire",
+   "kind": "static",
+   "out": "world/barricade_wire.glb",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Prop_Barricade_Wired_01.fbx",
+   "scale": 0.01,
+   "groundY": true,
+   "center": true,
+   "texSize": 512
+  },
+  {
+   "name": "wld_barricade_conc",
+   "kind": "static",
+   "out": "world/barricade_conc.glb",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Prop_Barricade_Concrete_01.fbx",
+   "scale": 0.01,
+   "groundY": true,
+   "center": true,
+   "texSize": 512
+  },
+  {
+   "name": "wld_wreck_car",
+   "kind": "static",
+   "out": "world/wreck_car.glb",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Veh_Car_Medium_01.fbx",
+   "scale": 0.01,
+   "groundY": true,
+   "center": true,
+   "texSize": 512
+  },
+  {
+   "name": "wld_wreck_ute",
+   "kind": "static",
+   "out": "world/wreck_ute.glb",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Veh_Ute_01.fbx",
+   "scale": 0.01,
+   "groundY": true,
+   "center": true,
+   "texSize": 512
+  },
+  {
+   "name": "wld_tree1",
+   "kind": "static",
+   "out": "world/tree1.glb",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Env_Tree_01.fbx",
+   "scale": 0.01,
+   "groundY": true,
+   "center": true,
+   "texSize": 512,
+   "simplify": 0.3
+  },
+  {
+   "name": "wld_tree2",
+   "kind": "static",
+   "out": "world/tree2.glb",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Env_Tree_02.fbx",
+   "scale": 0.01,
+   "groundY": true,
+   "center": true,
+   "texSize": 512,
+   "simplify": 0.3
+  },
+  {
+   "name": "wld_tree_dead",
+   "kind": "static",
+   "out": "world/tree_dead.glb",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Env_Tree_Dead_01.fbx",
+   "scale": 0.01,
+   "groundY": true,
+   "center": true,
+   "texSize": 512,
+   "simplify": 0.3
+  },
+  {
+   "name": "wld_rock1",
+   "kind": "static",
+   "out": "world/rock1.glb",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Env_Rock_01.fbx",
+   "scale": 0.01,
+   "groundY": true,
+   "center": true,
+   "texSize": 512,
+   "simplify": 0.3
+  },
+  {
+   "name": "wld_rock2",
+   "kind": "static",
+   "out": "world/rock2.glb",
+   "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Env_Rock_02.fbx",
+   "scale": 0.01,
+   "groundY": true,
+   "center": true,
+   "texSize": 512,
+   "simplify": 0.3
+  }
+ ]
 }
