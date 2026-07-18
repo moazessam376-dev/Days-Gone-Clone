@@ -46,6 +46,13 @@ type Scenario = {
  * hangs for minutes creating a WebGL context, so we create exactly ONE. */
 const HARNESS = `
   const g = window.__game;
+  // Step without WebGL draws: CI software rasterization is ~100x slower
+  // than the simulation and was timing scenarios out. All gameplay-side
+  // render work (interpolation, yaw, camera) still runs.
+  if (!g.__rawDebugStep) {
+    g.__rawDebugStep = g.debugStep.bind(g);
+    g.debugStep = (n) => g.__rawDebugStep(n, false);
+  }
   const em = g.enemies;
   const V = Object.getPrototypeOf(g.player.root.position).constructor;
   const down = (c) => document.dispatchEvent(new KeyboardEvent('keydown', {code: c, bubbles: true}));
@@ -505,6 +512,9 @@ async function main(): Promise<void> {
     console.error('FAILED:', failed.map((f) => f.name).join(', '));
     process.exit(1);
   }
+  // Explicit exit: the pending watchdog setTimeouts would otherwise keep the
+  // process alive for minutes after the last scenario.
+  process.exit(0);
 }
 
 await main();

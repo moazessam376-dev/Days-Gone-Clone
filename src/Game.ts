@@ -73,6 +73,7 @@ export class Game {
   private playerHealth = PLAYER_HEALTH.max;
   private lastDamageTime = -999;
   private gameTime = 0;
+  private skipDraw = false;
   private meleeCooldown = 0;
   /** While > 0, firing/melee/throwing are blocked (a deliberate action is in progress). */
   private actionLock = 0;
@@ -221,12 +222,20 @@ export class Game {
    * Test hook (?mockinput): advance the simulation deterministically without
    * relying on requestAnimationFrame (which pauses in hidden tabs).
    */
-  debugStep(frames: number): void {
+  /**
+   * @param draw pass false to skip the WebGL draw call while stepping —
+   *   ALL gameplay-relevant render work (interpolation, model yaw, camera)
+   *   still runs; only pixels are skipped. The physics test suite uses this:
+   *   CI software rasterization is ~100x slower than the simulation itself.
+   */
+  debugStep(frames: number, draw = true): void {
     const dt = 1 / 60;
+    this.skipDraw = !draw;
     for (let i = 0; i < frames; i++) {
       this.fixedUpdate(dt);
       this.render(1, dt);
     }
+    this.skipDraw = false;
   }
 
   /** Test hook: chase target + motion state of the N nearest live enemies. */
@@ -915,7 +924,7 @@ export class Game {
     this.renderer.camera.getWorldDirection(fwd);
     this.audio.updateListener(camPos, fwd);
 
-    this.renderer.render(this.scene);
+    if (!this.skipDraw) this.renderer.render(this.scene);
     this.input.endFrame();
     this.debug.end();
   }
