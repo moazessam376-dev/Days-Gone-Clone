@@ -2,7 +2,7 @@ import RAPIER from '@dimforge/rapier3d-compat';
 import * as THREE from 'three';
 import { ENEMY } from '../config';
 import { PhysicsWorld } from '../physics/PhysicsWorld';
-import { Layer, interactionGroups } from '../physics/layers';
+import { ENEMY_BODY_GROUPS, CORPSE_GROUPS } from '../physics/layers';
 import { DamageRegistry, type Damageable } from '../weapons/WeaponSystem';
 import { SpatialHash } from './SpatialHash';
 
@@ -107,7 +107,7 @@ export class EnemyManager {
   constructor(physics: PhysicsWorld, registry: DamageRegistry, private events: EnemyEvents) {
     // Enemies don't physically block the car — run-over kills are handled by
     // the sweep, so the car must be able to plow through the crowd.
-    const groups = interactionGroups(Layer.ENEMY, 0xffff & ~Layer.VEHICLE);
+    const groups = ENEMY_BODY_GROUPS;
     for (let s = 0; s < ENEMY.physicsPoolSize; s++) {
       const body = physics.world.createRigidBody(
         RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(0, -100 - s * 3, 0),
@@ -128,7 +128,7 @@ export class EnemyManager {
       this.pool.push({ body, bodyCollider, headCollider, enemy: -1, adapter });
     }
 
-    const corpseGroups = interactionGroups(Layer.RAGDOLL, Layer.STATIC | Layer.RAGDOLL);
+    const corpseGroups = CORPSE_GROUPS;
     for (let c = 0; c < ENEMY.corpsePoolSize; c++) {
       const body = physics.world.createRigidBody(
         RAPIER.RigidBodyDesc.dynamic().setTranslation(0, -200 - c * 3, 0),

@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { PLAYER } from '../config';
 import { Input } from '../core/Input';
 import { PhysicsWorld } from '../physics/PhysicsWorld';
-import { Layer, ALL_LAYERS, interactionGroups } from '../physics/layers';
+import { PLAYER_BODY_GROUPS, KCC_OBSTACLE_GROUPS } from '../physics/layers';
 
 const _moveDir = new THREE.Vector3();
 const _targetVel = new THREE.Vector3();
@@ -56,7 +56,7 @@ export class PlayerController {
     const halfHeight = PLAYER.height / 2 - PLAYER.radius;
     this.collider = physics.world.createCollider(
       RAPIER.ColliderDesc.capsule(halfHeight, PLAYER.radius).setCollisionGroups(
-        interactionGroups(Layer.PLAYER, ALL_LAYERS),
+        PLAYER_BODY_GROUPS,
       ),
       this.body,
     );
@@ -151,7 +151,7 @@ export class PlayerController {
       this.collider,
       _delta,
       undefined,
-      interactionGroups(Layer.PLAYER, ALL_LAYERS),
+      KCC_OBSTACLE_GROUPS,
     );
     const corrected = this.controller.computedMovement();
     this.grounded = this.controller.computedGrounded();

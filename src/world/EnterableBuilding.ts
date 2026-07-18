@@ -1,7 +1,7 @@
 import RAPIER from '@dimforge/rapier3d-compat';
 import * as THREE from 'three';
 import { PhysicsWorld } from '../physics/PhysicsWorld';
-import { Layer, ALL_LAYERS, interactionGroups } from '../physics/layers';
+import { STATIC_GROUPS } from '../physics/layers';
 import { WorldData } from './WorldGen';
 
 export interface BreakableWindow {
@@ -50,7 +50,7 @@ export class EnterableBuilding {
     const group = new THREE.Group();
     scene.add(group);
 
-    const staticGroups = interactionGroups(Layer.STATIC, ALL_LAYERS);
+    const staticGroups = STATIC_GROUPS;
     const addBox = (
       sx: number,
       sy: number,
@@ -134,7 +134,7 @@ export class EnterableBuilding {
     const collider = physics.world.createCollider(
       RAPIER.ColliderDesc.cuboid(sx / 2, 0.7, sz / 2)
         .setTranslation(cx, y + 1.6, cz)
-        .setCollisionGroups(interactionGroups(Layer.STATIC, ALL_LAYERS)),
+        .setCollisionGroups(STATIC_GROUPS),
     );
 
     const self = this;

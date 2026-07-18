@@ -1,7 +1,7 @@
 import RAPIER from '@dimforge/rapier3d-compat';
 import * as THREE from 'three';
 import { PhysicsWorld } from '../physics/PhysicsWorld';
-import { Layer, interactionGroups } from '../physics/layers';
+import { THROWABLE_GROUPS } from '../physics/layers';
 
 export const THROWABLE = {
   throwSpeed: 16,
@@ -63,7 +63,7 @@ export class ThrowableSystem {
         RAPIER.ColliderDesc.ball(0.11)
           .setDensity(3)
           .setRestitution(0.3)
-          .setCollisionGroups(interactionGroups(Layer.PROJECTILE, Layer.STATIC | Layer.VEHICLE)),
+          .setCollisionGroups(THROWABLE_GROUPS),
         body,
       );
       const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), this.grenadeMat);

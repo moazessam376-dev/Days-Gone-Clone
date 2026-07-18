@@ -2,7 +2,7 @@ import RAPIER from '@dimforge/rapier3d-compat';
 import * as THREE from 'three';
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { PhysicsWorld } from '../physics/PhysicsWorld';
-import { Layer, ALL_LAYERS, interactionGroups } from '../physics/layers';
+import { STATIC_GROUPS } from '../physics/layers';
 import { mulberry32 } from './Noise';
 import { WORLD, WorldData } from './WorldGen';
 
@@ -68,7 +68,7 @@ export class Town {
         RAPIER.ColliderDesc.cuboid(w / 2, h / 2, d / 2)
           .setTranslation(bx, y + h / 2 - 0.15, bz)
           .setRotation({ x: q.x, y: q.y, z: q.z, w: q.w })
-          .setCollisionGroups(interactionGroups(Layer.STATIC, ALL_LAYERS)),
+          .setCollisionGroups(STATIC_GROUPS),
       );
       this.buildingSpots.push({ x: bx, z: bz, w, d, rot });
     }
@@ -94,7 +94,7 @@ export class Town {
           RAPIER.ColliderDesc.cuboid(0.5, 0.5, 0.5)
             .setTranslation(mesh.position.x, mesh.position.y, mesh.position.z)
             .setRotation({ x: q.x, y: q.y, z: q.z, w: q.w })
-            .setCollisionGroups(interactionGroups(Layer.STATIC, ALL_LAYERS)),
+            .setCollisionGroups(STATIC_GROUPS),
         );
       }
     }

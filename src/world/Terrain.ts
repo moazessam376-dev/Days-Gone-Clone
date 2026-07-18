@@ -1,7 +1,7 @@
 import RAPIER from '@dimforge/rapier3d-compat';
 import * as THREE from 'three';
 import { PhysicsWorld } from '../physics/PhysicsWorld';
-import { Layer, ALL_LAYERS, interactionGroups } from '../physics/layers';
+import { STATIC_GROUPS } from '../physics/layers';
 import { WORLD, WorldData } from './WorldGen';
 
 const CHUNK_CELLS = 32; // 32 cells of 4m = 128m chunks
@@ -133,7 +133,7 @@ export class Terrain {
     return this.physics.world.createCollider(
       RAPIER.ColliderDesc.heightfield(size, size, heights, new RAPIER.Vector3(extent, 1, extent))
         .setTranslation(centerX, 0, centerZ)
-        .setCollisionGroups(interactionGroups(Layer.STATIC, ALL_LAYERS)),
+        .setCollisionGroups(STATIC_GROUPS),
     );
   }
 }

@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { Input } from '../core/Input';
 import { PhysicsWorld } from '../physics/PhysicsWorld';
-import { Layer, interactionGroups } from '../physics/layers';
+import { VEHICLE_GROUPS, WHEEL_RAY_GROUPS } from '../physics/layers';
 
 const _q = new THREE.Quaternion();
 const _up = new THREE.Vector3();
@@ -31,7 +31,6 @@ export const CAR = {
 /** Wheel suspension rays must only see the world, never enemies/players —
  * a raycast landing on an (infinite-mass) kinematic zombie capsule reads as
  * ground and catapults the chassis. */
-const WHEEL_RAY_GROUPS = interactionGroups(Layer.VEHICLE, Layer.STATIC);
 
 /**
  * Rapier raycast-vehicle car with the Kenney sedan model. The GLB's own
@@ -99,7 +98,7 @@ export class CarController {
     physics.world.createCollider(
       RAPIER.ColliderDesc.cuboid(size.x / 2, size.y / 2.6, size.z / 2)
         .setDensity(160)
-        .setCollisionGroups(interactionGroups(Layer.VEHICLE, 0xffff)),
+        .setCollisionGroups(VEHICLE_GROUPS),
       this.body,
     );
 

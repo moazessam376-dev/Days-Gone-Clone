@@ -1,7 +1,7 @@
 import RAPIER from '@dimforge/rapier3d-compat';
 import * as THREE from 'three';
 import { PhysicsWorld } from '../physics/PhysicsWorld';
-import { Layer, interactionGroups } from '../physics/layers';
+import { STATIC_GROUPS } from '../physics/layers';
 import { mulberry32 } from './Noise';
 import { fbm } from './Noise';
 import { WORLD, WorldData } from './WorldGen';
@@ -113,7 +113,7 @@ export class Vegetation {
     scene.add(rockMesh);
 
     // Pooled tree colliders (parked below the world when unused).
-    const groups = interactionGroups(Layer.STATIC, 0xffff);
+    const groups = STATIC_GROUPS;
     for (let i = 0; i < TREE_COLLIDER_POOL; i++) {
       this.colliderPool.push(
         physics.world.createCollider(

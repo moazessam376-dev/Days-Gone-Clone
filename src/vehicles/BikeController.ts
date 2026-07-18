@@ -3,10 +3,9 @@ import * as THREE from 'three';
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { Input } from '../core/Input';
 import { PhysicsWorld } from '../physics/PhysicsWorld';
-import { Layer, interactionGroups } from '../physics/layers';
+import { VEHICLE_GROUPS, WHEEL_RAY_GROUPS } from '../physics/layers';
 
 /** Wheel rays only see the world — see CarController for why. */
-const WHEEL_RAY_GROUPS = interactionGroups(Layer.VEHICLE, Layer.STATIC);
 
 export const BIKE = {
   targetLength: 2.3,
@@ -63,7 +62,7 @@ export class BikeController {
     physics.world.createCollider(
       RAPIER.ColliderDesc.cuboid(0.25, size.y / 2.4, size.z / 2)
         .setDensity(220)
-        .setCollisionGroups(interactionGroups(Layer.VEHICLE, 0xffff)),
+        .setCollisionGroups(VEHICLE_GROUPS),
       this.body,
     );
 

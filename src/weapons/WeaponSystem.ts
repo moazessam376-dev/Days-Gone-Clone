@@ -2,7 +2,7 @@ import RAPIER from '@dimforge/rapier3d-compat';
 import * as THREE from 'three';
 import { Input } from '../core/Input';
 import { PhysicsWorld } from '../physics/PhysicsWorld';
-import { Layer, interactionGroups } from '../physics/layers';
+import { HIT_SCAN_GROUPS } from '../physics/layers';
 import { WEAPONS, WEAPON_ORDER, type WeaponDef } from './weapons.data';
 import { ACTIONS } from '../config';
 
@@ -50,7 +50,6 @@ const _upv = new THREE.Vector3();
 const _point = new THREE.Vector3();
 const _normal = new THREE.Vector3();
 
-const HIT_GROUPS = interactionGroups(Layer.PROJECTILE, Layer.STATIC | Layer.ENEMY | Layer.VEHICLE);
 
 /**
  * Hitscan weapon core: trigger handling (semi/auto), ammo + reload, bloom
@@ -210,7 +209,7 @@ export class WeaponSystem {
         this.def.range,
         true,
         undefined,
-        HIT_GROUPS,
+        HIT_SCAN_GROUPS,
         undefined,
         this.excludeBody,
       );
