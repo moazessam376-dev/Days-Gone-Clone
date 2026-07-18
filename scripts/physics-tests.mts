@@ -437,6 +437,107 @@ const scenarios: Scenario[] = [
       `),
   },
   {
+    name: 'S15 boarding inside a zombie mob stays planted',
+    run: (page) =>
+      run(page, `
+        g.debugStep(5); clearEnemies();
+        // The playtest launcher: a mob crowded against the parked car when
+        // you board and drive — run-over corpses must not eject the chassis.
+        const cp = g.car.body.translation();
+        g.player.body.setTranslation({x: cp.x + 2.2, y: cp.y + 0.3, z: cp.z}, true);
+        g.debugStep(2);
+        for (let k = 0; k < 12; k++) {
+          const a = (k / 12) * Math.PI * 2;
+          em.spawn(cp.x + Math.cos(a) * 3.2, cp.z + Math.sin(a) * 3.2);
+        }
+        for (let f = 0; f < 120; f++) { g.playerHealth = 100; g.debugStep(1); } // crowd in
+        press('KeyE'); g.debugStep(2);
+        if (!g.driving) return { pass: false, reason: 'failed to board' };
+        down('KeyW');
+        let maxH = -1, minUp = 1;
+        for (let f = 0; f < 300; f++) {
+          g.playerHealth = 100;
+          g.debugStep(1);
+          const t = g.car.body.translation();
+          const h = t.y - terrain(t.x, t.z);
+          if (h > maxH) maxH = h;
+          const u = upY(g.car.body);
+          if (u < minUp) minUp = u;
+        }
+        up('KeyW');
+        press('KeyE'); g.debugStep(2);
+        // Kill coverage lives in S3 — this scenario asserts launch-safety only.
+        return { pass: maxH < 1.6 && minUp > 0.85,
+                 maxHeightOverTerrain: maxH, minUpY: minUp };
+      `),
+  },
+  {
+    name: 'S16 bike ramming the car launches neither',
+    run: (page) =>
+      run(page, `
+        g.debugStep(5); clearEnemies();
+        // Car parked ahead on the bike's drive line (bike nose +Z from reset).
+        const bp = g.bike.body.translation();
+        g.car.body.setTranslation({x: bp.x, y: terrain(bp.x, bp.z + 25) + 1.0, z: bp.z + 25}, true);
+        g.car.body.setRotation({x: 0, y: Math.sin(Math.PI/4), z: 0, w: Math.cos(Math.PI/4)}, true);
+        g.car.body.setLinvel({x: 0, y: 0, z: 0}, true); g.car.body.setAngvel({x: 0, y: 0, z: 0}, true);
+        g.player.body.setTranslation({x: bp.x + 1.5, y: bp.y + 0.3, z: bp.z}, true);
+        g.debugStep(10);
+        press('KeyE'); g.debugStep(2);
+        if (!(g.driving && g.activeVehicle === g.bike)) return { pass: false, reason: 'failed to board bike' };
+        down('KeyW');
+        let maxBikeH = -1, maxCarH = -1;
+        for (let f = 0; f < 360; f++) {
+          g.debugStep(1);
+          const bt = g.bike.body.translation();
+          const ct = g.car.body.translation();
+          const bh = bt.y - terrain(bt.x, bt.z);
+          const ch = ct.y - terrain(ct.x, ct.z);
+          if (bh > maxBikeH) maxBikeH = bh;
+          if (ch > maxCarH) maxCarH = ch;
+        }
+        up('KeyW');
+        press('KeyE'); g.debugStep(2);
+        return { pass: maxBikeH < 2.5 && maxCarH < 2.5 && upY(g.car.body) > 0.85,
+                 maxBikeHeight: maxBikeH, maxCarHeight: maxCarH, carUpY: upY(g.car.body) };
+      `),
+  },
+  {
+    name: 'S17 vehicles have a top speed and stay grounded at it',
+    timeoutMs: 180_000,
+    run: (page) =>
+      run(page, `
+        g.debugStep(5); clearEnemies();
+        const results = [];
+        for (const [veh, cap] of [[g.car, 22], [g.bike, 24]]) {
+          // Fresh park facing +Z on open ground; player boards and floors it 15s.
+          veh.body.setTranslation({x: 200, y: terrain(200, 200) + 1.0, z: 200}, true);
+          veh.body.setRotation({x: 0, y: 0, z: 0, w: 1}, true);
+          veh.body.setLinvel({x: 0, y: 0, z: 0}, true); veh.body.setAngvel({x: 0, y: 0, z: 0}, true);
+          g.player.body.setTranslation({x: 202, y: terrain(202, 200) + 1.3, z: 200}, true);
+          g.debugStep(10);
+          press('KeyE'); g.debugStep(2);
+          if (!g.driving) { results.push({boarded: false}); continue; }
+          down('KeyW');
+          let maxSpeed = 0, maxH = -1;
+          for (let f = 0; f < 900; f++) {
+            g.debugStep(1);
+            const v = veh.body.linvel();
+            const s = Math.hypot(v.x, v.z);
+            if (s > maxSpeed) maxSpeed = s;
+            const t = veh.body.translation();
+            const h = t.y - terrain(t.x, t.z);
+            if (h > maxH) maxH = h;
+          }
+          up('KeyW');
+          press('KeyE'); g.debugStep(2);
+          results.push({boarded: true, maxSpeed: +maxSpeed.toFixed(1), maxHeight: +maxH.toFixed(2), cap});
+        }
+        const pass = results.every(r => r.boarded && r.maxSpeed <= r.cap * 1.2 && r.maxHeight < 2.5);
+        return { pass, results };
+      `),
+  },
+  {
     name: 'S13 zombies path around a parked car',
     run: (page) =>
       run(page, `

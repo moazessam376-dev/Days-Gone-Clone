@@ -13,6 +13,8 @@ export const BIKE = {
   forwardSign: 1,
   engineForce: 3200,
   reverseForce: 1200,
+  /** Top speed (m/s) — see CarController.maxSpeed for why this must exist. */
+  maxSpeed: 24,
   brakeForce: 10,
   maxSteer: 0.7,
   steerSpeedFalloff: 14,
@@ -59,7 +61,8 @@ export class BikeController {
         .setTranslation(position.x, position.y, position.z)
         .setLinearDamping(0.15)
         .setAngularDamping(2.5)
-        .enabledRotations(false, true, false), // yaw only — arcade balance
+        .enabledRotations(false, true, false) // yaw only — arcade balance
+        .setCcdEnabled(true), // see CarController — no penetration pops
     );
     this.halfExtents.hd = size.z / 2;
     physics.world.createCollider(
@@ -99,6 +102,10 @@ export class BikeController {
       const fwd = input.isDown('KeyW') ? 1 : 0;
       const back = input.isDown('KeyS') ? 1 : 0;
       engine = (fwd * BIKE.engineForce - back * BIKE.reverseForce) * BIKE.forwardSign;
+      // Engine tapers to zero at top speed.
+      const spd = Math.abs(this.speed);
+      if (spd > BIKE.maxSpeed) engine = 0;
+      else engine *= 1 - (spd / BIKE.maxSpeed) ** 3 * 0.7;
       const steerInput = (input.isDown('KeyA') ? 1 : 0) - (input.isDown('KeyD') ? 1 : 0);
       const speedScale = 1 / (1 + Math.abs(this.speed) / BIKE.steerSpeedFalloff);
       steerTarget = steerInput * BIKE.maxSteer * speedScale * BIKE.forwardSign;
@@ -114,6 +121,15 @@ export class BikeController {
     this.controller.setWheelSteering(0, this.steer);
     this.controller.setWheelEngineForce(1, engine);
     this.controller.updateVehicle(dt, undefined, WHEEL_RAY_GROUPS);
+
+    // Hard horizontal speed clamp (downhill runs away from the engine taper).
+    const hv = this.body.linvel();
+    const hSpeed = Math.hypot(hv.x, hv.z);
+    const hCap = BIKE.maxSpeed * 1.15;
+    if (hSpeed > hCap) {
+      const k = hCap / hSpeed;
+      this.body.setLinvel({ x: hv.x * k, y: hv.y, z: hv.z * k }, true);
+    }
 
     // Visual cornering lean proportional to steer × speed.
     const leanTarget = -this.steer * Math.min(1, Math.abs(this.speed) / 8) * BIKE.leanMax;

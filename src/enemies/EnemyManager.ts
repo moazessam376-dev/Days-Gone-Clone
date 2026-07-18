@@ -518,17 +518,46 @@ export class EnemyManager {
     });
   }
 
-  /** Vehicle run-over: kill live enemies inside the radius with the car's velocity. */
+  /**
+   * Vehicle run-over: kill live enemies inside the radius and FLING the
+   * corpses clear to the side. The corpse body must never spawn overlapping
+   * the chassis — corpses collide with vehicles, and a 70 kg box
+   * materializing interpenetrated with the car ejects BOTH violently (this
+   * was the "car launches when boarding inside a mob" bug).
+   */
   runOverSweep(x: number, z: number, radius: number, velX: number, velZ: number,
     onKill: (px: number, pz: number) => void): void {
     const point = new THREE.Vector3();
-    const dir = new THREE.Vector3(velX, 0, velZ).normalize();
+    const speed = Math.hypot(velX, velZ) || 1;
+    const dir = new THREE.Vector3(velX / speed, 0, velZ / speed);
+    // Unit perpendicular to the drive direction (the fling axis).
+    const px = -dir.z;
+    const pz = dir.x;
     this.hash.query(x, z, radius, (i) => {
       if (this.state[i] === EnemyState.CORPSE || this.state[i] === EnemyState.INACTIVE) return;
       if (Math.hypot(this.posX[i] - x, this.posZ[i] - z) > radius) return;
       point.set(this.posX[i], this.posY[i] + 1, this.posZ[i]);
+      const ex = this.posX[i];
+      const ez = this.posZ[i];
       this.damage(i, 1000, point, dir, false);
-      onKill(this.posX[i], this.posZ[i]);
+      // Relocate the fresh corpse outside the sweep radius on whichever side
+      // the victim was, and send it tumbling that way.
+      const slot = this.corpses.find((c) => c.enemy === i);
+      if (slot) {
+        const side = Math.sign((ex - x) * px + (ez - z) * pz) || 1;
+        const cx = x + px * side * (radius + 0.7);
+        const cz = z + pz * side * (radius + 0.7);
+        slot.body.setTranslation({ x: cx, y: this.heightFn(cx, cz) + 0.9, z: cz }, true);
+        slot.body.setLinvel(
+          {
+            x: velX * 0.35 + px * side * 3.5,
+            y: 1.8,
+            z: velZ * 0.35 + pz * side * 3.5,
+          },
+          true,
+        );
+      }
+      onKill(ex, ez);
     });
   }
 

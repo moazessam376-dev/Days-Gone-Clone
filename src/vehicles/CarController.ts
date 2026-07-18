@@ -15,6 +15,9 @@ export const CAR = {
   targetLength: 4.4, // meters, sedan scaled to this
   engineForce: 9000,
   reverseForce: 4500,
+  /** Top speed (m/s). Without it engine force accumulates unbounded — the
+   * playtests hit 40+ m/s and every terrain crest became a launch ramp. */
+  maxSpeed: 22,
   brakeForce: 15,
   handbrakeForce: 120,
   maxSteer: 0.55,
@@ -95,7 +98,10 @@ export class CarController {
       RAPIER.RigidBodyDesc.dynamic()
         .setTranslation(position.x, position.y, position.z)
         .setLinearDamping(0.1)
-        .setAngularDamping(1.2),
+        .setAngularDamping(1.2)
+        // CCD: without it two vehicles interpenetrate deeply in one frame at
+        // speed and the solver ejects both skyward.
+        .setCcdEnabled(true),
     );
     this.halfExtents.hw = size.x / 2;
     this.halfExtents.hd = size.z / 2;
@@ -152,6 +158,10 @@ export class CarController {
       const fwd = input.isDown('KeyW') ? 1 : 0;
       const back = input.isDown('KeyS') ? 1 : 0;
       engine = (fwd * CAR.engineForce - back * CAR.reverseForce) * this.forwardSign;
+      // Engine tapers to zero at top speed.
+      const spd = Math.abs(this.speed);
+      if (spd > CAR.maxSpeed) engine = 0;
+      else engine *= 1 - (spd / CAR.maxSpeed) ** 3 * 0.7;
       const steerInput = (input.isDown('KeyA') ? 1 : 0) - (input.isDown('KeyD') ? 1 : 0);
       const speedScale = 1 / (1 + Math.abs(this.speed) / CAR.steerSpeedFalloff);
       steerTarget = steerInput * CAR.maxSteer * speedScale * this.forwardSign;
@@ -182,6 +192,14 @@ export class CarController {
     this.controller.updateVehicle(dt, undefined, WHEEL_RAY_GROUPS);
 
     // ---- Safety nets: no sky-launches, no ending stuck on the roof ----
+    // Hard horizontal speed clamp (downhill gravity ignores the engine taper).
+    const hv = this.body.linvel();
+    const hSpeed = Math.hypot(hv.x, hv.z);
+    const hCap = CAR.maxSpeed * 1.15;
+    if (hSpeed > hCap) {
+      const k = hCap / hSpeed;
+      this.body.setLinvel({ x: hv.x * k, y: hv.y, z: hv.z * k }, true);
+    }
     const av = this.body.angvel();
     let avLen = Math.hypot(av.x, av.y, av.z);
     if (avLen > CAR.maxAngvel) {
