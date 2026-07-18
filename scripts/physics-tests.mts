@@ -41,7 +41,9 @@ type Scenario = {
   timeoutMs?: number;
 };
 
-/** Boilerplate injected into every scenario's page context. */
+/** Boilerplate injected into every scenario's page context. `softReset()`
+ * replaces page reloads between scenarios: CI SwiftShader intermittently
+ * hangs for minutes creating a WebGL context, so we create exactly ONE. */
 const HARNESS = `
   const g = window.__game;
   const em = g.enemies;
@@ -53,6 +55,31 @@ const HARNESS = `
   const terrain = (x, z) => g.world.height(x, z);
   const upY = (body) => { const r = body.rotation(); return 1 - 2 * (r.x * r.x + r.z * r.z); };
   const finite = (...vals) => vals.every(Number.isFinite);
+  const softReset = () => {
+    for (const code of ['KeyW','KeyA','KeyS','KeyD','ShiftLeft','Space']) up(code);
+    if (g.driving) { press('KeyE'); g.debugStep(2); }
+    clearEnemies();
+    g.fire.cells.clear();
+    for (const p of g.throwables.pool) if (p.active) {
+      p.active = false; p.mesh.visible = false;
+      p.body.setEnabled(false); p.body.setTranslation({x: 0, y: -400, z: 0}, true);
+    }
+    g.playerHealth = 100; g.dead = false; g.hud.showDeath(false);
+    g.pendingThrow = null; g.actionLock = 0; g.combatFaceT = 0; g.throwTimer = 0;
+    // Park vehicles at known open-ground spots, upright and still.
+    const park = (v, x, z) => {
+      v.body.setTranslation({x, y: terrain(x, z) + 1.0, z}, true);
+      v.body.setRotation({x: 0, y: 0, z: 0, w: 1}, true);
+      v.body.setLinvel({x: 0, y: 0, z: 0}, true);
+      v.body.setAngvel({x: 0, y: 0, z: 0}, true);
+    };
+    park(g.car, 200, 200);
+    park(g.bike, 190, 200);
+    g.player.body.setTranslation({x: 205, y: terrain(205, 200) + 1.2, z: 200}, true);
+    g.cameraRig.yaw = 0; g.cameraRig.pitch = -0.15;
+    g.debugStep(10);
+  };
+  softReset();
 `;
 
 async function boot(page: Page): Promise<void> {
@@ -444,11 +471,11 @@ async function main(): Promise<void> {
     // hang for minutes on CI runners.
     const page = await browser.newPage();
     page.on('pageerror', (e) => pageErrors.push(String(e)));
+    // Boot exactly once — scenarios isolate via softReset() in the harness.
+    await boot(page);
 
     for (const s of scenarios) {
       try {
-        pageErrors.length = 0;
-        await boot(page);
         const details = await Promise.race([
           s.run(page),
           new Promise<never>((_, rej) =>
@@ -461,6 +488,9 @@ async function main(): Promise<void> {
       } catch (e) {
         results.push({ name: s.name, pass: false, details: { error: String(e) } });
         console.log(`FAIL  ${s.name}  ${String(e)}`);
+      } finally {
+        // Cleared at the END so boot-time errors are still visible to S0.
+        pageErrors.length = 0;
       }
     }
     await page.close();

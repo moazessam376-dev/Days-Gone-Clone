@@ -26,20 +26,18 @@ Two systemic causes were behind the "everything feels mid" state of V1:
 
 ## Phases
 
-### R0 — Stabilize the simulation  ◀ CURRENT
-- Write the full collision matrix (player, enemies, corpses, vehicles,
-  projectiles, throwables, camera, world): every pair gets an explicit
-  decision — collide / ignore / custom response. Committed as a doc + a
-  single source-of-truth module in code.
-- Player↔vehicle: the car is a wall to the player (no kinematic shove
-  launches). Fix the character-controller impulse path.
-- Permanent automated physics regression suite on the mockinput harness
-  (drive through horde, run into each vehicle, corpse kills, flip recovery,
-  molotov lob, …) run before every deploy.
-- Exit criteria: nothing in the world can be launched by anything except an
-  explosion; suite green.
+### R0 — Stabilize the simulation  ✅ DONE (2026-07-18)
+- Collision matrix designed and enforced: `docs/collision-matrix.md` +
+  `src/physics/layers.ts` as the single source of truth (named group
+  constants; no inline masks anywhere).
+- Player↔vehicle is a wall (solver pair severed, KCC query keeps solidity);
+  zombies steer around parked/slow vehicles; corpses knocked aside by cars
+  with a hard speed cap.
+- `npm run test:physics`: 14-scenario headless regression suite
+  (`scripts/physics-tests.mts`), wired as a GitHub Actions job that BLOCKS
+  the Pages deploy on failure.
 
-### R1 — Player handling model (big design phase, user decisions)
+### R1 — Player handling model (big design phase, user decisions)  ◀ CURRENT
 - Weapon states: holstered → carry (low ready) → hip-fire ready → ADS;
   triggers, transition times, sprint behavior (gun down? fire breaks sprint?).
 - The movement × weapon matrix: a table crossing every movement state with
