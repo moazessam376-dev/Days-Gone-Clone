@@ -5,7 +5,11 @@ Low-poly stylized art, single-player, keyboard+mouse (pointer lock). **Game feel
 project's #1 priority** — movement, aiming, and combat feedback quality outrank feature count.
 
 Live build: https://moazessam376-dev.github.io/Days-Gone-Clone/
-Full plan: see the approved plan in `.claude/` history; V1 milestones M0–M8.
+
+**READ `ROADMAP.md` FIRST in every session** — it holds the agreed phase plan
+(R0–R6), marks the current phase, and records the design-before-code rule:
+each phase starts with a planning session with the user, and detailed specs
+live in `docs/`. Do not start feature work outside the current phase.
 
 ## Commands
 
