@@ -371,10 +371,22 @@ export class Game {
   private setupWorld(assets: AssetLoader): void {
     this.world = new WorldData();
     this.terrain = new Terrain(this.scene, this.physics, this.world);
-    this.vegetation = new Vegetation(this.scene, this.physics, this.world);
-    const buildings = ['bldg_a','bldg_b','bldg_c','bldg_e','bldg_g','bldg_h','bldg_k','bldg_m','bldg_q','bldg_s']
-      .map((k) => assets.get(k));
-    this.town = new Town(this.scene, this.physics, this.world, buildings);
+    this.vegetation = new Vegetation(
+      this.scene,
+      this.physics,
+      this.world,
+      Object.fromEntries(
+        ['tree1', 'tree2', 'tree_dead', 'rock1', 'rock2'].map((k) => [k, assets.get(`wld_${k}`)]),
+      ),
+    );
+    const townModels = Object.fromEntries(
+      [
+        'apartment', 'shop_m1', 'diner', 'cafe', 'shop_s1', 'autorepair', 'shop_s2',
+        'commercial_s', 'church', 'motel', 'house1', 'house2', 'house3', 'house_burnt',
+        'barricade1', 'barricade_wire', 'barricade_conc', 'wreck_car', 'wreck_ute',
+      ].map((k) => [k, assets.get(`wld_${k}`)]),
+    );
+    this.town = new Town(this.scene, this.physics, this.world, townModels);
     for (const b of this.town.buildingSpots) {
       this.townRects.push({
         x: b.x, z: b.z, hw: b.w / 2 + 0.35, hd: b.d / 2 + 0.35,

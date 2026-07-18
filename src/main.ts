@@ -46,16 +46,15 @@ async function boot(): Promise<void> {
       wep_sawnoff: 'assets/synty/weapons/sawnoff.glb',
       wep_grenade: 'assets/synty/weapons/grenade.glb',
       wep_molotov: 'assets/synty/weapons/molotov.glb',
-      bldg_a: 'assets/models/kit/suburban/building-type-a.glb',
-      bldg_b: 'assets/models/kit/suburban/building-type-b.glb',
-      bldg_c: 'assets/models/kit/suburban/building-type-c.glb',
-      bldg_e: 'assets/models/kit/suburban/building-type-e.glb',
-      bldg_g: 'assets/models/kit/suburban/building-type-g.glb',
-      bldg_h: 'assets/models/kit/suburban/building-type-h.glb',
-      bldg_k: 'assets/models/kit/suburban/building-type-k.glb',
-      bldg_m: 'assets/models/kit/suburban/building-type-m.glb',
-      bldg_q: 'assets/models/kit/suburban/building-type-q.glb',
-      bldg_s: 'assets/models/kit/suburban/building-type-s.glb',
+      // Synty town + world set (R2 full replacement).
+      ...Object.fromEntries(
+        [
+          'apartment', 'shop_m1', 'diner', 'cafe', 'shop_s1', 'autorepair', 'shop_s2',
+          'commercial_s', 'church', 'motel', 'house1', 'house2', 'house3', 'house_burnt',
+          'barricade1', 'barricade_wire', 'barricade_conc', 'wreck_car', 'wreck_ute',
+          'tree1', 'tree2', 'tree_dead', 'rock1', 'rock2',
+        ].map((k) => [`wld_${k}`, `assets/synty/world/${k}.glb`]),
+      ),
     }, Object.fromEntries(
       ['01_a', '01_b', '01_c', '02_a', '02_b', '02_c', '03_a', '03_b', '03_c', '04_a', '04_b', '04_c']
         .map((c, i) => [`zombie_tex_${i}`, `assets/synty/textures/zombie_${c}.png`]),

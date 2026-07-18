@@ -1,10 +1,50 @@
 import RAPIER from '@dimforge/rapier3d-compat';
 import * as THREE from 'three';
+import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { PhysicsWorld } from '../physics/PhysicsWorld';
 import { STATIC_GROUPS } from '../physics/layers';
 import { mulberry32 } from './Noise';
 import { fbm } from './Noise';
 import { WORLD, WorldData } from './WorldGen';
+
+/** Merge ALL meshes of a Synty export into one baked geometry + material
+ * (trees ship trunk/foliage as separate meshes sharing the atlas). */
+function extractGeo(gltf: GLTF): { geo: THREE.BufferGeometry; mat: THREE.Material } {
+  const geos: THREE.BufferGeometry[] = [];
+  let mat: THREE.Material | null = null;
+  gltf.scene.updateMatrixWorld(true);
+  gltf.scene.traverse((o) => {
+    const mesh = o as THREE.Mesh;
+    if (mesh.isMesh) {
+      const geo = mesh.geometry.clone();
+      // The exports are quantized (Int16 + dequantize scale in the node
+      // transform); applyMatrix4 on a normalized int attribute corrupts it,
+      // so expand to float32 first.
+      for (const name of ['position', 'normal', 'uv']) {
+        const attr = geo.getAttribute(name) as THREE.BufferAttribute | undefined;
+        if (!attr) continue;
+        const arr = new Float32Array(attr.count * attr.itemSize);
+        for (let i = 0; i < attr.count; i++) {
+          arr[i * attr.itemSize] = attr.getX(i);
+          if (attr.itemSize > 1) arr[i * attr.itemSize + 1] = attr.getY(i);
+          if (attr.itemSize > 2) arr[i * attr.itemSize + 2] = attr.getZ(i);
+        }
+        geo.setAttribute(name, new THREE.BufferAttribute(arr, attr.itemSize));
+      }
+      // Drop non-shared attributes so merge succeeds across pieces.
+      for (const name of Object.keys(geo.attributes)) {
+        if (name !== 'position' && name !== 'normal' && name !== 'uv') geo.deleteAttribute(name);
+      }
+      geo.applyMatrix4(mesh.matrixWorld);
+      geos.push(geo);
+      mat ??= mesh.material as THREE.Material;
+    }
+  });
+  if (!geos.length || !mat) throw new Error('no mesh in vegetation model');
+  const geo = geos.length === 1 ? geos[0] : mergeGeometries(geos);
+  return { geo, mat };
+}
 
 const TREE_COLLIDER_POOL = 32;
 const TREE_COLLIDER_RANGE = 45;
@@ -27,11 +67,16 @@ export class Vegetation {
   private colliderPool: RAPIER.Collider[] = [];
   private refreshTimer = 0;
 
-  constructor(scene: THREE.Scene, physics: PhysicsWorld, data: WorldData) {
+  constructor(
+    scene: THREE.Scene,
+    physics: PhysicsWorld,
+    data: WorldData,
+    models: Record<string, GLTF>,
+  ) {
     const rand = mulberry32(1337);
 
     // Jittered-grid scatter with biome rejection.
-    const spacing = 13;
+    const spacing = 15;
     for (let gz = -WORLD.half + 20; gz < WORLD.half - 20; gz += spacing) {
       for (let gx = -WORLD.half + 20; gx < WORLD.half - 20; gx += spacing) {
         const x = gx + (rand() - 0.5) * spacing * 0.9;
@@ -57,39 +102,50 @@ export class Vegetation {
       list.push(t);
     }
 
-    // ---- Instanced rendering ----
-    const trunkGeo = new THREE.CylinderGeometry(0.22, 0.32, 2.2, 6);
-    trunkGeo.translate(0, 1.1, 0);
-    const lowerGeo = new THREE.ConeGeometry(2.4, 4.4, 7);
-    lowerGeo.translate(0, 3.9, 0);
-    const upperGeo = new THREE.ConeGeometry(1.5, 3.4, 7);
-    upperGeo.translate(0, 6.6, 0);
-
-    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x4a3527, roughness: 1 });
-    const pineMatA = new THREE.MeshStandardMaterial({ color: 0x2d4a2e, roughness: 1 });
-    const pineMatB = new THREE.MeshStandardMaterial({ color: 0x3a5a38, roughness: 1 });
-
+    // ---- Instanced rendering: Synty tree/rock models, one draw per species.
+    // Species mix: mostly Tree_01, some Tree_02, occasional dead tree.
     const dummy = new THREE.Object3D();
-    const makeInstanced = (geo: THREE.BufferGeometry, mat: THREE.Material): THREE.InstancedMesh => {
-      const m = new THREE.InstancedMesh(geo, mat, this.trees.length);
-      m.castShadow = true;
-      m.receiveShadow = false;
-      for (let i = 0; i < this.trees.length; i++) {
-        const t = this.trees[i];
-        dummy.position.set(t.x, t.y - 0.15, t.z);
-        dummy.scale.setScalar(t.scale);
-        dummy.rotation.y = (i * 2.39996) % (Math.PI * 2);
-        dummy.updateMatrix();
-        m.setMatrixAt(i, dummy.matrix);
+    const species: Array<{ key: string; members: number[] }> = [
+      { key: 'tree1', members: [] },
+      { key: 'tree2', members: [] },
+      { key: 'tree_dead', members: [] },
+    ];
+    for (let i = 0; i < this.trees.length; i++) {
+      const roll = i % 10;
+      species[roll < 6 ? 0 : roll < 9 ? 1 : 2].members.push(i);
+    }
+    // Region-chunked instancing (256m cells): one InstancedMesh per species
+    // per region so off-screen forest frustum-culls away — the full-detail
+    // Synty forest in a single draw is ~10M tris, far past budget.
+    const REGION = 256;
+    for (const sp of species) {
+      const { geo, mat } = extractGeo(models[sp.key]);
+      const regions = new Map<string, number[]>();
+      for (const ti of sp.members) {
+        const t = this.trees[ti];
+        const key = `${Math.floor(t.x / REGION)},${Math.floor(t.z / REGION)}`;
+        let list = regions.get(key);
+        if (!list) regions.set(key, (list = []));
+        list.push(ti);
       }
-      scene.add(m);
-      return m;
-    };
-    makeInstanced(trunkGeo, trunkMat);
-    makeInstanced(lowerGeo, pineMatA);
-    makeInstanced(upperGeo, pineMatB);
+      for (const members of regions.values()) {
+        const m = new THREE.InstancedMesh(geo, mat, members.length);
+        m.castShadow = true;
+        m.receiveShadow = false;
+        members.forEach((ti, slot) => {
+          const t = this.trees[ti];
+          dummy.position.set(t.x, t.y - 0.15, t.z);
+          dummy.scale.setScalar(t.scale);
+          dummy.rotation.set(0, (ti * 2.39996) % (Math.PI * 2), 0);
+          dummy.updateMatrix();
+          m.setMatrixAt(slot, dummy.matrix);
+        });
+        m.computeBoundingSphere();
+        scene.add(m);
+      }
+    }
 
-    // Rocks.
+    // Rocks (two Synty variants split by parity).
     const rocks: TreeInstance[] = [];
     for (let i = 0; i < 700; i++) {
       const x = (rand() * 2 - 1) * (WORLD.half - 30);
@@ -98,19 +154,20 @@ export class Vegetation {
       if (data.inTown(x, z) && rand() > 0.15) continue;
       rocks.push({ x, z, y: data.height(x, z), scale: 0.4 + rand() * 1.4 });
     }
-    const rockGeo = new THREE.IcosahedronGeometry(0.8, 0);
-    const rockMat = new THREE.MeshStandardMaterial({ color: 0x5d5b57, roughness: 1, flatShading: true });
-    const rockMesh = new THREE.InstancedMesh(rockGeo, rockMat, rocks.length);
-    rockMesh.castShadow = true;
-    for (let i = 0; i < rocks.length; i++) {
-      const r = rocks[i];
-      dummy.position.set(r.x, r.y + 0.1, r.z);
-      dummy.scale.set(r.scale, r.scale * (0.6 + (i % 5) * 0.1), r.scale);
-      dummy.rotation.set(0, i * 1.7, 0);
-      dummy.updateMatrix();
-      rockMesh.setMatrixAt(i, dummy.matrix);
+    for (const [key, parity] of [['rock1', 0], ['rock2', 1]] as Array<[string, number]>) {
+      const subset = rocks.filter((_, i) => i % 2 === parity);
+      const { geo, mat } = extractGeo(models[key]);
+      const m = new THREE.InstancedMesh(geo, mat, subset.length);
+      m.castShadow = true;
+      subset.forEach((r, slot) => {
+        dummy.position.set(r.x, r.y - 0.05, r.z);
+        dummy.scale.set(r.scale, r.scale * (0.6 + (slot % 5) * 0.1), r.scale);
+        dummy.rotation.set(0, slot * 1.7, 0);
+        dummy.updateMatrix();
+        m.setMatrixAt(slot, dummy.matrix);
+      });
+      scene.add(m);
     }
-    scene.add(rockMesh);
 
     // Pooled tree colliders (parked below the world when unused).
     const groups = STATIC_GROUPS;

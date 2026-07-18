@@ -35,6 +35,9 @@ export interface RoadPoint {
 
 export class WorldData {
   readonly heights: Float32Array;
+  /** Exposed for anchor placement (Town's main-street plan). x→world x, y→world z. */
+  mainStreet!: THREE.SplineCurve;
+  highway!: THREE.SplineCurve;
   /** Distance to nearest road centerline (m), clamped to 40. */
   readonly roadDist: Float32Array;
   readonly roadSamples: RoadPoint[] = [];
@@ -133,6 +136,8 @@ export class WorldData {
       new THREE.Vector2(-450, 400),
       new THREE.Vector2(-650, 550),
     ]);
+    this.mainStreet = mainStreet;
+    this.highway = highway;
     return [highway, mainStreet, dirtLoop];
   }
 

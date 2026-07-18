@@ -1360,6 +1360,251 @@
       "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Veh_Motorbike_01.fbx",
       "scale": 0.01,
       "texSize": 1024
+    },
+    {
+      "name": "wld_diner",
+      "kind": "static",
+      "out": "world/diner.glb",
+      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Bld_Diner_01.fbx",
+      "scale": 0.01,
+      "groundY": true,
+      "center": true,
+      "texSize": 1024
+    },
+    {
+      "name": "wld_cafe",
+      "kind": "static",
+      "out": "world/cafe.glb",
+      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Bld_Cafe_01.fbx",
+      "scale": 0.01,
+      "groundY": true,
+      "center": true,
+      "texSize": 1024
+    },
+    {
+      "name": "wld_church",
+      "kind": "static",
+      "out": "world/church.glb",
+      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Bld_Church_01.fbx",
+      "scale": 0.01,
+      "groundY": true,
+      "center": true,
+      "texSize": 1024
+    },
+    {
+      "name": "wld_autorepair",
+      "kind": "static",
+      "out": "world/autorepair.glb",
+      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Bld_AutoRepair_01.fbx",
+      "scale": 0.01,
+      "groundY": true,
+      "center": true,
+      "texSize": 1024
+    },
+    {
+      "name": "wld_shop_s1",
+      "kind": "static",
+      "out": "world/shop_s1.glb",
+      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Bld_Shop_Small_01.fbx",
+      "scale": 0.01,
+      "groundY": true,
+      "center": true,
+      "texSize": 1024
+    },
+    {
+      "name": "wld_shop_s2",
+      "kind": "static",
+      "out": "world/shop_s2.glb",
+      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Bld_Shop_Small_02.fbx",
+      "scale": 0.01,
+      "groundY": true,
+      "center": true,
+      "texSize": 1024
+    },
+    {
+      "name": "wld_shop_m1",
+      "kind": "static",
+      "out": "world/shop_m1.glb",
+      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Bld_Shop_Medium_01.fbx",
+      "scale": 0.01,
+      "groundY": true,
+      "center": true,
+      "texSize": 1024
+    },
+    {
+      "name": "wld_commercial_s",
+      "kind": "static",
+      "out": "world/commercial_s.glb",
+      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Bld_Commercial_Small_01.fbx",
+      "scale": 0.01,
+      "groundY": true,
+      "center": true,
+      "texSize": 1024
+    },
+    {
+      "name": "wld_apartment",
+      "kind": "static",
+      "out": "world/apartment.glb",
+      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Bld_Apartment_01.fbx",
+      "scale": 0.01,
+      "groundY": true,
+      "center": true,
+      "texSize": 1024
+    },
+    {
+      "name": "wld_motel",
+      "kind": "static",
+      "out": "world/motel.glb",
+      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Bld_Motel_01.fbx",
+      "scale": 0.01,
+      "groundY": true,
+      "center": true,
+      "texSize": 1024
+    },
+    {
+      "name": "wld_house1",
+      "kind": "static",
+      "out": "world/house1.glb",
+      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Bld_House_01.fbx",
+      "scale": 0.01,
+      "groundY": true,
+      "center": true,
+      "texSize": 1024
+    },
+    {
+      "name": "wld_house2",
+      "kind": "static",
+      "out": "world/house2.glb",
+      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Bld_House_02.fbx",
+      "scale": 0.01,
+      "groundY": true,
+      "center": true,
+      "texSize": 1024
+    },
+    {
+      "name": "wld_house3",
+      "kind": "static",
+      "out": "world/house3.glb",
+      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Bld_House_03.fbx",
+      "scale": 0.01,
+      "groundY": true,
+      "center": true,
+      "texSize": 1024
+    },
+    {
+      "name": "wld_house_burnt",
+      "kind": "static",
+      "out": "world/house_burnt.glb",
+      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Bld_House_Burnt_01.fbx",
+      "scale": 0.01,
+      "groundY": true,
+      "center": true,
+      "texSize": 1024
+    },
+    {
+      "name": "wld_barricade1",
+      "kind": "static",
+      "out": "world/barricade1.glb",
+      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Prop_Barricade_01.fbx",
+      "scale": 0.01,
+      "groundY": true,
+      "center": true,
+      "texSize": 512
+    },
+    {
+      "name": "wld_barricade_wire",
+      "kind": "static",
+      "out": "world/barricade_wire.glb",
+      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Prop_Barricade_Wired_01.fbx",
+      "scale": 0.01,
+      "groundY": true,
+      "center": true,
+      "texSize": 512
+    },
+    {
+      "name": "wld_barricade_conc",
+      "kind": "static",
+      "out": "world/barricade_conc.glb",
+      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Prop_Barricade_Concrete_01.fbx",
+      "scale": 0.01,
+      "groundY": true,
+      "center": true,
+      "texSize": 512
+    },
+    {
+      "name": "wld_wreck_car",
+      "kind": "static",
+      "out": "world/wreck_car.glb",
+      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Veh_Car_Medium_01.fbx",
+      "scale": 0.01,
+      "groundY": true,
+      "center": true,
+      "texSize": 512
+    },
+    {
+      "name": "wld_wreck_ute",
+      "kind": "static",
+      "out": "world/wreck_ute.glb",
+      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Veh_Ute_01.fbx",
+      "scale": 0.01,
+      "groundY": true,
+      "center": true,
+      "texSize": 512
+    },
+    {
+      "name": "wld_tree1",
+      "kind": "static",
+      "out": "world/tree1.glb",
+      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Env_Tree_01.fbx",
+      "scale": 0.01,
+      "groundY": true,
+      "center": true,
+      "texSize": 512,
+      "simplify": 0.3
+    },
+    {
+      "name": "wld_tree2",
+      "kind": "static",
+      "out": "world/tree2.glb",
+      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Env_Tree_02.fbx",
+      "scale": 0.01,
+      "groundY": true,
+      "center": true,
+      "texSize": 512,
+      "simplify": 0.3
+    },
+    {
+      "name": "wld_tree_dead",
+      "kind": "static",
+      "out": "world/tree_dead.glb",
+      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Env_Tree_Dead_01.fbx",
+      "scale": 0.01,
+      "groundY": true,
+      "center": true,
+      "texSize": 512,
+      "simplify": 0.3
+    },
+    {
+      "name": "wld_rock1",
+      "kind": "static",
+      "out": "world/rock1.glb",
+      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Env_Rock_01.fbx",
+      "scale": 0.01,
+      "groundY": true,
+      "center": true,
+      "texSize": 512,
+      "simplify": 0.3
+    },
+    {
+      "name": "wld_rock2",
+      "kind": "static",
+      "out": "world/rock2.glb",
+      "fbx": "assets/raw/synty/staged/Assets/PolygonApocalypse/Models/SM_Env_Rock_02.fbx",
+      "scale": 0.01,
+      "groundY": true,
+      "center": true,
+      "texSize": 512,
+      "simplify": 0.3
     }
   ]
 }

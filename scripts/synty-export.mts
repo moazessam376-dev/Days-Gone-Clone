@@ -22,7 +22,8 @@ import { dirname, extname, join, resolve } from 'node:path';
 import puppeteer from 'puppeteer';
 import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
-import { dedup, prune, quantize } from '@gltf-transform/functions';
+import { dedup, prune, quantize, simplify } from '@gltf-transform/functions';
+import { MeshoptSimplifier } from 'meshoptimizer';
 
 const ROOT = resolve(import.meta.dirname, '..');
 const OUT_ROOT = join(ROOT, 'public/assets/synty');
@@ -65,6 +66,7 @@ interface Job {
   srcHip?: string;
   srcYaw?: number;
   method?: 'delta' | 'swing';
+  simplify?: number;
   attachments?: Array<{ fbx: string; bone: string }>;
 }
 
@@ -82,11 +84,15 @@ function serve() {
   }).listen(PORT);
 }
 
-async function optimize(path: string, skinned: boolean): Promise<void> {
+async function optimize(path: string, skinned: boolean, simplifyRatio?: number): Promise<void> {
   const io = new NodeIO().registerExtensions(ALL_EXTENSIONS);
   const doc = await io.read(path);
   // Quantization mangles skinned vertex data ranges; keep characters fp32.
-  const transforms = skinned ? [dedup(), prune()] : [dedup(), prune(), quantize()];
+  const transforms = skinned ? [dedup(), prune()] : [dedup(), prune()];
+  if (simplifyRatio) {
+    transforms.push(simplify({ simplifier: MeshoptSimplifier, ratio: simplifyRatio, error: 0.01 }));
+  }
+  if (!skinned) transforms.push(quantize());
   await doc.transform(...transforms);
   await io.write(path, doc);
 }
@@ -183,7 +189,7 @@ async function main() {
         );
       }
       writeFileSync(outPath, Buffer.from(result.glb, 'base64'));
-      await optimize(outPath, m.kind === 'skinned');
+      await optimize(outPath, m.kind === 'skinned', m.simplify);
       const kb = (statSync(outPath).size / 1024).toFixed(0);
       const warn = result.warnings?.length ? `  WARNINGS: ${JSON.stringify(result.warnings)}` : '';
       console.log(`✓ ${m.name} -> ${m.out} (${kb} KB)${warn}`);
