@@ -1,6 +1,6 @@
 import RAPIER from '@dimforge/rapier3d-compat';
 import * as THREE from 'three';
-import { PLAYER } from '../config';
+import { PLAYER, STAMINA } from '../config';
 import { Input } from '../core/Input';
 import { PhysicsWorld } from '../physics/PhysicsWorld';
 import { PLAYER_BODY_GROUPS, KCC_OBSTACLE_GROUPS } from '../physics/layers';
@@ -39,6 +39,12 @@ export class PlayerController {
   /** While > 0 sprint cannot (re)start — set by reload/swap starts. */
   sprintBlockT = 0;
   private sprintT = 0;
+
+  /** Current stamina. Sprint drains it, roll bites a chunk; 0 = winded. */
+  stamina = STAMINA.max;
+  /** Winded: sprint+roll locked until stamina recovers past windedExit. */
+  winded = false;
+  private regenCooldown = 0;
 
   private rollT = -1; // <0 = not rolling
   private rollCooldown = 0;
@@ -116,11 +122,13 @@ export class PlayerController {
     if (
       input.consumePressed('Space') &&
       !this.isRolling &&
+      !this.winded &&
       this.rollCooldown <= 0 &&
       this.grounded
     ) {
       this.rollT = 0;
       this.rollDir.copy(hasInput ? _moveDir : this.forwardFromYaw(this.modelYaw));
+      this.drainStamina(STAMINA.rollCost);
     }
 
     if (this.isRolling) {
@@ -139,7 +147,13 @@ export class PlayerController {
     } else {
       // Sprint winds up over sprintWindup seconds rather than snapping.
       this.sprinting =
-        input.isDown('ShiftLeft') && hasInput && !this.aiming && this.sprintBlockT <= 0;
+        input.isDown('ShiftLeft') &&
+        hasInput &&
+        !this.aiming &&
+        this.sprintBlockT <= 0 &&
+        !this.winded &&
+        this.stamina > 0;
+      if (this.sprinting) this.drainStamina(STAMINA.sprintDrain * dt);
       this.sprintT = this.sprinting
         ? Math.min(1, this.sprintT + dt / PLAYER.sprintWindup)
         : Math.max(0, this.sprintT - dt / (PLAYER.sprintWindup * 0.5));
@@ -154,6 +168,8 @@ export class PlayerController {
       if (dLen <= rate) this.velocity.copy(_targetVel);
       else this.velocity.addScaledVector(_delta.normalize(), rate);
     }
+
+    this.staminaRegen(dt);
 
     // Gravity (small downward bias while grounded keeps snap-to-ground engaged).
     this.vy = this.grounded && this.vy < 0 ? -2 : Math.max(this.vy + PLAYER.gravity * dt, -PLAYER.maxFallSpeed);
@@ -202,5 +218,21 @@ export class PlayerController {
 
   private forwardFromYaw(yaw: number): THREE.Vector3 {
     return new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw));
+  }
+
+  private drainStamina(amount: number): void {
+    this.stamina = Math.max(0, this.stamina - amount);
+    this.regenCooldown = STAMINA.regenDelay;
+    if (this.stamina <= 0) this.winded = true;
+  }
+
+  /** Regen tick — also called directly while driving (no drain sources). */
+  staminaRegen(dt: number): void {
+    if (this.regenCooldown > 0) {
+      this.regenCooldown = Math.max(0, this.regenCooldown - dt);
+      return;
+    }
+    this.stamina = Math.min(STAMINA.max, this.stamina + STAMINA.regenRate * dt);
+    if (this.winded && this.stamina >= STAMINA.windedExit) this.winded = false;
   }
 }

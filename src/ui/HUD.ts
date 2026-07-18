@@ -8,6 +8,9 @@ export class HUD {
   private ammoEl!: HTMLElement;
   private weaponEl!: HTMLElement;
   private healthFill!: HTMLElement;
+  private staminaBar!: HTMLElement;
+  private staminaFill!: HTMLElement;
+  private staminaFullSince = 0;
   private vignette!: HTMLElement;
   private death!: HTMLElement;
   private hitmarkerUntil = 0;
@@ -45,6 +48,11 @@ export class HUD {
                 border-radius: 3px; overflow: hidden; }
       #health .fill { height: 100%; width: 100%; background: #b03a30;
                       transition: width .15s ease-out; }
+      #stamina { position: absolute; left: 28px; bottom: 16px; width: 140px; height: 6px;
+                 background: rgba(10,12,16,.6); border: 1px solid rgba(230,235,245,.25);
+                 border-radius: 3px; overflow: hidden; transition: opacity .4s; }
+      #stamina .fill { height: 100%; width: 100%; background: #d8b53a;
+                       transition: width .1s linear; }
       #vignette { position: absolute; inset: 0; opacity: 0; transition: opacity .3s;
                   background: radial-gradient(ellipse at center, transparent 55%,
                   rgba(160,20,10,.55) 100%); }
@@ -74,6 +82,7 @@ export class HUD {
       <div id="ammo"><div id="weapon-name"></div>
         <span class="mag"></span> <span class="reserve"></span></div>
       <div id="health"><div class="fill"></div></div>
+      <div id="stamina"><div class="fill"></div></div>
       <div id="vignette"></div>
       <div id="death"><h1>YOU DIED</h1><p>Press Enter to respawn</p></div>
       <div id="toast"></div>
@@ -84,6 +93,8 @@ export class HUD {
     this.ammoEl = hud.querySelector('#ammo .mag')!;
     this.weaponEl = hud.querySelector('#weapon-name')!;
     this.healthFill = hud.querySelector('#health .fill')!;
+    this.staminaBar = hud.querySelector('#stamina')!;
+    this.staminaFill = hud.querySelector('#stamina .fill')!;
     this.vignette = hud.querySelector('#vignette')!;
     this.death = hud.querySelector('#death')!;
     this.toastEl = hud.querySelector('#toast')!;
@@ -120,6 +131,17 @@ export class HUD {
     const low = fraction < 0.35 ? (0.35 - fraction) / 0.35 : 0;
     const flash = performance.now() < this.vignetteUntil ? 1 : 0;
     this.vignette.style.opacity = String(Math.min(1, low * 0.8 + flash));
+  }
+
+  /** Yellow bar under health; flashes red at 4 Hz while winded; fades out
+   * after 3 s at full so the exploration screen stays clean. */
+  setStamina(fraction: number, winded: boolean): void {
+    const now = performance.now();
+    if (fraction < 1) this.staminaFullSince = now;
+    this.staminaFill.style.width = `${Math.max(0, fraction) * 100}%`;
+    this.staminaFill.style.background =
+      winded && Math.floor(now / 125) % 2 === 0 ? '#b03a30' : '#d8b53a';
+    this.staminaBar.style.opacity = now - this.staminaFullSince > 3000 ? '0' : '1';
   }
 
   damageFlash(): void {

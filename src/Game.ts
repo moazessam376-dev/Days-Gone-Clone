@@ -33,7 +33,7 @@ import { Town } from './world/Town';
 import { AmmoCrates } from './world/AmmoCrates';
 import { AMMO_CRATES } from './config';
 import { EnterableBuilding } from './world/EnterableBuilding';
-import { PLAYER_HEALTH, MELEE, ACTIONS, VEHICLES, HANDLING } from './config';
+import { PLAYER_HEALTH, MELEE, ACTIONS, VEHICLES, HANDLING, STAMINA } from './config';
 
 const _vehicleQuat = new THREE.Quaternion();
 const _vehicleFwd = new THREE.Vector3();
@@ -417,6 +417,13 @@ export class Game {
     p.add(PLAYER.roll, 'speed', 3, 15).name('rollSpeed');
     p.add(PLAYER, 'combatFaceTime', 0, 3);
     p.add(PLAYER.roll, 'duration', 0.2, 1.2).name('rollDuration');
+
+    const st = this.debug.folder('Stamina');
+    st.add(STAMINA, 'sprintDrain', 0, 40);
+    st.add(STAMINA, 'rollCost', 0, 60);
+    st.add(STAMINA, 'regenRate', 0, 60);
+    st.add(STAMINA, 'regenDelay', 0, 4);
+    st.add(STAMINA, 'windedExit', 0, 100);
 
     const c = this.debug.folder('Camera');
     c.add(CAMERA_RIG, 'restDistance', 1, 6);
@@ -883,6 +890,9 @@ export class Game {
     }
 
     this.prevSprinting = this.player.sprinting;
+    if (this.driving) {
+      this.player.staminaRegen(dt); // driving rests the legs
+    }
     if (!this.driving) {
       this.player.fixedUpdate(
         dt,
@@ -965,6 +975,7 @@ export class Game {
     this.fx.update(dt, this.renderer.camera);
     this.enemyRenderer.update(dt, this.enemies);
     this.hud.setHealth(this.playerHealth / PLAYER_HEALTH.max);
+    this.hud.setStamina(this.player.stamina / STAMINA.max, this.player.winded);
 
     this.updateFireFx(dt);
     this.fireRenderer.update(dt, this.fire, this.renderer.camera);
