@@ -126,7 +126,14 @@ wheel radii FINAL: per-wheel pivot height above the lowest tire VERTEX
 had inflated the moto's rotated wheel node ~1.4x, which is what the
 round-4/5 "fender" clamps were actually fighting; both bikes now rest
 within 3cm of exact tire contact; pause hint updated to the real binds).
-Remaining: playtest sign-off.
+**Status after round 6: the user reports "nothing is fixed" — weapon
+holds/aim still read wrong to them and a bike still clips the ground.
+Six rounds of attachment-math fixes have passed headless verification
+while failing the real playtest; the next session must reproduce the
+problems from the user's own view (their build stamp, their footage, or
+driving the live site) before writing any more code, and should treat
+"held weirdly" as a pose-QUALITY problem (no gun animations exist in any
+owned library — sourcing real rifle/pistol anim assets is on the table).
 
 ### R3 — Vehicles as a real system
 - Enter/exit animations, visible rider on the bike, per-vehicle handling
