@@ -82,7 +82,12 @@ low-ready / ADS tracks the reticle; bike steering un-reversed + stance from
 wheel nodes; car suspension retune — wheels seat in the fenders, springs no
 longer saturate; slope-park launch fixed by gating the upright assist on
 airborne wheels + vertical velocity caps; town buildings grounded at their
-lowest footprint corner; suite now 25 scenarios). Remaining: second
+lowest footprint corner; suite now 25 scenarios), second-playtest fix round
+(A/D un-inverted on ALL vehicles — rendered chase-cam frames are the ground
+truth, Rapier steers about the down-pointing suspension axis; two-handed
+long guns + throw wind-up via procedural arm IK; car wheels spin/steer via
+pivot groups with per-axle stance; vehicle spawns searched clear of the
+town; motorbike chassis stance from its real wheel geometry). Remaining:
 playtest sign-off.
 
 ### R3 — Vehicles as a real system

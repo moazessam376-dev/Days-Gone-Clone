@@ -151,12 +151,12 @@ export class BikeController {
       else engine *= 1 - (spd / BIKE.maxSpeed) ** 3 * 0.7;
       const steerInput = (input.isDown('KeyA') ? 1 : 0) - (input.isDown('KeyD') ? 1 : 0);
       const speedScale = 1 / (1 + Math.abs(this.speed) / BIKE.steerSpeedFalloff);
-      // NEGATED relative to the car: with roll/pitch locked (yaw-only body)
-      // Rapier's two-wheel vehicle yaws opposite to its steering angle —
-      // measured in the harness (S24) with steering on either wheel. The
-      // sign here is what makes A turn left like the car; don't "fix" it
-      // from geometry first principles again.
-      steerTarget = -steerInput * BIKE.maxSteer * speedScale * BIKE.forwardSign;
+      // POSITIVE, like the car is negative: Rapier steers about the DOWN-
+      // pointing suspension axis, so raw positive steering turns clockwise
+      // (screen-right). Verified with rendered chase-cam frames on all
+      // three vehicles (2026-07-18) — A must veer screen-left. Trust the
+      // rendered frames over heading math when touching this.
+      steerTarget = steerInput * BIKE.maxSteer * speedScale * BIKE.forwardSign;
       const brake = input.isDown('Space') ? 40 : 0.3;
       this.controller.setWheelBrake(0, brake * 0.6);
       this.controller.setWheelBrake(1, brake);
@@ -188,13 +188,14 @@ export class BikeController {
     const leanTarget = -this.steer * Math.min(1, Math.abs(this.speed) / 8) * BIKE.leanMax;
     this.lean += (leanTarget - this.lean) * Math.min(1, dt * 6);
 
-    // Spin the extracted spoke wheels by rolled distance.
+    // Spin the extracted spoke wheels by rolled distance (positive rotation
+    // about +x rolls the tread toward +z, the nose direction).
     for (const w of this.spinWheels) {
-      w.node.rotation.x -= (this.speed * dt) / w.radius;
+      w.node.rotation.x += (this.speed * dt) / w.radius;
     }
   }
 
-  updateVisuals(): void {
+  updateVisuals(_dt = 0): void {
     this.model.rotation.z = this.lean;
   }
 

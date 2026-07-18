@@ -29,9 +29,10 @@ export const CAR = {
   maxAngvel: 6, // rad/s cap — no violent tumbles
   /** Hard cap on upward velocity (m/s) — small crest hops ok, launches never. */
   maxRiseSpeed: 6.5,
-  /** Suspension travel + where in it the springs settle (see constructor). */
+  /** Suspension travel + probed per-axle settle points (see constructor). */
   suspRest: 0.4,
-  suspSettle: 0.2,
+  suspSettleFront: 0.26,
+  suspSettleRear: 0.14,
   airDamping: 2.5, // extra angular damping while airborne (per second)
   uprightTorque: 14, // rad/s² of righting acceleration when tipped
   uprightMaxUpY: 0.5, // consider "flipped" below this chassis-up.y
@@ -52,7 +53,10 @@ export class CarController {
   readonly body: RAPIER.RigidBody;
   readonly root = new THREE.Group();
   private controller: RAPIER.DynamicRayCastVehicleController;
-  private wheels: THREE.Object3D[] = [];
+  /** Per physics-wheel-index: steer pivot, spin group, front flag (sorted). */
+  private wheels: Array<{ pivot: THREE.Group; spin: THREE.Group; front: boolean }> = [];
+  private wheelPivots: THREE.Group[] = [];
+  private wheelSpins: THREE.Group[] = [];
   private wheelRadius = 0.35;
   private steer = 0;
   private flippedT = 0;
@@ -92,12 +96,22 @@ export class CarController {
     const center = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());
     model.position.sub(center);
-    // Re-parent wheels to the root so suspension can drive them directly.
+    // Re-parent each wheel under a steer-pivot + spin group on the root.
+    // The wheel node KEEPS its authored local rotation/scale — Synty mirrors
+    // the right-side wheels in the node transform, and writing rotation
+    // directly onto the node (the old approach) wiped that mirror.
     for (let i = 0; i < wheelNodes.length; i++) {
       const w = wheelNodes[i];
+      const pivot = new THREE.Group();
+      const spin = new THREE.Group();
+      pivot.add(spin);
       w.removeFromParent();
+      w.position.set(0, 0, 0); // geometry is centered on the node origin
       w.scale.setScalar(scale);
-      this.root.add(w);
+      spin.add(w);
+      this.root.add(pivot);
+      this.wheelPivots.push(pivot);
+      this.wheelSpins.push(spin);
       connections[i].sub(center);
     }
     this.root.add(model);
@@ -136,18 +150,24 @@ export class CarController {
     // sit 0.2 above the modeled hubs so at rest the wheels are exactly where
     // the model put them, with equal droop and compression headroom (full
     // droop under throttle used to lift the fronts clean off the ground).
-    const sortedWheels: THREE.Object3D[] = [];
-    for (const { c, i } of order) {
+    // Per-axle settle (probed at stiffness 12.5): the rear axle carries more
+    // load and compresses to ~0.14, the front to ~0.26 — matching anchors
+    // keep BOTH axles' wheels exactly at their modeled stance at rest
+    // (a shared 0.2 left the rears 6 cm up inside the bed).
+    for (const { c, i, front } of order) {
       this.controller.addWheel(
-        { x: c.x, y: c.y + CAR.suspSettle, z: c.z },
+        { x: c.x, y: c.y + (front ? CAR.suspSettleFront : CAR.suspSettleRear), z: c.z },
         { x: 0, y: -1, z: 0 },
         { x: -1, y: 0, z: 0 },
         CAR.suspRest,
         this.wheelRadius,
       );
-      sortedWheels.push(wheelNodes[i]);
+      this.wheels.push({
+        pivot: this.wheelPivots[i],
+        spin: this.wheelSpins[i],
+        front,
+      });
     }
-    this.wheels = sortedWheels;
     for (let i = 0; i < this.wheels.length; i++) {
       this.controller.setWheelSuspensionStiffness(i, 12.5);
       this.controller.setWheelFrictionSlip(i, 12);
@@ -185,7 +205,10 @@ export class CarController {
       else engine *= 1 - (spd / CAR.maxSpeed) ** 3 * 0.7;
       const steerInput = (input.isDown('KeyA') ? 1 : 0) - (input.isDown('KeyD') ? 1 : 0);
       const speedScale = 1 / (1 + Math.abs(this.speed) / CAR.steerSpeedFalloff);
-      steerTarget = steerInput * CAR.maxSteer * speedScale * this.forwardSign;
+      // NEGATED: Rapier steers about the suspension axis, which points DOWN,
+      // so positive steering angles turn the nose clockwise (screen-right).
+      // Verified with rendered chase-cam frames (2026-07-18) — A must go left.
+      steerTarget = -steerInput * CAR.maxSteer * speedScale * this.forwardSign;
       if (input.isDown('Space')) {
         this.controller.setWheelBrake(2, CAR.handbrakeForce);
         this.controller.setWheelBrake(3, CAR.handbrakeForce);
@@ -289,13 +312,17 @@ export class CarController {
     }
   }
 
-  updateVisuals(): void {
+  updateVisuals(dt = 0): void {
+    // Roll the wheels ourselves from ground speed — Rapier's wheelRotation
+    // doesn't animate, and it can't know about our steer-pivot hierarchy.
+    // Positive rotation about +x rolls the tread toward +z (nose-first).
+    const spinDelta = this.wheelRadius > 0 ? (this.speed * dt) / this.wheelRadius : 0;
     for (let i = 0; i < this.wheels.length; i++) {
+      const { pivot, spin, front } = this.wheels[i];
       const conn = this.controller.wheelChassisConnectionPointCs(i);
       // Off the ground the suspension length reads 0/stale, which snapped the
       // wheels up through the fenders whenever the car bounced — hang free
-      // wheels at full droop instead, and never let compression pull a wheel
-      // more than a whisker above its modeled stance (susp = 0.15 at rest).
+      // wheels at full droop instead.
       const inContact = this.controller.wheelIsInContact(i);
       const raw = this.controller.wheelSuspensionLength(i);
       const susp = THREE.MathUtils.clamp(
@@ -303,11 +330,11 @@ export class CarController {
         0.05,
         CAR.suspRest,
       );
-      if (conn) this.wheels[i].position.set(conn.x, conn.y - susp, conn.z);
-      const rot = this.controller.wheelRotation(i) ?? 0;
-      const steer = this.controller.wheelSteering(i) ?? 0;
-      this.wheels[i].rotation.set(0, steer, 0);
-      this.wheels[i].rotateX(rot);
+      if (conn) pivot.position.set(conn.x, conn.y - susp, conn.z);
+      // Visual steer mirrors what the physics does: steering is applied about
+      // the DOWN-pointing suspension axis, so negate for a +y pivot yaw.
+      pivot.rotation.y = front ? -this.steer : 0;
+      spin.rotation.x += spinDelta;
     }
   }
 

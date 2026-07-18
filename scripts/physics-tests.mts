@@ -768,9 +768,9 @@ const scenarios: Scenario[] = [
         const dCar = steerTest(g.car);
         softReset();
         const dBike = steerTest(g.bike);
-        const pass = dCar !== null && dBike !== null &&
-          Math.abs(dCar) > 0.15 && Math.abs(dBike) > 0.15 &&
-          Math.sign(dCar) === Math.sign(dBike);
+        // NEGATIVE heading delta here == veering screen-LEFT from the chase
+        // cam — pinned against rendered frames (2026-07-18). A must go left.
+        const pass = dCar !== null && dBike !== null && dCar < -0.15 && dBike < -0.15;
         return { pass, carTurn: dCar === null ? 'no-board' : +dCar.toFixed(2),
                  bikeTurn: dBike === null ? 'no-board' : +dBike.toFixed(2) };
       `),

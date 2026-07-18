@@ -50,6 +50,7 @@ const _vehicleQuat = new THREE.Quaternion();
 const _vehicleFwd = new THREE.Vector3();
 const _arcDir = new THREE.Vector3();
 const _arcOrigin = new THREE.Vector3();
+const _foregrip = new THREE.Vector3();
 
 /**
  * M1 graybox: third-person character controller + over-shoulder camera in an
@@ -219,22 +220,34 @@ export class Game {
     // Vehicles parked on the highway a short walk from spawn. The player's
     // own Bike.glb is THE drifter; the Synty Motorbike_01 is parked nearby
     // as the R2 comparison fallback (user decides which stays after riding).
+    // Spots are SEARCHED, not hardcoded: the R2 town moved buildings onto
+    // the old fixed coordinates — the car spawned clipping a wall and the
+    // parked motorbike got depenetration-launched onto a roof.
+    const taken: Array<{ x: number; z: number }> = [];
+    const spotFor = (px: number, pz: number, r: number): { x: number; z: number } => {
+      const s = this.clearVehicleSpot(px, pz, r, taken);
+      taken.push(s);
+      return s;
+    };
+    const carSpot = spotFor(8, 14, 4.2);
+    const bikeSpot = spotFor(-6, 10, 2.8);
+    const motoSpot = spotFor(-10, 14, 2.8);
     this.car = new CarController(
       this.physics,
       this.scene,
-      new THREE.Vector3(8, this.world.height(8, 14) + 1.2, 14),
+      new THREE.Vector3(carSpot.x, this.world.height(carSpot.x, carSpot.z) + 1.2, carSpot.z),
       assets.get('muscle'),
     );
     this.bike = new BikeController(
       this.physics,
       this.scene,
-      new THREE.Vector3(-6, this.world.height(-6, 10) + 1.2, 10),
+      new THREE.Vector3(bikeSpot.x, this.world.height(bikeSpot.x, bikeSpot.z) + 1.2, bikeSpot.z),
       assets.get('bike'),
     );
     this.bike2 = new BikeController(
       this.physics,
       this.scene,
-      new THREE.Vector3(-10, this.world.height(-10, 14) + 1.2, 14),
+      new THREE.Vector3(motoSpot.x, this.world.height(motoSpot.x, motoSpot.z) + 1.2, motoSpot.z),
       assets.get('motorbike_synty'),
     );
     this.vehicles = [this.car, this.bike, this.bike2];
@@ -492,6 +505,40 @@ export class Game {
       if (Math.abs(lx) < r.hw && Math.abs(lz) < r.hd) return { wall: true };
     }
     return null;
+  }
+
+  /** Nearest spot around (px, pz) whose surrounding disc is clear of town
+   * buildings/hideout, reasonably flat, and away from already-taken spots.
+   * Falls back to the preferred point if nothing within 60 m qualifies. */
+  private clearVehicleSpot(
+    px: number,
+    pz: number,
+    radius: number,
+    taken: Array<{ x: number; z: number }>,
+  ): { x: number; z: number } {
+    const clear = (x: number, z: number): boolean => {
+      if (this.enemyBlockAt(x, z)) return false;
+      for (let a = 0; a < 8; a++) {
+        const wx = x + Math.cos((a / 8) * Math.PI * 2) * radius;
+        const wz = z + Math.sin((a / 8) * Math.PI * 2) * radius;
+        if (this.enemyBlockAt(wx, wz)) return false;
+      }
+      for (const t of taken) {
+        if (Math.hypot(t.x - x, t.z - z) < radius + 4) return false;
+      }
+      const gx = (this.world.height(x + 2, z) - this.world.height(x - 2, z)) / 4;
+      const gz = (this.world.height(x, z + 2) - this.world.height(x, z - 2)) / 4;
+      return Math.hypot(gx, gz) < 0.22;
+    };
+    if (clear(px, pz)) return { x: px, z: pz };
+    for (let r = 4; r <= 60; r += 4) {
+      for (let a = 0; a < 16; a++) {
+        const x = px + Math.cos((a / 16) * Math.PI * 2) * r;
+        const z = pz + Math.sin((a / 16) * Math.PI * 2) * r;
+        if (clear(x, z)) return { x, z };
+      }
+    }
+    return { x: px, z: pz };
   }
 
   /** Combined enemy steering obstacles: town buildings + hideout walls. */
@@ -1132,6 +1179,7 @@ export class Game {
       rollT: this.player.rollProgress,
       pitch: this.cameraRig.pitch,
       carrying: !this.driving,
+      aimMode: this.equippedThrowable ? 'throw' : 'gun',
     });
     // Swap dip: 0 → 1 → 0 across the current lower/raise window.
     const swapLower =
@@ -1145,8 +1193,25 @@ export class Game {
       this.cameraRig.yaw,
       this.cameraRig.pitch,
     );
+    // Procedural arm layer: two-hand grip on long guns, cocked throw arm.
+    // Released while sprinting (arms pump), rolling, reloading (the left
+    // hand runs the reload motion), meleeing, and mid-swap.
+    const gripFree =
+      !this.driving &&
+      !this.player.isRolling &&
+      !this.weapons.isReloading &&
+      this.swapT <= 0 &&
+      !this.equippedThrowable;
+    const fgTarget = gripFree ? this.weaponRig.foregripWorld(_foregrip) : null;
+    this.avatar.applyLeftHandIK(fgTarget, 1 - this.avatar.sprintWeight, dt);
+    this.avatar.applyThrowPose(
+      this.equippedThrowable && this.player.aiming && !this.driving && !this.player.isRolling
+        ? 1
+        : 0,
+      dt,
+    );
     this.recoil.update(dt);
-    for (const v of this.vehicles) v.updateVisuals();
+    for (const v of this.vehicles) v.updateVisuals(dt);
     this.cameraRig.update(
       dt,
       this.input,

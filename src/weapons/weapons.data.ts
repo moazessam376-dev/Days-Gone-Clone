@@ -60,17 +60,22 @@ const DEFAULT_POSE: WeaponPoses = {
   carry: { pos: [0, 0.04, -0.12], rot: [0, 0, 0] },
   ads: { pos: [0, 0.04, -0.12], rot: [0, 0, 0] },
 };
+// `foregrip` (gun frame, barrel -z): where the LEFT hand plants — drives the
+// two-hand IK in PlayerAvatar. Long guns only; pistols stay one-handed.
 const RIFLE_POSE: WeaponPoses = {
   carry: { pos: [0, 0.04, -0.2], rot: [0, 0, 0] },
   ads: { pos: [0, 0.04, -0.2], rot: [0, 0, 0] },
+  foregrip: [0, -0.02, -0.3],
 };
 const SHOTGUN_POSE: WeaponPoses = {
   carry: { pos: [0, 0.04, -0.16], rot: [0, 0, 0] },
   ads: { pos: [0, 0.04, -0.16], rot: [0, 0, 0] },
+  foregrip: [0, -0.03, -0.26],
 };
 const SAWNOFF_POSE: WeaponPoses = {
   carry: { pos: [0, 0.03, -0.12], rot: [0, 0, 0] },
   ads: { pos: [0, 0.03, -0.12], rot: [0, 0, 0] },
+  foregrip: [0, -0.03, -0.2],
 };
 
 /** In-hand grip poses for throwable props. Both exports have their origin at

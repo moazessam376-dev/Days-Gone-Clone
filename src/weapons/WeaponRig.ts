@@ -155,4 +155,14 @@ export class WeaponRig {
     if (!m) return out.set(0, 0, 0);
     return m.getWorldPosition(out ?? _muzzle);
   }
+
+  /** World position of the active gun's foregrip (left-hand IK target), or
+   * null for one-handed weapons/throwables. Call after update(). */
+  foregripWorld(out: THREE.Vector3): THREE.Vector3 | null {
+    const fg = WEAPONS[this.active]?.pose.foregrip;
+    const g = this.guns.get(this.active);
+    if (!fg || !g) return null;
+    this.holder.updateMatrixWorld(true);
+    return out.set(fg[0], fg[1], fg[2]).applyMatrix4(g.matrixWorld);
+  }
 }

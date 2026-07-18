@@ -20,6 +20,9 @@ export interface AvatarState {
   rollT?: number;
   /** Camera pitch in radians; positive = looking up. */
   pitch: number;
+  /** What `aiming` means: gun ADS uses the pistol aim poses; a throwable
+   * wind-up keeps the idle upper body and cocks the arm procedurally. */
+  aimMode?: 'gun' | 'throw';
 }
 
 interface WeightedAction {
@@ -93,6 +96,10 @@ export class PlayerAvatar {
     this.rollAction.clampWhenFinished = false;
     this.rollAction.timeScale = rollClip.duration / PLAYER.roll.duration;
 
+    // Upper-body idle for the throw wind-up: keeps the torso animated while
+    // the pistol-aim poses are (deliberately) not used.
+    addWeighted('idle_upper', maskClip(clip('Idle_Loop'), true, 'upper'));
+
     this.shootAction = this.mixer.clipAction(maskClip(clip('Pistol_Shoot'), true, 'upper'));
     this.shootAction.setLoop(THREE.LoopOnce, 1);
     this.meleeAction = this.mixer.clipAction(maskClip(clip('Punch_Cross'), true, 'upper'));
@@ -100,7 +107,14 @@ export class PlayerAvatar {
     this.reloadAction = this.mixer.clipAction(maskClip(clip('Pistol_Reload'), true, 'upper'));
     this.reloadAction.setLoop(THREE.LoopOnce, 1);
     this.reloadBaseDuration = clip('Pistol_Reload').duration;
+
+    // Arm bones for the procedural layers (two-hand grips, throw wind-up).
+    this.object.traverse((o) => {
+      if ((o as THREE.Bone).isBone) this.boneByName.set(o.name, o);
+    });
   }
+
+  private boneByName = new Map<string, THREE.Object3D>();
 
   private shootAction!: THREE.AnimationAction;
   private reloadAction!: THREE.AnimationAction;
@@ -167,6 +181,13 @@ export class PlayerAvatar {
 
     const a = this.aimBlend;
     const rollSuppress = state.rolling ? 0 : 1;
+    this.sprintWeight = wSprint;
+    this.rollingNow = state.rolling;
+    // Throw wind-up: legs behave like aiming, but the upper body stays on
+    // idle (the arm is cocked procedurally) — pistol poses on a molotov
+    // read as "aiming a gun", which the playtest called out.
+    const throwing = state.aimMode === 'throw' ? 1 : 0;
+    const gunAim = a * (1 - throwing);
 
     // Aim pitch → three-pose blend. Poses cover roughly ±60° of pitch.
     const p = THREE.MathUtils.clamp(state.pitch / 1.05, -1, 1);
@@ -180,13 +201,14 @@ export class PlayerAvatar {
     this.setTarget('sprint', wSprint * (1 - a) * rollSuppress);
     this.setTarget('idle_lower', (wIdle + wJog + wSprint) * a * rollSuppress);
     this.setTarget('walk_lower', wWalk * a * rollSuppress);
+    this.setTarget('idle_upper', a * throwing * rollSuppress);
     // Carry: partial neutral aim pose on the upper body (PropertyMixer
     // normalizes by cumulative weight, so legs stay full locomotion).
     const carry =
       (state.carrying ? HANDLING.carryBlend : 0) * (1 - a) * rollSuppress * (1 - wSprint);
-    this.setTarget('aim_down', wDown * a * rollSuppress);
-    this.setTarget('aim_neutral', wNeutral * a * rollSuppress + carry);
-    this.setTarget('aim_up', wUp * a * rollSuppress);
+    this.setTarget('aim_down', wDown * gunAim * rollSuppress);
+    this.setTarget('aim_neutral', wNeutral * gunAim * rollSuppress + carry);
+    this.setTarget('aim_up', wUp * gunAim * rollSuppress);
 
     // Fast exponential approach keeps blends snappy but pop-free.
     const k = 1 - Math.exp(-15 * dt);
@@ -202,4 +224,126 @@ export class PlayerAvatar {
     const wa = this.actions.get(key);
     if (wa) wa.target = target;
   }
+
+  // ---- Procedural arm layer (runs AFTER update()/mixer, before render) ----
+  //
+  // Two-bone swing IK, world-space: no assumptions about the rig's rest pose
+  // or bone axes (the reconstructed Synty skeleton has non-trivial bind
+  // transforms — same reason the zombie retarget uses swing matching).
+
+  /** Smoothed weights so grips engage/release without popping. */
+  private ikWeightL = 0;
+  private ikWeightR = 0;
+  /** Last frame's sprint blend / roll flag — Game gates the grip IK on them
+   * (sprint pumps the arms one-handed; a roll tumbles the whole body). */
+  sprintWeight = 0;
+  rollingNow = false;
+
+  /**
+   * Plant the LEFT hand on `target` (world) — the long-gun foregrip.
+   * @param weight desired 0..1; smoothed internally.
+   */
+  applyLeftHandIK(target: THREE.Vector3 | null, weight: number, dt: number): void {
+    this.ikWeightL += ((target ? weight : 0) - this.ikWeightL) * Math.min(1, dt * 14);
+    if (this.ikWeightL < 0.02 || !target) return;
+    this.solveArm('L', target, this.ikWeightL);
+  }
+
+  /**
+   * Cock the RIGHT arm beside the head for the throwable wind-up; the hand
+   * bone drags the bottle prop with it via WeaponRig's hand-follow.
+   */
+  applyThrowPose(weight: number, dt: number): void {
+    this.ikWeightR += (weight - this.ikWeightR) * Math.min(1, dt * 12);
+    if (this.ikWeightR < 0.02) return;
+    const head = this.boneByName.get('Head');
+    if (!head) return;
+    head.getWorldPosition(_ikTarget);
+    this.object.getWorldQuaternion(_charQ);
+    // Beside-and-behind the ear, in character space (character faces +z).
+    _ikOffset.set(0.32, 0.1, -0.12).applyQuaternion(_charQ);
+    _ikTarget.add(_ikOffset);
+    this.solveArm('R', _ikTarget, this.ikWeightR);
+  }
+
+  private solveArm(side: 'L' | 'R', target: THREE.Vector3, weight: number): void {
+    const shoulder = this.boneByName.get(`Shoulder_${side}`);
+    const elbow = this.boneByName.get(`Elbow_${side}`);
+    const hand = this.boneByName.get(`Hand_${side}`);
+    if (!shoulder || !elbow || !hand || !shoulder.parent) return;
+
+    shoulder.updateWorldMatrix(true, false);
+    elbow.updateWorldMatrix(false, false);
+    hand.updateWorldMatrix(false, false);
+    const S = _ikS.setFromMatrixPosition(shoulder.matrixWorld);
+    const E = _ikE.setFromMatrixPosition(elbow.matrixWorld);
+    const W = _ikW.setFromMatrixPosition(hand.matrixWorld);
+    const l1 = S.distanceTo(E);
+    const l2 = E.distanceTo(W);
+    if (l1 < 1e-4 || l2 < 1e-4) return;
+
+    const d = Math.min(Math.max(_ikDir.subVectors(target, S).length(), 0.02), (l1 + l2) * 0.999);
+    _ikDir.normalize();
+
+    // Elbow plane: pole points down-and-outward so the elbow never flips up.
+    this.object.getWorldQuaternion(_charQ);
+    _ikPole
+      .set(side === 'L' ? -0.6 : 0.6, -1, -0.15)
+      .applyQuaternion(_charQ)
+      .normalize();
+    _ikN.crossVectors(_ikDir, _ikPole);
+    if (_ikN.lengthSq() < 1e-6) _ikN.set(0, 0, 1).cross(_ikDir);
+    _ikN.normalize();
+    _ikBend.crossVectors(_ikN, _ikDir).normalize();
+    const cosA = Math.min(1, Math.max(-1, (l1 * l1 + d * d - l2 * l2) / (2 * l1 * d)));
+    const sinA = Math.sqrt(Math.max(0, 1 - cosA * cosA));
+    _ikElbowTgt.copy(S).addScaledVector(_ikDir, l1 * cosA).addScaledVector(_ikBend, l1 * sinA);
+
+    // Swing the upper arm: current S→E direction onto S→elbowTarget.
+    this.swingBoneWorld(shoulder, _ikA.subVectors(E, S), _ikB.subVectors(_ikElbowTgt, S), weight);
+
+    // Recompute and swing the forearm onto the target.
+    elbow.updateWorldMatrix(true, false);
+    hand.updateWorldMatrix(false, false);
+    const E2 = _ikE.setFromMatrixPosition(elbow.matrixWorld);
+    const W2 = _ikW.setFromMatrixPosition(hand.matrixWorld);
+    this.swingBoneWorld(elbow, _ikA.subVectors(W2, E2), _ikB.subVectors(target, E2), weight);
+  }
+
+  /** Rotate `bone` so world direction `from` maps toward `to`, slerped. */
+  private swingBoneWorld(
+    bone: THREE.Object3D,
+    from: THREE.Vector3,
+    to: THREE.Vector3,
+    weight: number,
+  ): void {
+    if (from.lengthSq() < 1e-8 || to.lengthSq() < 1e-8 || !bone.parent) return;
+    _ikSwing.setFromUnitVectors(_ikA2.copy(from).normalize(), _ikB2.copy(to).normalize());
+    if (weight < 1) _ikSwing.slerp(_ikIdentity, 1 - weight);
+    bone.getWorldQuaternion(_ikBoneQ);
+    bone.parent.getWorldQuaternion(_ikParentQ);
+    _ikBoneQ.premultiply(_ikSwing); // new world orientation
+    bone.quaternion.copy(_ikParentQ.invert().multiply(_ikBoneQ));
+    bone.updateMatrixWorld(true);
+  }
 }
+
+const _ikS = new THREE.Vector3();
+const _ikE = new THREE.Vector3();
+const _ikW = new THREE.Vector3();
+const _ikDir = new THREE.Vector3();
+const _ikPole = new THREE.Vector3();
+const _ikN = new THREE.Vector3();
+const _ikBend = new THREE.Vector3();
+const _ikElbowTgt = new THREE.Vector3();
+const _ikA = new THREE.Vector3();
+const _ikB = new THREE.Vector3();
+const _ikA2 = new THREE.Vector3();
+const _ikB2 = new THREE.Vector3();
+const _ikTarget = new THREE.Vector3();
+const _ikOffset = new THREE.Vector3();
+const _charQ = new THREE.Quaternion();
+const _ikSwing = new THREE.Quaternion();
+const _ikIdentity = new THREE.Quaternion();
+const _ikBoneQ = new THREE.Quaternion();
+const _ikParentQ = new THREE.Quaternion();
