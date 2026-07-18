@@ -49,6 +49,13 @@ and fix it during R3's boarding rework — the current teleport-based boarding
 code is scaffolding R3 replaces anyway.
 
 ### R1 — Player handling model (big design phase, user decisions)  ◀ CURRENT
+**Status: spec locked + implemented (2026-07-18), awaiting the user's
+playtest sign-off.** Full spec: `docs/r1-player-handling.md` (aim-to-shoot,
+sprint-lowers-gun, Tab weapon wheel with slow-mo, stamina, over-shoulder
+ADS kit + Q swap, throwable arc trace + inventory, reticle only in ADS,
+grip-pose data). CI suite now 23 scenarios (S18–S22 cover the handling
+rules). R1 closes when the user has walked the matrix in real play and
+any feel-tuning (debug panel dials → written back to config + spec) lands.
 - Weapon states: holstered → carry (low ready) → hip-fire ready → ADS;
   triggers, transition times, sprint behavior (gun down? fire breaks sprint?).
 - The movement × weapon matrix: a table crossing every movement state with
