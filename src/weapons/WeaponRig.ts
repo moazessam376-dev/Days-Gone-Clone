@@ -1,8 +1,9 @@
 import * as THREE from 'three';
-import { FEEL } from '../config';
+import { FEEL, HANDLING } from '../config';
 import { WEAPONS, WEAPON_ORDER } from './weapons.data';
 
 const _muzzle = new THREE.Vector3();
+const IDENTITY_POSE = { pos: [0, 0, 0], rot: [0, 0, 0] } as const;
 
 /**
  * Placeholder boxy gun models (replaced by real assets in a polish pass).
@@ -17,6 +18,7 @@ export class WeaponRig {
   private muzzles = new Map<string, THREE.Object3D>();
   private active = '';
   private kickZ = 0;
+  private aimBlend = 0;
 
   constructor(scene: THREE.Scene) {
     scene.add(this.holder);
@@ -47,10 +49,8 @@ export class WeaponRig {
       g.add(muzzle);
 
       g.scale.setScalar(def.model.scale);
-      // Local fit inside the hand frame — tuned visually against the
-      // two-handed pistol aim pose. Barrel ends up along the hand's +X.
-      g.position.set(0, 0, 0);
-      g.rotation.set(0, -Math.PI / 2, 0);
+      // Pose (position + rotation in the hand frame) now comes from the
+      // per-weapon per-stance grip data — applied every frame in update().
       g.visible = false;
       g.traverse((o) => {
         if ((o as THREE.Mesh).isMesh) o.castShadow = true;
@@ -111,15 +111,41 @@ export class WeaponRig {
     this.kickZ = FEEL.recoil.weaponKick;
   }
 
-  /** Call every render frame after animation update. */
-  update(dt: number, handBone: THREE.Object3D | null): void {
+  /**
+   * Call every render frame after animation update.
+   * @param aiming drives the carry↔ADS grip-pose blend (weighty-responsive
+   *   times shared with the camera/avatar).
+   * @param lower 0..1 swap dip — the gun sinks and pitches away mid-swap.
+   */
+  update(dt: number, handBone: THREE.Object3D | null, aiming = false, lower = 0): void {
     if (handBone) {
       handBone.getWorldPosition(this.holder.position);
       handBone.getWorldQuaternion(this.holder.quaternion);
     }
     this.kickZ *= Math.exp(-14 * dt);
+    this.aimBlend = THREE.MathUtils.clamp(
+      this.aimBlend + (aiming ? dt / HANDLING.aimInTime : -dt / HANDLING.aimOutTime),
+      0,
+      1,
+    );
     const g = this.guns.get(this.active);
-    if (g) g.position.x = -this.kickZ; // recoil back along the barrel axis
+    if (!g) return;
+    const def = WEAPONS[this.active];
+    // Throwable props have no pose data — identity grip.
+    const carry = def?.pose.carry ?? IDENTITY_POSE;
+    const ads = def?.pose.ads ?? IDENTITY_POSE;
+    const b = THREE.MathUtils.smoothstep(this.aimBlend, 0, 1);
+    const carryPitch = def ? HANDLING.carryPitch : 0;
+    g.position.set(
+      THREE.MathUtils.lerp(carry.pos[0], ads.pos[0], b) - this.kickZ, // recoil back along barrel
+      THREE.MathUtils.lerp(carry.pos[1], ads.pos[1], b) - 0.15 * lower,
+      THREE.MathUtils.lerp(carry.pos[2], ads.pos[2], b),
+    );
+    g.rotation.set(
+      THREE.MathUtils.lerp(carry.rot[0], ads.rot[0], b),
+      THREE.MathUtils.lerp(carry.rot[1], ads.rot[1], b),
+      THREE.MathUtils.lerp(carry.rot[2] + carryPitch, ads.rot[2], b) - 1.05 * lower,
+    );
   }
 
   muzzleWorld(out: THREE.Vector3): THREE.Vector3 {

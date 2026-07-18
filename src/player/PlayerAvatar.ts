@@ -10,6 +10,9 @@ export interface AvatarState {
   speed: number;
   aiming: boolean;
   rolling: boolean;
+  /** Weapon in hands (on foot): a light aim-pose blend stops the free arm
+   * swinging through the gun while carrying. Sprint pumps the arms again. */
+  carrying?: boolean;
   /** 0..1 roll progress (unused by this rig — the Roll clip is time-scaled). */
   rollT?: number;
   /** Camera pitch in radians; positive = looking up. */
@@ -174,8 +177,12 @@ export class PlayerAvatar {
     this.setTarget('sprint', wSprint * (1 - a) * rollSuppress);
     this.setTarget('idle_lower', (wIdle + wJog + wSprint) * a * rollSuppress);
     this.setTarget('walk_lower', wWalk * a * rollSuppress);
+    // Carry: partial neutral aim pose on the upper body (PropertyMixer
+    // normalizes by cumulative weight, so legs stay full locomotion).
+    const carry =
+      (state.carrying ? HANDLING.carryBlend : 0) * (1 - a) * rollSuppress * (1 - wSprint);
     this.setTarget('aim_down', wDown * a * rollSuppress);
-    this.setTarget('aim_neutral', wNeutral * a * rollSuppress);
+    this.setTarget('aim_neutral', wNeutral * a * rollSuppress + carry);
     this.setTarget('aim_up', wUp * a * rollSuppress);
 
     // Fast exponential approach keeps blends snappy but pop-free.

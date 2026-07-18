@@ -96,6 +96,8 @@ export class Game {
   private combatFaceT = 0;
   /** Remaining weapon-swap time (lower + raise); aim/fire blocked throughout. */
   private swapT = 0;
+  /** Duration the current swapT started from (drives the swap dip curve). */
+  private swapTotal = HANDLING.swapTime;
   private prevSprinting = false;
   /** Equipped throwable ('grenade'|'molotov') or null = gun in hands. */
   private equippedThrowable: 'grenade' | 'molotov' | null = null;
@@ -444,6 +446,7 @@ export class Game {
 
   private lockHandling(t: number): void {
     this.swapT = Math.max(this.swapT, t);
+    this.swapTotal = this.swapT;
     this.actionLock = Math.max(this.actionLock, t);
     this.player.sprintBlockT = Math.max(this.player.sprintBlockT, t);
   }
@@ -489,6 +492,13 @@ export class Game {
     p.add(PLAYER.roll, 'speed', 3, 15).name('rollSpeed');
     p.add(PLAYER, 'combatFaceTime', 0, 3);
     p.add(PLAYER.roll, 'duration', 0.2, 1.2).name('rollDuration');
+
+    const h = this.debug.folder('Handling');
+    h.add(HANDLING, 'aimInTime', 0.05, 0.6);
+    h.add(HANDLING, 'aimOutTime', 0.05, 0.6);
+    h.add(HANDLING, 'swapTime', 0.2, 1.5);
+    h.add(HANDLING, 'carryPitch', -1.5, 1.5);
+    h.add(HANDLING, 'carryBlend', 0, 1);
 
     const st = this.debug.folder('Stamina');
     st.add(STAMINA, 'sprintDrain', 0, 40);
@@ -786,10 +796,8 @@ export class Game {
       ) {
         this.equippedThrowable = null; // 1/2/3/scroll always return to a gun
         this.weapons.switchTo(swapTo);
-        this.swapT = HANDLING.swapTime;
-        this.actionLock = Math.max(this.actionLock, HANDLING.swapTime);
         // Sprint drops to jog for the swap, resumes if Shift is still held.
-        this.player.sprintBlockT = Math.max(this.player.sprintBlockT, HANDLING.swapTime);
+        this.lockHandling(HANDLING.swapTime);
       }
     } else {
       this.input.consumeScroll();
@@ -870,7 +878,7 @@ export class Game {
         this.pendingThrow = null;
         // One throw per equip: the previous gun comes back up automatically.
         this.equippedThrowable = null;
-        this.swapT = Math.max(this.swapT, HANDLING.reequipTime);
+        this.lockHandling(HANDLING.reequipTime);
       }
     }
     this.throwables.fixedUpdate(dt);
@@ -1093,8 +1101,12 @@ export class Game {
       rolling: this.player.isRolling,
       rollT: this.player.rollProgress,
       pitch: this.cameraRig.pitch,
+      carrying: !this.driving,
     });
-    this.weaponRig.update(dt, this.handBone);
+    // Swap dip: 0 → 1 → 0 across the current lower/raise window.
+    const swapLower =
+      this.swapT > 0 ? Math.sin(Math.PI * (1 - this.swapT / this.swapTotal)) : 0;
+    this.weaponRig.update(dt, this.handBone, this.player.aiming, swapLower);
     this.recoil.update(dt);
     this.car.updateVisuals();
     this.bike.updateVisuals();

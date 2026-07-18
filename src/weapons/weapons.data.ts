@@ -4,6 +4,24 @@
  * radians consumed per shot and wrapped.
  */
 
+/** Grip transform in the hand-holder frame: position offset + euler (rad). */
+export interface GripPose {
+  pos: [number, number, number];
+  rot: [number, number, number];
+}
+
+/**
+ * Per-stance grip poses, rig-portable: when R2 swaps the character, only
+ * these offsets (and the hand-bone name) need retuning — no rig code.
+ * `foregrip` is reserved for the R2 two-hand pose (unused by the mannequin,
+ * whose armature's 100x bone scale makes bone overrides unsafe).
+ */
+export interface WeaponPoses {
+  carry: GripPose;
+  ads: GripPose;
+  foregrip?: [number, number, number];
+}
+
 export interface WeaponDef {
   name: string;
   auto: boolean;
@@ -29,7 +47,16 @@ export interface WeaponDef {
   model: { barrelLen: number; bodyLen: number; scale: number };
   /** Plays the full Pistol_Shoot anim per shot (semi-autos only). */
   shootAnim: boolean;
+  pose: WeaponPoses;
 }
+
+/** The classic fit: barrel along the hand's +X (see WeaponRig). Carry adds
+ * the global HANDLING.carryPitch on top so the barrel-down angle is one
+ * live-tunable dial across all weapons. */
+const DEFAULT_POSE: WeaponPoses = {
+  carry: { pos: [0, 0, 0], rot: [0, -Math.PI / 2, 0] },
+  ads: { pos: [0, 0, 0], rot: [0, -Math.PI / 2, 0] },
+};
 
 export const WEAPONS: Record<string, WeaponDef> = {
   pistol: {
@@ -55,6 +82,7 @@ export const WEAPONS: Record<string, WeaponDef> = {
     sound: { sub: 90, crack: 0.5, body: 0.16, pitch: 1.0 },
     model: { barrelLen: 0.16, bodyLen: 0.14, scale: 0.9 },
     shootAnim: true,
+    pose: DEFAULT_POSE,
   },
   rifle: {
     name: 'Rifle',
@@ -82,6 +110,7 @@ export const WEAPONS: Record<string, WeaponDef> = {
     sound: { sub: 70, crack: 0.65, body: 0.13, pitch: 1.1 },
     model: { barrelLen: 0.34, bodyLen: 0.26, scale: 1.0 },
     shootAnim: false,
+    pose: DEFAULT_POSE,
   },
   shotgun: {
     name: 'Shotgun',
@@ -102,6 +131,7 @@ export const WEAPONS: Record<string, WeaponDef> = {
     sound: { sub: 55, crack: 0.85, body: 0.28, pitch: 0.8 },
     model: { barrelLen: 0.4, bodyLen: 0.3, scale: 1.05 },
     shootAnim: true,
+    pose: DEFAULT_POSE,
   },
 };
 

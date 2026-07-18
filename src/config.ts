@@ -140,6 +140,8 @@ export const HANDLING = {
   shoulderSwapTime: 0.15, // Q camera side mirror blend
   nudgeTime: 0.8, // unaimed LMB: face camera this long, fire nothing
   carryBlend: 0.35, // upper-body aim-pose weight while carrying (not aiming)
+  /** Barrel-down pitch (rad) added to every gun's carry pose — one dial. */
+  carryPitch: -0.6,
 };
 
 export const STAMINA = {
