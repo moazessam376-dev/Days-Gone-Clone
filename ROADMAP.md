@@ -37,6 +37,17 @@ Two systemic causes were behind the "everything feels mid" state of V1:
   (`scripts/physics-tests.mts`), wired as a GitHub Actions job that BLOCKS
   the Pages deploy on failure.
 
+**Known issue (deferred to R3):** the boarding launch — car/bike sometimes
+flies when the player presses E to board — still reproduces in REAL play on
+build `f8ae9ec` (user-confirmed via the on-screen stamp) but has never
+reproduced under the deterministic `debugStep` harness. The trigger therefore
+lives in the real rAF loop (variable dt / multiple fixedUpdates per frame /
+alpha<1 interpolation / pause-resume), which the harness bypasses. Plan:
+ship a vehicle "flight recorder" (rolling ~3 s state buffer, console dump on
+height/velocity anomaly) so a normal play session captures the root cause,
+and fix it during R3's boarding rework — the current teleport-based boarding
+code is scaffolding R3 replaces anyway.
+
 ### R1 — Player handling model (big design phase, user decisions)  ◀ CURRENT
 - Weapon states: holstered → carry (low ready) → hip-fire ready → ADS;
   triggers, transition times, sprint behavior (gun down? fire breaks sprint?).
