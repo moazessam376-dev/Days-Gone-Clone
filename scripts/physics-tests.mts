@@ -100,8 +100,9 @@ const HARNESS = `
 `;
 
 async function boot(page: Page): Promise<void> {
-  await page.goto(BASE + '?mockinput', { waitUntil: 'load', timeout: 90_000 });
-  await page.waitForFunction('!!window.__game', { timeout: 90_000 });
+  await page.goto(BASE + '?mockinput', { waitUntil: 'load', timeout: 300_000 });
+  // CI SwiftShader renders the R2 world's first frames very slowly — generous boot wait.
+  await page.waitForFunction('!!window.__game', { timeout: 300_000 });
 }
 
 /** Evaluate a scenario body (string) with the harness prelude. */
