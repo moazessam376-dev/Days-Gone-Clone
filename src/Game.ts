@@ -11,7 +11,7 @@ import { AssetLoader } from './core/AssetLoader';
 import { CAMERA_RIG, PLAYER } from './config';
 import { WeaponSystem, DamageRegistry } from './weapons/WeaponSystem';
 import { WeaponRig } from './weapons/WeaponRig';
-import { WEAPONS } from './weapons/weapons.data';
+import { WEAPONS, WEAPON_ORDER } from './weapons/weapons.data';
 import { FxPools } from './fx/ParticlePool';
 import { ScreenShake, Hitstop, Recoil } from './fx/Feedback';
 import { Tracers } from './fx/Tracers';
@@ -33,7 +33,7 @@ import { Town } from './world/Town';
 import { AmmoCrates } from './world/AmmoCrates';
 import { AMMO_CRATES } from './config';
 import { EnterableBuilding } from './world/EnterableBuilding';
-import { PLAYER_HEALTH, MELEE, ACTIONS, VEHICLES } from './config';
+import { PLAYER_HEALTH, MELEE, ACTIONS, VEHICLES, HANDLING } from './config';
 
 const _vehicleQuat = new THREE.Quaternion();
 const _vehicleFwd = new THREE.Vector3();
@@ -81,6 +81,9 @@ export class Game {
   private pendingThrow: { kind: 'grenade' | 'molotov'; t: number } | null = null;
   /** While > 0, the body faces the camera direction (hip-fire follow-through). */
   private combatFaceT = 0;
+  /** Remaining weapon-swap time (lower + raise); aim/fire blocked throughout. */
+  private swapT = 0;
+  private prevSprinting = false;
   private dead = false;
   private spawnTimer = 0;
   private world!: WorldData;
@@ -645,6 +648,7 @@ export class Game {
 
     if (this.dead) {
       if (this.input.consumePressed('Enter')) this.respawn();
+      this.input.consumeScroll();
       this.physics.step();
       return;
     }
@@ -658,6 +662,46 @@ export class Game {
     this.actionLock = Math.max(0, this.actionLock - dt);
     this.throwTimer = Math.max(0, this.throwTimer - dt);
     this.combatFaceT = Math.max(0, this.combatFaceT - dt);
+    this.swapT = Math.max(0, this.swapT - dt);
+
+    // R1 handling: reload and swap requests. Priority within the tick is
+    // ROLL > RELOAD > SWAP > FIRE (roll preempts inside PlayerController;
+    // the wheel slots in above throw when it lands). Blocked inputs are
+    // dropped, never buffered — see docs/r1-player-handling.md.
+    if (!this.driving) {
+      if (
+        this.input.consumePressed('KeyR') &&
+        !this.player.isRolling &&
+        this.actionLock <= 0 &&
+        this.swapT <= 0
+      ) {
+        const wasSprinting = this.player.sprinting;
+        this.weapons.tryReload();
+        // R mid-sprint commits: the gun stays up (sprint blocked) until done.
+        if (this.weapons.isReloading && wasSprinting) {
+          this.player.sprintBlockT = Math.max(this.player.sprintBlockT, this.weapons.def.reloadTime);
+        }
+      }
+      let swapTo = '';
+      if (this.input.consumePressed('Digit1')) swapTo = 'pistol';
+      if (this.input.consumePressed('Digit2')) swapTo = 'rifle';
+      if (this.input.consumePressed('Digit3')) swapTo = 'shotgun';
+      const scroll = this.input.consumeScroll();
+      if (!swapTo && scroll !== 0) {
+        const idx = WEAPON_ORDER.indexOf(this.weapons.current as (typeof WEAPON_ORDER)[number]);
+        const n = WEAPON_ORDER.length;
+        swapTo = WEAPON_ORDER[(idx + (scroll > 0 ? 1 : n - 1) + n) % n];
+      }
+      if (swapTo && swapTo !== this.weapons.current && !this.player.isRolling && this.swapT <= 0) {
+        this.weapons.switchTo(swapTo);
+        this.swapT = HANDLING.swapTime;
+        this.actionLock = Math.max(this.actionLock, HANDLING.swapTime);
+        // Sprint drops to jog for the swap, resumes if Shift is still held.
+        this.player.sprintBlockT = Math.max(this.player.sprintBlockT, HANDLING.swapTime);
+      }
+    } else {
+      this.input.consumeScroll();
+    }
 
     // Melee (V key).
     this.meleeCooldown = Math.max(0, this.meleeCooldown - dt);
@@ -838,18 +882,41 @@ export class Game {
       this.ammoCrates.fixedUpdate(dt, 1e9, 1e9); // timers only, no pickup
     }
 
-    // Sprinting or rolling interrupts a reload (Days Gone-style commitment).
-    if (this.player.sprinting || this.player.isRolling) this.weapons.cancelReload();
-
+    this.prevSprinting = this.player.sprinting;
     if (!this.driving) {
-      this.player.fixedUpdate(dt, this.input, this.cameraRig.yaw, this.combatFaceT > 0);
+      this.player.fixedUpdate(
+        dt,
+        this.input,
+        this.cameraRig.yaw,
+        this.combatFaceT > 0,
+        this.swapT > 0, // ADS drops during a swap, resumes if RMB still held
+      );
     }
+    // STARTING a sprint (or rolling) interrupts a reload — a reload begun
+    // mid-sprint holds sprint down instead (sprintBlockT), so no rising edge.
+    if ((this.player.sprinting && !this.prevSprinting) || this.player.isRolling) {
+      this.weapons.cancelReload();
+    }
+
+    // Aim-to-shoot: an unaimed trigger pull fires nothing — the body just
+    // squares up to the camera (carry-alert nudge).
+    if (!this.driving && !this.player.aiming && !this.player.isRolling) {
+      if (this.input.consumePressedButton(0)) {
+        this.combatFaceT = Math.max(this.combatFaceT, HANDLING.nudgeTime);
+      }
+    }
+
     this.weapons.fixedUpdate(
       dt,
       this.input,
       this.renderer.camera,
       this.player.aiming,
-      this.input.locked && !this.player.isRolling && !this.driving && this.actionLock <= 0,
+      this.input.locked &&
+        this.player.aiming &&
+        !this.player.isRolling &&
+        !this.driving &&
+        this.actionLock <= 0 &&
+        this.swapT <= 0,
       (p, y) => this.recoil.kick(p, y),
     );
     this.weaponRig.setActive(this.weapons.current);

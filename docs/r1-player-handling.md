@@ -233,7 +233,8 @@ swings (R5). A character asset qualifies ONLY if this list is covered.
 ## Implementation slices (each ends runnable, `npm run build` clean)
 
 1. **C1** state machine + input rework (aim-to-shoot, sprint rules,
-   priority, G/F removal, Tab/Q preventDefault, scroll cycle).
+   priority, Tab preventDefault, scroll cycle). G/F stay alive until C4
+   ships their wheel replacement — every slice ends fully playable.
 2. **C2** stamina + HUD bar + winded.
 3. **C3** camera kit (split aim blend times, sprint FOV, Q swap, wheel
    vignette hook, reticle-only-while-aiming).

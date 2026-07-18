@@ -36,6 +36,8 @@ export class PlayerController {
   grounded = false;
   aiming = false;
   sprinting = false;
+  /** While > 0 sprint cannot (re)start — set by reload/swap starts. */
+  sprintBlockT = 0;
   private sprintT = 0;
 
   private rollT = -1; // <0 = not rolling
@@ -93,8 +95,15 @@ export class PlayerController {
     return this.velocity.length();
   }
 
-  fixedUpdate(dt: number, input: Input, cameraYaw: number, combatFacing = false): void {
-    this.aiming = input.locked && input.isMouseDown(2) && !this.isRolling;
+  fixedUpdate(
+    dt: number,
+    input: Input,
+    cameraYaw: number,
+    combatFacing = false,
+    aimBlocked = false,
+  ): void {
+    this.aiming = input.locked && input.isMouseDown(2) && !this.isRolling && !aimBlocked;
+    this.sprintBlockT = Math.max(0, this.sprintBlockT - dt);
 
     // Camera-relative input direction.
     const ix = (input.isDown('KeyD') ? 1 : 0) - (input.isDown('KeyA') ? 1 : 0);
@@ -129,7 +138,8 @@ export class PlayerController {
       }
     } else {
       // Sprint winds up over sprintWindup seconds rather than snapping.
-      this.sprinting = input.isDown('ShiftLeft') && hasInput && !this.aiming;
+      this.sprinting =
+        input.isDown('ShiftLeft') && hasInput && !this.aiming && this.sprintBlockT <= 0;
       this.sprintT = this.sprinting
         ? Math.min(1, this.sprintT + dt / PLAYER.sprintWindup)
         : Math.max(0, this.sprintT - dt / (PLAYER.sprintWindup * 0.5));

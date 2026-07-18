@@ -125,7 +125,43 @@ export const ACTIONS = {
   throwLock: 0.5, // seconds firing/melee are blocked after starting a throw
   throwWindup: 0.25, // wind-up before the projectile actually leaves the hand
   throwCooldown: 0.8, // min time between throws
-  switchFireDelay: 0.3, // can't fire immediately after a weapon switch
+  switchFireDelay: 0.6, // fire unlocks exactly when the swap animation ends
+};
+
+/** R1 handling model timings — see docs/r1-player-handling.md. */
+export const HANDLING = {
+  aimInTime: 0.25, // carry → ADS camera/pose blend
+  aimOutTime: 0.18, // ADS → carry
+  swapTime: 0.6, // weapon lower + raise; fire blocked throughout
+  throwableEquipTime: 0.4,
+  reequipTime: 0.5, // auto re-equip of the previous gun after a throw
+  shoulderSwapTime: 0.15, // Q camera side mirror blend
+  nudgeTime: 0.8, // unaimed LMB: face camera this long, fire nothing
+  carryBlend: 0.35, // upper-body aim-pose weight while carrying (not aiming)
+};
+
+export const STAMINA = {
+  max: 100,
+  sprintDrain: 12, // per second of actual sprint movement
+  rollCost: 22,
+  regenRate: 16, // per second
+  regenDelay: 1.0, // seconds after the last drain before regen starts
+  /** Winded (hit 0) locks sprint+roll until stamina recovers past this. */
+  windedExit: 25,
+};
+
+export const WHEEL = {
+  timeScale: 0.2, // slow-mo factor while the weapon wheel is open
+  deadzonePx: 20, // mouse-vector length before a sector highlights
+  maxPx: 80, // selection vector clamp
+  vignetteOpacity: 0.45,
+};
+
+export const THROWABLE_INV = {
+  grenadeMax: 3,
+  molotovMax: 3,
+  grenadeStart: 2,
+  molotovStart: 2,
 };
 
 export const MELEE = {

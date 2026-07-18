@@ -11,6 +11,7 @@ export class Input {
   private mouseDX = 0;
   private mouseDY = 0;
   private mouseButtons = new Set<number>();
+  private scrollAccum = 0;
   private buttonsPressedThisFrame = new Set<number>();
   locked = false;
   /** Dev/test escape hatch (?mockinput): treat input as locked without real
@@ -20,6 +21,8 @@ export class Input {
   constructor(private element: HTMLElement) {
     if (this.mock) this.locked = true;
     document.addEventListener('keydown', (e) => {
+      // Tab must never move browser focus while playing.
+      if (e.code === 'Tab') e.preventDefault();
       if (e.repeat || (this.mock && e.isTrusted)) return;
       this.keys.add(e.code);
       this.pressedThisFrame.add(e.code);
@@ -49,6 +52,11 @@ export class Input {
     document.addEventListener('mouseup', (e) => {
       if (this.mock && e.isTrusted) return;
       this.mouseButtons.delete(e.button);
+    });
+
+    document.addEventListener('wheel', (e) => {
+      if (!this.locked || (this.mock && e.isTrusted)) return;
+      this.scrollAccum += Math.sign(e.deltaY);
     });
 
     document.addEventListener('pointerlockchange', () => {
@@ -93,6 +101,13 @@ export class Input {
     const had = this.buttonsPressedThisFrame.has(button);
     if (had) this.buttonsPressedThisFrame.delete(button);
     return had;
+  }
+
+  /** Net scroll steps since last consumed (+down / -up), then cleared. */
+  consumeScroll(): number {
+    const s = this.scrollAccum;
+    this.scrollAccum = 0;
+    return s;
   }
 
   consumeMouseDelta(): { dx: number; dy: number } {

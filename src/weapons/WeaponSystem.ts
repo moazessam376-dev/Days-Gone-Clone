@@ -139,14 +139,6 @@ export class WeaponSystem {
       }
     }
 
-    // Weapon switching.
-    if (input.consumePressed('Digit1')) this.switchTo('pistol');
-    if (input.consumePressed('Digit2')) this.switchTo('rifle');
-    if (input.consumePressed('Digit3')) this.switchTo('shotgun');
-
-    // Manual reload.
-    if (input.consumePressed('KeyR')) this.tryReload();
-
     if (!canFire || this.reloading > 0) {
       input.consumePressedButton(0);
       return;
@@ -173,7 +165,7 @@ export class WeaponSystem {
     if (state.mag <= 0) this.tryReload();
   }
 
-  private tryReload(): void {
+  tryReload(): void {
     const state = this.ammo.get(this.current)!;
     if (this.reloading > 0 || state.reserve <= 0 || state.mag >= this.def.magSize) return;
     this.reloading = this.def.reloadTime;
