@@ -59,6 +59,41 @@ export class WeaponRig {
       this.guns.set(key, g);
       this.muzzles.set(key, muzzle);
     }
+
+    // Hand props for equipped throwables — same holder, same visibility
+    // switching as guns (setActive('grenade' | 'molotov')).
+    const grenade = new THREE.Group();
+    grenade.add(
+      new THREE.Mesh(
+        new THREE.SphereGeometry(0.06, 10, 8),
+        new THREE.MeshStandardMaterial({ color: 0x3a4a32, roughness: 0.6 }),
+      ),
+    );
+    const molotov = new THREE.Group();
+    const bottle = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.035, 0.045, 0.22, 10),
+      new THREE.MeshStandardMaterial({
+        color: 0xc06a28,
+        roughness: 0.4,
+        emissive: 0xff6a10,
+        emissiveIntensity: 0.6,
+      }),
+    );
+    molotov.add(bottle);
+    for (const [key, prop] of [
+      ['grenade', grenade],
+      ['molotov', molotov],
+    ] as Array<[string, THREE.Group]>) {
+      prop.visible = false;
+      prop.traverse((o) => {
+        if ((o as THREE.Mesh).isMesh) o.castShadow = true;
+      });
+      const tip = new THREE.Object3D();
+      prop.add(tip);
+      this.holder.add(prop);
+      this.guns.set(key, prop);
+      this.muzzles.set(key, tip);
+    }
   }
 
   setActive(key: string): void {

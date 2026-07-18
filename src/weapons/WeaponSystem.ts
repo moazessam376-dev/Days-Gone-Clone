@@ -92,6 +92,11 @@ export class WeaponSystem {
     return this.reloading > 0;
   }
 
+  /** Ammo state for any weapon key (weapon-wheel sector labels). */
+  ammoFor(key: string): AmmoState {
+    return this.ammo.get(key)!;
+  }
+
   switchTo(key: string): void {
     if (!WEAPONS[key] || key === this.current) return;
     this.current = key;

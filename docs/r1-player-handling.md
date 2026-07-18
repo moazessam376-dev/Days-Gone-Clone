@@ -176,11 +176,10 @@ after the throw completes, the previously-equipped gun auto-re-equips over
   height, rendered as a pooled dotted `THREE.Points` (one allocation at
   startup) with a 0.12-radius endpoint marker. Updated per render frame.
 - LMB while arc visible: wind-up 0.25 s (existing `ACTIONS.throwWindup`,
-  camera direction sampled at RELEASE moment as today), count −1, then
-  auto-re-equip the previous gun over `reequipTime: 0.5` s. If count
-  remains > 0 and RMB still held, the arc stays available until LMB again
-  — but each throw still pays `throwCooldown: 0.8`. When count hits 0:
-  auto-re-equip immediately after the throw resolves.
+  camera direction sampled at RELEASE moment as today), count −1, and the
+  previous gun auto-re-equips over `reequipTime: 0.5` s after EVERY throw
+  (one throw per equip — chaining throws means re-opening the wheel; this
+  is the anti-"press everything at once" rule applied to explosives).
 - Roll during arc: arc hides, throwable stays equipped, arc returns on
   exit if RMB held. Entering a vehicle with a throwable equipped:
   holstered like guns; on exit the throwable is still equipped.

@@ -33,10 +33,23 @@ import { Town } from './world/Town';
 import { AmmoCrates } from './world/AmmoCrates';
 import { AMMO_CRATES } from './config';
 import { EnterableBuilding } from './world/EnterableBuilding';
-import { PLAYER_HEALTH, MELEE, ACTIONS, VEHICLES, HANDLING, STAMINA } from './config';
+import {
+  PLAYER_HEALTH,
+  MELEE,
+  ACTIONS,
+  VEHICLES,
+  HANDLING,
+  STAMINA,
+  WHEEL,
+  THROWABLE_INV,
+} from './config';
+import { WeaponWheel, type WheelSector } from './ui/WeaponWheel';
+import { ThrowArc } from './fx/ThrowArc';
 
 const _vehicleQuat = new THREE.Quaternion();
 const _vehicleFwd = new THREE.Vector3();
+const _arcDir = new THREE.Vector3();
+const _arcOrigin = new THREE.Vector3();
 
 /**
  * M1 graybox: third-person character controller + over-shoulder camera in an
@@ -84,6 +97,18 @@ export class Game {
   /** Remaining weapon-swap time (lower + raise); aim/fire blocked throughout. */
   private swapT = 0;
   private prevSprinting = false;
+  /** Equipped throwable ('grenade'|'molotov') or null = gun in hands. */
+  private equippedThrowable: 'grenade' | 'molotov' | null = null;
+  private throwableCounts = {
+    grenade: THROWABLE_INV.grenadeStart,
+    molotov: THROWABLE_INV.molotovStart,
+  };
+  private wheelUi = new WeaponWheel();
+  private wheelOpen = false;
+  private wheelVecX = 0;
+  private wheelVecY = 0;
+  private wheelSel = -1;
+  private throwArc!: ThrowArc;
   private dead = false;
   private spawnTimer = 0;
   private world!: WorldData;
@@ -178,6 +203,7 @@ export class Game {
       },
     });
     this.throwables.heightFn = (x, z) => this.world.height(x, z);
+    this.throwArc = new ThrowArc(this.scene);
 
     // Ammo resupply crates: town spots + one at the hideout door.
     this.ammoCrates = new AmmoCrates(
@@ -376,6 +402,52 @@ export class Game {
     }
   }
 
+  /** The six wheel sectors, clockwise from 12 o'clock (fixed order). */
+  private buildWheelSectors(): WheelSector[] {
+    const gun = (key: string, label: string): WheelSector => {
+      const a = this.weapons.ammoFor(key);
+      return { key, label, sub: `${a.mag} / ${a.reserve}`, enabled: true };
+    };
+    return [
+      gun('pistol', 'Pistol'),
+      gun('rifle', 'Rifle'),
+      gun('shotgun', 'Shotgun'),
+      {
+        key: 'molotov',
+        label: 'Molotov',
+        sub: `× ${this.throwableCounts.molotov}`,
+        enabled: this.throwableCounts.molotov > 0,
+      },
+      {
+        key: 'grenade',
+        label: 'Grenade',
+        sub: `× ${this.throwableCounts.grenade}`,
+        enabled: this.throwableCounts.grenade > 0,
+      },
+      { key: 'melee', label: 'Melee', sub: 'R2', enabled: false },
+    ];
+  }
+
+  /** Equip a wheel selection: guns swap (0.6 s), throwables raise (0.4 s). */
+  private equipFromWheel(key: string): void {
+    if (key === 'grenade' || key === 'molotov') {
+      if (this.equippedThrowable === key) return;
+      this.equippedThrowable = key;
+      this.lockHandling(HANDLING.throwableEquipTime);
+    } else if (WEAPONS[key]) {
+      if (!this.equippedThrowable && key === this.weapons.current) return;
+      this.equippedThrowable = null;
+      this.weapons.switchTo(key); // no-op if returning to the same gun
+      this.lockHandling(HANDLING.swapTime);
+    }
+  }
+
+  private lockHandling(t: number): void {
+    this.swapT = Math.max(this.swapT, t);
+    this.actionLock = Math.max(this.actionLock, t);
+    this.player.sprintBlockT = Math.max(this.player.sprintBlockT, t);
+  }
+
   /** Is (x,z) inside a slow/parked vehicle's footprint? */
   private vehicleBlockAt(
     x: number,
@@ -548,6 +620,8 @@ export class Game {
     this.pendingThrow = null;
     this.actionLock = 0;
     this.combatFaceT = 0;
+    this.swapT = 0;
+    this.equippedThrowable = null;
     this.enemies.reset();
     this.enemyRenderer.reset();
     this.spawnEnemyWave(24);
@@ -654,6 +728,10 @@ export class Game {
     this.gameTime += dt;
 
     if (this.dead) {
+      if (this.wheelOpen) {
+        this.wheelOpen = false;
+        this.wheelUi.close();
+      }
       if (this.input.consumePressed('Enter')) this.respawn();
       this.input.consumeScroll();
       this.physics.step();
@@ -675,10 +753,11 @@ export class Game {
     // ROLL > RELOAD > SWAP > FIRE (roll preempts inside PlayerController;
     // the wheel slots in above throw when it lands). Blocked inputs are
     // dropped, never buffered — see docs/r1-player-handling.md.
-    if (!this.driving) {
+    if (!this.driving && !this.wheelOpen) {
       if (
         this.input.consumePressed('KeyR') &&
         !this.player.isRolling &&
+        !this.equippedThrowable && // R reloads guns, not bottles
         this.actionLock <= 0 &&
         this.swapT <= 0
       ) {
@@ -699,7 +778,13 @@ export class Game {
         const n = WEAPON_ORDER.length;
         swapTo = WEAPON_ORDER[(idx + (scroll > 0 ? 1 : n - 1) + n) % n];
       }
-      if (swapTo && swapTo !== this.weapons.current && !this.player.isRolling && this.swapT <= 0) {
+      if (
+        swapTo &&
+        (swapTo !== this.weapons.current || this.equippedThrowable) &&
+        !this.player.isRolling &&
+        this.swapT <= 0
+      ) {
+        this.equippedThrowable = null; // 1/2/3/scroll always return to a gun
         this.weapons.switchTo(swapTo);
         this.swapT = HANDLING.swapTime;
         this.actionLock = Math.max(this.actionLock, HANDLING.swapTime);
@@ -716,6 +801,7 @@ export class Game {
       this.input.consumePressed('KeyV') &&
       this.meleeCooldown <= 0 &&
       this.actionLock <= 0 &&
+      !this.wheelOpen &&
       !this.weapons.isReloading &&
       !this.player.isRolling
     ) {
@@ -741,26 +827,34 @@ export class Game {
       );
     }
 
-    // Throwables: G = grenade, F = molotov. Press starts a wind-up; the
-    // projectile leaves the hand after ACTIONS.throwWindup with the camera
-    // direction sampled at release, and throws are rate-limited.
-    if (!this.driving) {
-      const wantGrenade = this.input.consumePressed('KeyG');
-      const wantMolotov = this.input.consumePressed('KeyF');
-      if (
-        (wantGrenade || wantMolotov) &&
-        this.actionLock <= 0 &&
-        this.throwTimer <= 0 &&
-        !this.weapons.isReloading &&
-        !this.player.isRolling
-      ) {
-        this.pendingThrow = { kind: wantGrenade ? 'grenade' : 'molotov', t: ACTIONS.throwWindup };
-        this.actionLock = ACTIONS.throwLock;
-        this.throwTimer = ACTIONS.throwCooldown;
-        this.combatFaceT = Math.max(this.combatFaceT, ACTIONS.throwLock);
-        this.avatar.playMelee(); // overhand swing doubles as the throw wind-up
+    // Weapon wheel: hold Tab to open (slow-mo), release to equip. The wheel
+    // outranks throw/reload/swap in the action priority; while open, fire,
+    // aim, sprint, roll, and melee are all blocked (movement continues).
+    const wantWheel =
+      this.input.isDown('Tab') &&
+      this.input.locked &&
+      !this.driving &&
+      !this.player.isRolling;
+    if (wantWheel && !this.wheelOpen) {
+      this.wheelOpen = true;
+      this.wheelVecX = 0;
+      this.wheelVecY = 0;
+      this.wheelSel = -1;
+      this.wheelUi.open(this.buildWheelSectors());
+    } else if (this.wheelOpen && (!this.input.isDown('Tab') || !this.input.locked || this.driving)) {
+      const equip = this.input.locked && !this.driving;
+      this.wheelOpen = false;
+      this.wheelUi.close();
+      if (equip && this.wheelSel >= 0) {
+        const sector = this.buildWheelSectors()[this.wheelSel];
+        if (sector.enabled) this.equipFromWheel(sector.key);
       }
     }
+    if (this.wheelOpen) {
+      this.wheelUi.refresh(this.buildWheelSectors());
+      this.player.sprintBlockT = Math.max(this.player.sprintBlockT, 0.05);
+    }
+
     if (this.pendingThrow) {
       this.pendingThrow.t -= dt;
       if (this.driving) {
@@ -774,6 +868,9 @@ export class Game {
         this.throwables.throw(this.pendingThrow.kind, origin, dir);
         this.audio.play('reload', { gain: 0.4 });
         this.pendingThrow = null;
+        // One throw per equip: the previous gun comes back up automatically.
+        this.equippedThrowable = null;
+        this.swapT = Math.max(this.swapT, HANDLING.reequipTime);
       }
     }
     this.throwables.fixedUpdate(dt);
@@ -882,6 +979,8 @@ export class Game {
       const p = this.player.root.position;
       if (this.ammoCrates.fixedUpdate(dt, p.x, p.z)) {
         this.weapons.refillReserves();
+        this.throwableCounts.grenade = THROWABLE_INV.grenadeMax;
+        this.throwableCounts.molotov = THROWABLE_INV.molotovMax;
         this.hud.toast('AMMO');
         this.audio.play('reload', { gain: 0.6 });
       }
@@ -899,7 +998,8 @@ export class Game {
         this.input,
         this.cameraRig.yaw,
         this.combatFaceT > 0,
-        this.swapT > 0, // ADS drops during a swap, resumes if RMB still held
+        this.swapT > 0 || this.wheelOpen, // ADS drops; resumes if RMB held
+        this.wheelOpen, // no rolling out of the wheel
       );
     }
     // STARTING a sprint (or rolling) interrupts a reload — a reload begun
@@ -908,10 +1008,34 @@ export class Game {
       this.weapons.cancelReload();
     }
 
-    // Aim-to-shoot: an unaimed trigger pull fires nothing — the body just
-    // squares up to the camera (carry-alert nudge).
+    // Throwable in hands: LMB while the arc is up (ADS) commits the throw.
+    // The wind-up runs ACTIONS.throwWindup and samples the camera direction
+    // at release; the previous gun re-equips after every throw.
+    if (
+      this.equippedThrowable &&
+      !this.driving &&
+      this.player.aiming &&
+      !this.player.isRolling &&
+      !this.wheelOpen &&
+      this.actionLock <= 0 &&
+      this.throwTimer <= 0 &&
+      this.swapT <= 0 &&
+      this.throwableCounts[this.equippedThrowable] > 0 &&
+      this.input.consumePressedButton(0)
+    ) {
+      this.throwableCounts[this.equippedThrowable]--;
+      this.pendingThrow = { kind: this.equippedThrowable, t: ACTIONS.throwWindup };
+      this.actionLock = ACTIONS.throwLock;
+      this.throwTimer = ACTIONS.throwCooldown;
+      this.combatFaceT = Math.max(this.combatFaceT, ACTIONS.throwLock);
+      this.avatar.playMelee(); // overhand swing doubles as the throw wind-up
+    }
+
+    // Aim-to-shoot: an unaimed trigger pull fires nothing — with a gun the
+    // body squares up to the camera (carry-alert nudge); with a throwable
+    // it does nothing at all.
     if (!this.driving && !this.player.aiming && !this.player.isRolling) {
-      if (this.input.consumePressedButton(0)) {
+      if (this.input.consumePressedButton(0) && !this.equippedThrowable) {
         this.combatFaceT = Math.max(this.combatFaceT, HANDLING.nudgeTime);
       }
     }
@@ -925,17 +1049,42 @@ export class Game {
         this.player.aiming &&
         !this.player.isRolling &&
         !this.driving &&
+        !this.wheelOpen &&
+        !this.equippedThrowable && // ADS with a bottle throws, never shoots
         this.actionLock <= 0 &&
         this.swapT <= 0,
       (p, y) => this.recoil.kick(p, y),
     );
-    this.weaponRig.setActive(this.weapons.current);
+    this.weaponRig.setActive(this.equippedThrowable ?? this.weapons.current);
     this.physics.step();
   }
 
   private render(alpha: number, dt: number): void {
     this.debug.begin();
-    this.loop.timeScale = this.hitstop.timeScale;
+    // Slow-mo sources compose multiplicatively (hitstop × weapon wheel).
+    this.loop.timeScale = this.hitstop.timeScale * (this.wheelOpen ? WHEEL.timeScale : 1);
+
+    // While the wheel is open the mouse steers SELECTION, not the camera:
+    // consume the delta here so CameraRig sees none of it.
+    if (this.wheelOpen) {
+      const { dx, dy } = this.input.consumeMouseDelta();
+      this.wheelVecX += dx;
+      this.wheelVecY += dy;
+      const len = Math.hypot(this.wheelVecX, this.wheelVecY);
+      if (len > WHEEL.maxPx) {
+        this.wheelVecX *= WHEEL.maxPx / len;
+        this.wheelVecY *= WHEEL.maxPx / len;
+      }
+      if (len > WHEEL.deadzonePx) {
+        // Screen up = -y; sectors sit every 60° clockwise from 12 o'clock.
+        const deg = ((Math.atan2(this.wheelVecX, -this.wheelVecY) * 180) / Math.PI + 360) % 360;
+        this.wheelSel = Math.round(deg / 60) % 6;
+      } else {
+        this.wheelSel = -1;
+      }
+      this.wheelUi.setSelection(this.wheelSel);
+    }
+
     this.physics.interpolate(alpha);
     this.player.renderUpdate(dt);
     this.avatar.update(dt, {
@@ -971,6 +1120,23 @@ export class Game {
     this.avatar.object.visible = showBody;
     this.weaponRig.setVisible(showBody);
 
+    // Throwable trajectory preview: exactly the params the real throw uses.
+    const arcVisible =
+      !!this.equippedThrowable &&
+      this.player.aiming &&
+      !this.driving &&
+      !this.player.isRolling &&
+      !this.wheelOpen &&
+      this.throwableCounts[this.equippedThrowable] > 0;
+    this.throwArc.setVisible(arcVisible);
+    if (arcVisible) {
+      this.renderer.camera.getWorldDirection(_arcDir);
+      _arcOrigin.copy(this.player.root.position);
+      _arcOrigin.y += 0.7;
+      _arcOrigin.addScaledVector(_arcDir, 0.6);
+      this.throwArc.update(_arcOrigin, _arcDir, (x, z) => this.world.height(x, z));
+    }
+
     this.muzzleFlash.update();
     this.tracers.update(dt);
     this.fx.update(dt, this.renderer.camera);
@@ -990,13 +1156,14 @@ export class Game {
     const spreadRad = this.weapons.spreadAngle(this.player.aiming);
     const fovRad = (this.renderer.camera.fov * Math.PI) / 180;
     const spreadPx = (Math.tan(spreadRad) / Math.tan(fovRad / 2)) * (window.innerHeight / 2);
+    const th = this.equippedThrowable;
     this.hud.update(
       spreadPx,
-      this.weapons.magAmmo,
-      this.weapons.reserveAmmo,
-      this.weapons.def.name,
+      th ? this.throwableCounts[th] : this.weapons.magAmmo,
+      th ? THROWABLE_INV[`${th}Max`] : this.weapons.reserveAmmo,
+      th ? th.toUpperCase() : this.weapons.def.name,
       this.weapons.isReloading,
-      this.player.aiming && !this.driving,
+      this.player.aiming && !this.driving && !th, // gun ADS only — arc replaces it
     );
 
     const camPos = this.renderer.camera.position;

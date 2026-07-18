@@ -107,9 +107,12 @@ export class PlayerController {
     cameraYaw: number,
     combatFacing = false,
     aimBlocked = false,
+    rollBlocked = false,
   ): void {
     this.aiming = input.locked && input.isMouseDown(2) && !this.isRolling && !aimBlocked;
     this.sprintBlockT = Math.max(0, this.sprintBlockT - dt);
+    // Blocked inputs are dropped, never buffered.
+    if (rollBlocked) input.consumePressed('Space');
 
     // Camera-relative input direction.
     const ix = (input.isDown('KeyD') ? 1 : 0) - (input.isDown('KeyA') ? 1 : 0);
