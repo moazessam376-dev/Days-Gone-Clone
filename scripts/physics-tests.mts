@@ -23,7 +23,7 @@ import puppeteer, { type Browser, type Page } from 'puppeteer';
 import { existsSync } from 'node:fs';
 
 const BASE = 'http://localhost:4173/Days-Gone-Clone/';
-const SCENARIO_TIMEOUT_MS = 90_000;
+const DEFAULT_TIMEOUT_MS = 120_000;
 
 interface Result {
   name: string;
@@ -31,7 +31,15 @@ interface Result {
   details: Record<string, unknown>;
 }
 
-type Scenario = { name: string; run: (page: Page) => Promise<Record<string, unknown>> };
+/** Uncaught page errors during the current scenario (reset per scenario). */
+const pageErrors: string[] = [];
+
+type Scenario = {
+  name: string;
+  run: (page: Page) => Promise<Record<string, unknown>>;
+  /** CI SwiftShader is slow — long scenarios declare their own budget. */
+  timeoutMs?: number;
+};
 
 /** Boilerplate injected into every scenario's page context. */
 const HARNESS = `
@@ -48,8 +56,8 @@ const HARNESS = `
 `;
 
 async function boot(page: Page): Promise<void> {
-  await page.goto(BASE + '?mockinput', { waitUntil: 'load', timeout: 60_000 });
-  await page.waitForFunction('!!window.__game', { timeout: 45_000 });
+  await page.goto(BASE + '?mockinput', { waitUntil: 'load', timeout: 90_000 });
+  await page.waitForFunction('!!window.__game', { timeout: 90_000 });
 }
 
 /** Evaluate a scenario body (string) with the harness prelude. */
@@ -61,10 +69,8 @@ const scenarios: Scenario[] = [
   {
     name: 'S0 boot',
     run: async (page) => {
-      const errors: string[] = [];
-      page.on('pageerror', (e) => errors.push(String(e)));
       await run(page, `g.debugStep(60); return {};`);
-      return { pass: errors.length === 0, errors };
+      return { pass: pageErrors.length === 0, errors: [...pageErrors] };
     },
   },
   {
@@ -318,6 +324,7 @@ const scenarios: Scenario[] = [
   },
   {
     name: 'S11 3600-frame soak: time advances, no NaN anywhere',
+    timeoutMs: 420_000,
     run: (page) =>
       run(page, `
         g.debugStep(5); clearEnemies();
@@ -432,14 +439,20 @@ async function main(): Promise<void> {
       defaultViewport: { width: 320, height: 240 },
     });
 
+    // ONE page reused for all scenarios (reload isolates state): repeated
+    // fresh pages make SwiftShader WebGL context creation intermittently
+    // hang for minutes on CI runners.
+    const page = await browser.newPage();
+    page.on('pageerror', (e) => pageErrors.push(String(e)));
+
     for (const s of scenarios) {
-      const page = await browser.newPage();
       try {
+        pageErrors.length = 0;
         await boot(page);
         const details = await Promise.race([
           s.run(page),
           new Promise<never>((_, rej) =>
-            setTimeout(() => rej(new Error('scenario timeout')), SCENARIO_TIMEOUT_MS),
+            setTimeout(() => rej(new Error('scenario timeout')), s.timeoutMs ?? DEFAULT_TIMEOUT_MS),
           ),
         ]);
         const pass = details.pass === true;
@@ -448,10 +461,9 @@ async function main(): Promise<void> {
       } catch (e) {
         results.push({ name: s.name, pass: false, details: { error: String(e) } });
         console.log(`FAIL  ${s.name}  ${String(e)}`);
-      } finally {
-        await page.close();
       }
     }
+    await page.close();
   } finally {
     await browser?.close();
     preview?.kill();
