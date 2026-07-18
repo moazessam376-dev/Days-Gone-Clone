@@ -408,6 +408,35 @@ const scenarios: Scenario[] = [
       `),
   },
   {
+    name: 'S14 boarding from standstill never launches',
+    run: (page) =>
+      run(page, `
+        g.debugStep(5); clearEnemies();
+        const results = [];
+        for (const veh of [g.car, g.bike]) {
+          const cp0 = veh.body.translation();
+          g.player.body.setTranslation({x: cp0.x + 2.2, y: cp0.y + 0.3, z: cp0.z}, true);
+          g.debugStep(10);
+          press('KeyE'); g.debugStep(2);
+          const boarded = g.driving && g.activeVehicle === veh;
+          let maxH = -1, maxCamY = -1;
+          for (let f = 0; f < 120; f++) {
+            g.debugStep(1);
+            const t = veh.body.translation();
+            const h = t.y - terrain(t.x, t.z);
+            if (h > maxH) maxH = h;
+            if (g.renderer.camera.position.y > maxCamY) maxCamY = g.renderer.camera.position.y;
+          }
+          const t1 = veh.body.translation();
+          const camAbove = maxCamY - terrain(t1.x, t1.z);
+          press('KeyE'); g.debugStep(5);
+          results.push({boarded, maxHeightOverTerrain: +maxH.toFixed(2), camAboveTerrain: +camAbove.toFixed(1)});
+        }
+        const pass = results.every(r => r.boarded && r.maxHeightOverTerrain < 1.5 && r.camAboveTerrain < 10);
+        return { pass, results };
+      `),
+  },
+  {
     name: 'S13 zombies path around a parked car',
     run: (page) =>
       run(page, `
