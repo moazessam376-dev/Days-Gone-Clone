@@ -235,13 +235,22 @@ export class EnemyManager {
     this.tick++;
     this.time += dt;
 
-    // Corpse lifetimes.
+    // Corpse lifetimes + speed cap (vehicles shove bodies; the clamp keeps a
+    // solver kick from ever launching one — see docs/collision-matrix.md).
     for (const c of this.corpses) {
-      if (c.enemy >= 0 && this.time >= c.releaseAt) {
+      if (c.enemy < 0) continue;
+      if (this.time >= c.releaseAt) {
         this.releaseEnemy(c.enemy);
         c.enemy = -1;
         c.body.setEnabled(false);
         c.body.setTranslation({ x: 0, y: -200, z: 0 }, true);
+        continue;
+      }
+      const v = c.body.linvel();
+      const s = Math.hypot(v.x, v.y, v.z);
+      if (s > ENEMY.corpseMaxSpeed) {
+        const k = ENEMY.corpseMaxSpeed / s;
+        c.body.setLinvel({ x: v.x * k, y: v.y * k, z: v.z * k }, true);
       }
     }
 

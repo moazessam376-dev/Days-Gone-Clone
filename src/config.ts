@@ -105,6 +105,8 @@ export const ENEMY = {
   corpseKnockSpeed: 2.7, // m/s along the shot direction
   corpseUpSpeed: 0.9,
   corpseSpinSpeed: 3.5, // rad/s topple
+  /** Hard cap on corpse speed — vehicles shove bodies, never moon-launch them. */
+  corpseMaxSpeed: 12,
   headshotHeight: 1.45, // hit above this (local) = headshot
   physicsPoolSize: 32,
   corpsePoolSize: 8,
