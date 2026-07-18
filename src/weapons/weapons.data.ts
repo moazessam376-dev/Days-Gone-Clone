@@ -20,6 +20,9 @@ export interface WeaponPoses {
   carry: GripPose;
   ads: GripPose;
   foregrip?: [number, number, number];
+  /** Right-hand IK target for the chest-anchored two-hand carry (gun frame).
+   * Defaults near the origin (exports keep the pistol grip there). */
+  grip?: [number, number, number];
 }
 
 export interface WeaponDef {
@@ -65,17 +68,17 @@ const DEFAULT_POSE: WeaponPoses = {
 const RIFLE_POSE: WeaponPoses = {
   carry: { pos: [0, 0.04, -0.2], rot: [0, 0, 0] },
   ads: { pos: [0, 0.04, -0.2], rot: [0, 0, 0] },
-  foregrip: [0, -0.02, -0.3],
+  foregrip: [0, -0.02, -0.22],
 };
 const SHOTGUN_POSE: WeaponPoses = {
   carry: { pos: [0, 0.04, -0.16], rot: [0, 0, 0] },
   ads: { pos: [0, 0.04, -0.16], rot: [0, 0, 0] },
-  foregrip: [0, -0.03, -0.26],
+  foregrip: [0, -0.03, -0.2],
 };
 const SAWNOFF_POSE: WeaponPoses = {
   carry: { pos: [0, 0.03, -0.12], rot: [0, 0, 0] },
   ads: { pos: [0, 0.03, -0.12], rot: [0, 0, 0] },
-  foregrip: [0, -0.03, -0.2],
+  foregrip: [0, -0.03, -0.15],
 };
 
 /** In-hand grip poses for throwable props. Both exports have their origin at

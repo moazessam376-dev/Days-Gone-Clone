@@ -234,6 +234,22 @@ export class PlayerAvatar {
   /** Smoothed weights so grips engage/release without popping. */
   private ikWeightL = 0;
   private ikWeightR = 0;
+  private ikWeightRGrip = 0;
+
+  /** Chest bone — the two-hand carry anchors the gun here. */
+  get chestBone(): THREE.Object3D | null {
+    return this.boneByName.get('Spine_03') ?? null;
+  }
+
+  /**
+   * Plant the RIGHT hand on the pistol grip of a chest-anchored long gun.
+   * Mutually exclusive with the throw pose (Game gates them).
+   */
+  applyRightHandIK(target: THREE.Vector3 | null, weight: number, dt: number): void {
+    this.ikWeightRGrip += ((target ? weight : 0) - this.ikWeightRGrip) * Math.min(1, dt * 14);
+    if (this.ikWeightRGrip < 0.02 || !target) return;
+    this.solveArm('R', target, this.ikWeightRGrip);
+  }
   /** Last frame's sprint blend / roll flag — Game gates the grip IK on them
    * (sprint pumps the arms one-handed; a roll tumbles the whole body). */
   sprintWeight = 0;
@@ -260,8 +276,11 @@ export class PlayerAvatar {
     if (!head) return;
     head.getWorldPosition(_ikTarget);
     this.object.getWorldQuaternion(_charQ);
-    // Beside-and-behind the ear, in character space (character faces +z).
-    _ikOffset.set(0.32, 0.1, -0.12).applyQuaternion(_charQ);
+    // Beside-and-BEHIND the ear, raised — a real wind-up. Model space:
+    // +x = character right, +z = behind (the rig faces -z). The old
+    // -0.12 z put the hand IN FRONT of the face, which read on camera as
+    // the arm crossing to the left (round-3 playtest bug).
+    _ikOffset.set(0.34, 0.28, 0.16).applyQuaternion(_charQ);
     _ikTarget.add(_ikOffset);
     this.solveArm('R', _ikTarget, this.ikWeightR);
   }

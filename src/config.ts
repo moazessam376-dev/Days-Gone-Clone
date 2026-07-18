@@ -142,6 +142,12 @@ export const HANDLING = {
   carryBlend: 0.35, // upper-body aim-pose weight while carrying (not aiming)
   /** Barrel-down pitch (rad) added to every gun's carry pose — one dial. */
   carryPitch: -0.6,
+  /** Two-hand carry (guns with a foregrip): the gun is anchored across the
+   * chest and BOTH hands are IK'd onto it (no rifle-carry clips exist).
+   * Extra pitch/yaw make it read as a Days Gone-style patrol low-ready. */
+  twoHandYawTilt: 0.45, // carry yaw offset (rad, + = muzzle swings left)
+  twoHandPitch: -0.5, // overrides carryPitch for chest-anchored carry
+  twoHandOffset: [0.05, -0.22, -0.24] as [number, number, number], // chest → gun origin, carry frame (-z = in front)
 };
 
 export const STAMINA = {

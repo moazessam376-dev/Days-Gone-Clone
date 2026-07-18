@@ -738,14 +738,13 @@ const scenarios: Scenario[] = [
     run: (page) =>
       run(page, `
         g.debugStep(5); clearEnemies();
-        // The playtests always had the bike turning backwards (A went right):
-        // the steered wheel was the REAR one. Reference = the car, whose
-        // steering the user confirmed correct.
-        const heading = (body) => {
-          const r = body.rotation();
-          const fx = 2 * (r.x * r.z + r.w * r.y);
-          const fz = 1 - 2 * (r.x * r.x + r.y * r.y);
-          return Math.atan2(fx, fz);
+        // Measure the TRAVEL heading (velocity direction), not the body-frame
+        // forward — models can be authored facing either way, and the earlier
+        // body-heading version silently pinned the WRONG sign for the bike.
+        const travelHeading = (veh) => {
+          const v = veh.body.linvel();
+          if (Math.hypot(v.x, v.z) < 0.5) return null;
+          return Math.atan2(v.x, v.z);
         };
         const steerTest = (veh) => {
           const cp = veh.body.translation();
@@ -755,24 +754,38 @@ const scenarios: Scenario[] = [
           if (!g.driving || g.activeVehicle !== veh) return null;
           down('KeyW');
           for (let f = 0; f < 90; f++) g.debugStep(1); // get rolling
-          const h0 = heading(veh.body);
+          // Accumulate the delta in short sub-steps — the bike turns >180
+          // degrees in 90 frames, so an endpoint difference WRAPS and flips
+          // sign (that artifact shipped a bogus steering "fix" once).
+          let prev = travelHeading(veh);
+          let dh = 0, measured = false;
           down('KeyA');
-          for (let f = 0; f < 90; f++) g.debugStep(1);
+          for (let s = 0; s < 6; s++) {
+            for (let f = 0; f < 15; f++) g.debugStep(1);
+            const h = travelHeading(veh);
+            if (prev !== null && h !== null) {
+              let step = h - prev;
+              while (step > Math.PI) step -= 2 * Math.PI;
+              while (step < -Math.PI) step += 2 * Math.PI;
+              dh += step; measured = true;
+            }
+            if (h !== null) prev = h;
+          }
           up('KeyA'); up('KeyW');
-          let dh = heading(veh.body) - h0;
-          while (dh > Math.PI) dh -= 2 * Math.PI;
-          while (dh < -Math.PI) dh += 2 * Math.PI;
           press('KeyE'); g.debugStep(5);
-          return dh;
+          return measured ? dh : null;
         };
         const dCar = steerTest(g.car);
         softReset();
         const dBike = steerTest(g.bike);
-        // NEGATIVE heading delta here == veering screen-LEFT from the chase
-        // cam — pinned against rendered frames (2026-07-18). A must go left.
-        const pass = dCar !== null && dBike !== null && dCar < -0.15 && dBike < -0.15;
-        return { pass, carTurn: dCar === null ? 'no-board' : +dCar.toFixed(2),
-                 bikeTurn: dBike === null ? 'no-board' : +dBike.toFixed(2) };
+        // POSITIVE travel-heading delta == veering screen-LEFT from the chase
+        // cam. Pinned 2026-07-18 against rendered frames (a D-hold measured
+        // +1.65 while the car visibly turned left on screen, i.e. the sign
+        // was inverted at the time) and user-confirmed in play the same day.
+        // A must go left on BOTH vehicles.
+        const pass = dCar !== null && dBike !== null && dCar > 0.15 && dBike > 0.15;
+        return { pass, carTurn: dCar === null ? 'no-measure' : +dCar.toFixed(2),
+                 bikeTurn: dBike === null ? 'no-measure' : +dBike.toFixed(2) };
       `),
     timeoutMs: 240_000,
   },

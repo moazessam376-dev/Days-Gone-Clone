@@ -129,8 +129,14 @@ export class BikeController {
   }
 
   get speed(): number {
-    // Rapier reports negative when moving +z — see CarController.speed.
-    return -this.controller.currentVehicleSpeed() * BIKE.forwardSign;
+    // Real body velocity projected on the nose direction — never Rapier's
+    // currentVehicleSpeed(), which reads frozen garbage for sleeping parked
+    // bodies and spun the wheels while standing still. See CarController.
+    const r = this.body.rotation();
+    const v = this.body.linvel();
+    const fx = 2 * (r.x * r.z + r.w * r.y);
+    const fz = 1 - 2 * (r.x * r.x + r.y * r.y);
+    return (v.x * fx + v.z * fz) * BIKE.forwardSign;
   }
 
   get position(): THREE.Vector3 {
@@ -138,6 +144,19 @@ export class BikeController {
   }
 
   fixedUpdate(dt: number, input: Input, driven: boolean): void {
+    // Parked + asleep: skip updateVehicle entirely — it pumps suspension
+    // impulses into the sleeping body's stored velocity until the bike
+    // launches itself on wake. Scrub any accumulated charge (wake=false).
+    if (!driven && this.body.isSleeping()) {
+      const sv = this.body.linvel();
+      if (sv.x !== 0 || sv.y !== 0 || sv.z !== 0) {
+        this.body.setLinvel({ x: 0, y: 0, z: 0 }, false);
+        this.body.setAngvel({ x: 0, y: 0, z: 0 }, false);
+      }
+      return;
+    }
+    if (driven && this.body.isSleeping()) this.body.wakeUp();
+
     let engine = 0;
     let steerTarget = 0;
 
@@ -151,11 +170,9 @@ export class BikeController {
       else engine *= 1 - (spd / BIKE.maxSpeed) ** 3 * 0.7;
       const steerInput = (input.isDown('KeyA') ? 1 : 0) - (input.isDown('KeyD') ? 1 : 0);
       const speedScale = 1 / (1 + Math.abs(this.speed) / BIKE.steerSpeedFalloff);
-      // POSITIVE, like the car is negative: Rapier steers about the DOWN-
-      // pointing suspension axis, so raw positive steering turns clockwise
-      // (screen-right). Verified with rendered chase-cam frames on all
-      // three vehicles (2026-07-18) — A must veer screen-left. Trust the
-      // rendered frames over heading math when touching this.
+      // POSITIVE steering = LEFT turn, the same sign as the car. User-
+      // confirmed in play (2026-07-18) after two wrong "fixes" — trust
+      // rendered chase-cam frames + playtests over heading math here.
       steerTarget = steerInput * BIKE.maxSteer * speedScale * BIKE.forwardSign;
       const brake = input.isDown('Space') ? 40 : 0.3;
       this.controller.setWheelBrake(0, brake * 0.6);

@@ -182,9 +182,15 @@ export class CarController {
   }
 
   get speed(): number {
-    // Rapier reports currentVehicleSpeed negative when moving along +z
-    // (probed 2026-07-18) — negate so nose-first motion reads positive.
-    return -this.controller.currentVehicleSpeed() * this.forwardSign;
+    // Project the body's real velocity onto its nose direction. Do NOT use
+    // Rapier's currentVehicleSpeed(): for a sleeping parked body it reads the
+    // frozen stored velocity (probed 2026-07-18 — parked cars reported
+    // 2.7-5.7 m/s), which spun the wheel visuals while standing still.
+    const r = this.body.rotation();
+    const v = this.body.linvel();
+    const fx = 2 * (r.x * r.z + r.w * r.y);
+    const fz = 1 - 2 * (r.x * r.x + r.y * r.y);
+    return (v.x * fx + v.z * fz) * this.forwardSign;
   }
 
   get position(): THREE.Vector3 {
@@ -192,6 +198,21 @@ export class CarController {
   }
 
   fixedUpdate(dt: number, input: Input, driven: boolean): void {
+    // A sleeping body skips gravity integration, but updateVehicle() would
+    // still pump suspension impulses into its stored velocity every frame —
+    // it charges up (probed at +2.7..5.7 m/s vertical while "parked") until
+    // something wakes it and the vehicle launches itself. Let it sleep, and
+    // scrub any charge it already accumulated (wake=false keeps it asleep).
+    if (!driven && this.body.isSleeping()) {
+      const sv = this.body.linvel();
+      if (sv.x !== 0 || sv.y !== 0 || sv.z !== 0) {
+        this.body.setLinvel({ x: 0, y: 0, z: 0 }, false);
+        this.body.setAngvel({ x: 0, y: 0, z: 0 }, false);
+      }
+      return;
+    }
+    if (driven && this.body.isSleeping()) this.body.wakeUp();
+
     let engine = 0;
     let steerTarget = 0;
 
@@ -205,10 +226,11 @@ export class CarController {
       else engine *= 1 - (spd / CAR.maxSpeed) ** 3 * 0.7;
       const steerInput = (input.isDown('KeyA') ? 1 : 0) - (input.isDown('KeyD') ? 1 : 0);
       const speedScale = 1 / (1 + Math.abs(this.speed) / CAR.steerSpeedFalloff);
-      // NEGATED: Rapier steers about the suspension axis, which points DOWN,
-      // so positive steering angles turn the nose clockwise (screen-right).
-      // Verified with rendered chase-cam frames (2026-07-18) — A must go left.
-      steerTarget = -steerInput * CAR.maxSteer * speedScale * this.forwardSign;
+      // POSITIVE steering turns the nose LEFT (counterclockwise) — same
+      // convention as the bike. Re-pinned 2026-07-18 with rendered chase-cam
+      // frames + user playtest after a wrong "down-axis" negation shipped:
+      // holding D with positive steer turned the car left on screen.
+      steerTarget = steerInput * CAR.maxSteer * speedScale * this.forwardSign;
       if (input.isDown('Space')) {
         this.controller.setWheelBrake(2, CAR.handbrakeForce);
         this.controller.setWheelBrake(3, CAR.handbrakeForce);
@@ -331,9 +353,9 @@ export class CarController {
         CAR.suspRest,
       );
       if (conn) pivot.position.set(conn.x, conn.y - susp, conn.z);
-      // Visual steer mirrors what the physics does: steering is applied about
-      // the DOWN-pointing suspension axis, so negate for a +y pivot yaw.
-      pivot.rotation.y = front ? -this.steer : 0;
+      // Positive steer = left turn = positive pivot yaw (counterclockwise
+      // about +y). Pinned with the physics sign against rendered frames.
+      pivot.rotation.y = front ? this.steer : 0;
       spin.rotation.x += spinDelta;
     }
   }

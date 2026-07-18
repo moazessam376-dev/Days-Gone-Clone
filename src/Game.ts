@@ -51,6 +51,7 @@ const _vehicleFwd = new THREE.Vector3();
 const _arcDir = new THREE.Vector3();
 const _arcOrigin = new THREE.Vector3();
 const _foregrip = new THREE.Vector3();
+const _gripR = new THREE.Vector3();
 
 /**
  * M1 graybox: third-person character controller + over-shoulder camera in an
@@ -1192,6 +1193,8 @@ export class Game {
       this.player.model.rotation.y,
       this.cameraRig.yaw,
       this.cameraRig.pitch,
+      this.avatar.chestBone,
+      this.avatar.sprintWeight,
     );
     // Procedural arm layer: two-hand grip on long guns, cocked throw arm.
     // Released while sprinting (arms pump), rolling, reloading (the left
@@ -1204,6 +1207,10 @@ export class Game {
       !this.equippedThrowable;
     const fgTarget = gripFree ? this.weaponRig.foregripWorld(_foregrip) : null;
     this.avatar.applyLeftHandIK(fgTarget, 1 - this.avatar.sprintWeight, dt);
+    // Right hand joins on the pistol grip while the long gun rides the
+    // chest anchor (gripWorld() is null in ADS — the aim clip owns the arm).
+    const rgTarget = gripFree ? this.weaponRig.gripWorld(_gripR) : null;
+    this.avatar.applyRightHandIK(rgTarget, 1 - this.avatar.sprintWeight, dt);
     this.avatar.applyThrowPose(
       this.equippedThrowable && this.player.aiming && !this.driving && !this.player.isRolling
         ? 1

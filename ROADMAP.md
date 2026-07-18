@@ -87,8 +87,20 @@ lowest footprint corner; suite now 25 scenarios), second-playtest fix round
 truth, Rapier steers about the down-pointing suspension axis; two-handed
 long guns + throw wind-up via procedural arm IK; car wheels spin/steer via
 pivot groups with per-axle stance; vehicle spawns searched clear of the
-town; motorbike chassis stance from its real wheel geometry). Remaining:
-playtest sign-off.
+town; motorbike chassis stance from its real wheel geometry), third-playtest
+fix round (car steering restored to the bike's positive-left convention —
+the round-2 "down-axis" car negation was wrong; parked vehicles no longer
+self-launch or spin their wheels: Rapier's updateVehicle pumps suspension
+impulses into SLEEPING bodies' stored velocity, so undriven sleeping
+vehicles now skip the controller and scrub stored velocity, and `speed`
+projects real linvel instead of currentVehicleSpeed(); carry yaw un-flipped
+(charYaw already contains the model's π offset); Days Gone-style two-hand
+carry — long guns anchor across the chest with BOTH hands IK'd to
+grip/foregrip, blending to hand-follow in sprint and to the aim clip in
+ADS; throw wind-up hand moved beside-and-behind the ear; S24 rewritten to
+accumulate travel-velocity heading in sub-steps — the bike turns >180° in
+the hold window and the old endpoint delta wrapped, which is how a bogus
+steering "fix" once passed CI). Remaining: playtest sign-off.
 
 ### R3 — Vehicles as a real system
 - Enter/exit animations, visible rider on the bike, per-vehicle handling
