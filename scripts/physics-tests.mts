@@ -58,12 +58,18 @@ const HARNESS = `
   const down = (c) => document.dispatchEvent(new KeyboardEvent('keydown', {code: c, bubbles: true}));
   const up = (c) => document.dispatchEvent(new KeyboardEvent('keyup', {code: c, bubbles: true}));
   const press = (c) => { down(c); g.debugStep(1); up(c); };
+  const mdown = (b) => document.dispatchEvent(new MouseEvent('mousedown', {button: b, bubbles: true}));
+  const mup = (b) => document.dispatchEvent(new MouseEvent('mouseup', {button: b, bubbles: true}));
+  const mmove = (dx, dy) => document.dispatchEvent(new MouseEvent('mousemove', {movementX: dx, movementY: dy, bubbles: true}));
+  /** Equip a throwable via the internal wheel path and wait out the raise. */
+  const equipThrowable = (kind) => { g.equipFromWheel(kind); g.debugStep(30); };
   const clearEnemies = () => { em.reset(); g.enemyRenderer.reset(); };
   const terrain = (x, z) => g.world.height(x, z);
   const upY = (body) => { const r = body.rotation(); return 1 - 2 * (r.x * r.x + r.z * r.z); };
   const finite = (...vals) => vals.every(Number.isFinite);
   const softReset = () => {
-    for (const code of ['KeyW','KeyA','KeyS','KeyD','ShiftLeft','Space']) up(code);
+    for (const code of ['KeyW','KeyA','KeyS','KeyD','ShiftLeft','Space','Tab']) up(code);
+    mup(0); mup(2);
     if (g.driving) { press('KeyE'); g.debugStep(2); }
     clearEnemies();
     g.fire.cells.clear();
@@ -73,6 +79,10 @@ const HARNESS = `
     }
     g.playerHealth = 100; g.dead = false; g.hud.showDeath(false);
     g.pendingThrow = null; g.actionLock = 0; g.combatFaceT = 0; g.throwTimer = 0;
+    g.swapT = 0; g.equippedThrowable = null;
+    if (g.wheelOpen) { g.wheelOpen = false; g.wheelUi.close(); }
+    g.throwableCounts.grenade = 2; g.throwableCounts.molotov = 2;
+    g.player.stamina = 100; g.player.winded = false; g.player.sprintBlockT = 0;
     // Park vehicles at known open-ground spots, upright and still.
     const park = (v, x, z) => {
       v.body.setTranslation({x, y: terrain(x, z) + 1.0, z}, true);
@@ -311,7 +321,10 @@ const scenarios: Scenario[] = [
         g.cameraRig.yaw = 0; g.cameraRig.pitch = 0.5; g.debugStep(2);
         // A zombie near where the lob lands (-Z arc, roughly 8-14m out).
         const zi = em.spawn(300, 289);
-        press('KeyF');
+        // R1 flow: equip from the wheel, aim (RMB shows the arc), LMB throws.
+        equipThrowable('molotov');
+        mdown(2); g.debugStep(3);
+        mdown(0); g.debugStep(1); mup(0); mup(2);
         let broke = false;
         for (let f = 0; f < 300 && !broke; f++) {
           g.debugStep(1);
@@ -335,7 +348,9 @@ const scenarios: Scenario[] = [
         g.debugStep(5); clearEnemies();
         g.player.body.setTranslation({x: 300, y: terrain(300, 300) + 1.2, z: 300}, true);
         g.cameraRig.yaw = 0; g.cameraRig.pitch = 0.2; g.debugStep(2);
-        press('KeyG');
+        equipThrowable('grenade');
+        mdown(2); g.debugStep(3);
+        mdown(0); g.debugStep(1); mup(0); mup(2);
         // Wind-up (15f) + almost the whole 2.2s fuse; ring the zombies around
         // the grenade JUST before it detonates (it can roll downhill, and the
         // ring chases the player, so late+tight placement keeps them in blast).
@@ -565,6 +580,114 @@ const scenarios: Scenario[] = [
           if (Math.hypot(em.posX[i] - pp.x, em.posZ[i] - pp.z) < 2.5 || em.state[i] === 2) near++;
         }
         return { pass: violations === 0 && near >= 4, violations, reachedPlayer: near };
+      `),
+  },
+  {
+    name: 'S18 sprinting blocks fire',
+    run: (page) =>
+      run(page, `
+        g.debugStep(5); clearEnemies();
+        g.weapons.switchTo('pistol'); g.swapT = 0; g.actionLock = 0; g.debugStep(2);
+        const ammo0 = g.weapons.magAmmo;
+        down('KeyW'); down('ShiftLeft'); g.debugStep(10);
+        const sprinting = g.player.sprinting;
+        let sawSprint = false;
+        for (let f = 0; f < 120; f++) {
+          if (f % 10 === 0) mdown(0);
+          if (f % 10 === 5) mup(0);
+          g.debugStep(1);
+          if (g.player.sprinting) sawSprint = true;
+        }
+        up('KeyW'); up('ShiftLeft'); mup(0); g.debugStep(5);
+        return { pass: sprinting && sawSprint && g.weapons.magAmmo === ammo0,
+                 wasSprinting: sprinting, ammoBefore: ammo0, ammoAfter: g.weapons.magAmmo };
+      `),
+  },
+  {
+    name: 'S19 aim-to-shoot: LMB alone never fires, RMB+LMB does',
+    run: (page) =>
+      run(page, `
+        g.debugStep(5); clearEnemies();
+        g.weapons.switchTo('pistol'); g.swapT = 0; g.actionLock = 0; g.debugStep(2);
+        const ammo0 = g.weapons.magAmmo;
+        for (let k = 0; k < 6; k++) { mdown(0); g.debugStep(2); mup(0); g.debugStep(8); }
+        const afterUnaimed = g.weapons.magAmmo;
+        mdown(2); g.debugStep(20); // ADS raise
+        mdown(0); g.debugStep(2); mup(0); g.debugStep(5); mup(2);
+        const afterAimed = g.weapons.magAmmo;
+        return { pass: afterUnaimed === ammo0 && afterAimed === ammo0 - 1,
+                 ammo0, afterUnaimed, afterAimed };
+      `),
+  },
+  {
+    name: 'S20 stamina: sprint winds, regen recovers, winded roll denied',
+    run: (page) =>
+      run(page, `
+        g.debugStep(5); clearEnemies();
+        g.player.stamina = 100; g.player.winded = false;
+        down('KeyW'); down('ShiftLeft');
+        // 12/s drain empties the bar at ~8.3s (frame ~500). Assert winded at
+        // 9s, BEFORE regen (starts 1s after the last drain) can clear it.
+        let lateSpeedSum = 0, lateSamples = 0;
+        for (let f = 0; f < 540; f++) {
+          g.debugStep(1);
+          if (f >= 510) { lateSpeedSum += g.player.speed; lateSamples++; }
+        }
+        const winded = g.player.winded;
+        const lateSpeed = lateSpeedSum / lateSamples; // sprint locked -> jog pace
+        // Roll denied while winded (Space is dropped, not buffered).
+        press('Space'); g.debugStep(2);
+        const rolledWhileWinded = g.player.isRolling;
+        up('KeyW'); up('ShiftLeft');
+        for (let f = 0; f < 300; f++) g.debugStep(1); // 5s quiet: 1s delay + 4s regen
+        const recovered = g.player.stamina;
+        return { pass: winded && lateSpeed < 5.2 && !rolledWhileWinded && recovered >= 25 && !g.player.winded,
+                 winded, lateSpeed: +lateSpeed.toFixed(2), rolledWhileWinded,
+                 recovered: +recovered.toFixed(0), stillWinded: g.player.winded };
+      `),
+  },
+  {
+    name: 'S21 weapon wheel: slow-mo while held, release equips selection',
+    run: (page) =>
+      run(page, `
+        g.debugStep(5); clearEnemies();
+        g.weapons.switchTo('pistol'); g.swapT = 0; g.actionLock = 0; g.debugStep(2);
+        down('Tab'); g.debugStep(3);
+        const openTs = g.loop.timeScale;
+        const wasOpen = g.wheelOpen;
+        mmove(0, 60); g.debugStep(2); // straight down = sector 3 = molotov
+        const sel = g.wheelSel;
+        up('Tab'); g.debugStep(3);
+        const closedTs = g.loop.timeScale;
+        return { pass: wasOpen && Math.abs(openTs - 0.2) < 0.011 && sel === 3 &&
+                       g.equippedThrowable === 'molotov' && Math.abs(closedTs - 1) < 0.011,
+                 wasOpen, openTs, sel, equipped: g.equippedThrowable, closedTs };
+      `),
+  },
+  {
+    name: 'S22 throw flow: arc-aim only, one throw, gun re-equips',
+    run: (page) =>
+      run(page, `
+        g.debugStep(5); clearEnemies();
+        g.weapons.switchTo('pistol'); g.swapT = 0; g.actionLock = 0;
+        g.throwableCounts.molotov = 2; g.debugStep(2);
+        equipThrowable('molotov');
+        // LMB without RMB: nothing leaves the hand.
+        mdown(0); g.debugStep(2); mup(0); g.debugStep(15);
+        const liveAfterUnaimed = g.throwables.pool.filter(p => p.active).length;
+        const countAfterUnaimed = g.throwableCounts.molotov;
+        // RMB (arc) + LMB: the throw commits after the wind-up.
+        mdown(2); g.debugStep(5);
+        mdown(0); g.debugStep(2); mup(0);
+        g.debugStep(25); // wind-up is 15 frames
+        const liveAfterThrow = g.throwables.pool.filter(p => p.active).length;
+        const countAfterThrow = g.throwableCounts.molotov;
+        g.debugStep(40); // re-equip window (0.5s = 30f)
+        const backOnGun = g.equippedThrowable === null;
+        mup(2);
+        return { pass: liveAfterUnaimed === 0 && countAfterUnaimed === 2 &&
+                       liveAfterThrow === 1 && countAfterThrow === 1 && backOnGun,
+                 liveAfterUnaimed, countAfterUnaimed, liveAfterThrow, countAfterThrow, backOnGun };
       `),
   },
 ];
