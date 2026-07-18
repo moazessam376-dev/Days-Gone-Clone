@@ -956,6 +956,7 @@ export class Game {
       this.player.aiming && !this.driving,
       this.recoil,
       this.driving,
+      this.player.sprinting && !this.driving,
     );
     this.shake.apply(dt, this.renderer.camera);
     this.renderer.camera.updateMatrixWorld();
@@ -995,6 +996,7 @@ export class Game {
       this.weapons.reserveAmmo,
       this.weapons.def.name,
       this.weapons.isReloading,
+      this.player.aiming && !this.driving,
     );
 
     const camPos = this.renderer.camera.position;

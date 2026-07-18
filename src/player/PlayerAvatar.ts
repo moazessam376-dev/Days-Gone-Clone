@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { PLAYER } from '../config';
+import { PLAYER, HANDLING } from '../config';
 
 /** Bones above the hips — used to mask aim poses onto the upper body only. */
 const UPPER_BONE_RE = /(spine\.?00[23]|neck|head|shoulder|upper_arm|forearm|hand|f_index|f_middle|f_ring|f_pinky|thumb)/;
@@ -135,8 +135,9 @@ export class PlayerAvatar {
     }
     this.wasRolling = state.rolling;
 
+    // Pose raise/drop matches the camera's weighty-responsive blend times.
     this.aimBlend = THREE.MathUtils.clamp(
-      this.aimBlend + (state.aiming ? dt : -dt) / 0.12,
+      this.aimBlend + (state.aiming ? dt / HANDLING.aimInTime : -dt / HANDLING.aimOutTime),
       0,
       1,
     );

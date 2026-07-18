@@ -49,7 +49,9 @@ export const CAMERA_RIG = {
   aimShoulderX: 0.62,
   aimDistance: 1.55,
   aimFov: 42,
-  aimLerpTime: 0.12,
+  /** Sprint widens the FOV by this much (speed feel), blended over 0.25 s. */
+  sprintFovAdd: 6,
+  sprintFovTime: 0.25,
   sensitivity: 0.0022,
   pitchMin: -1.15,
   pitchMax: 1.3,

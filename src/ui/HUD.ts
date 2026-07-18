@@ -3,6 +3,7 @@
  * counter, weapon name, and health bar. Pure DOM/CSS — no canvas cost.
  */
 export class HUD {
+  private reticle!: HTMLElement;
   private reticleTicks: HTMLElement[] = [];
   private hitmarker!: HTMLElement;
   private ammoEl!: HTMLElement;
@@ -23,7 +24,8 @@ export class HUD {
     style.textContent = `
       #hud { position: absolute; inset: 0; pointer-events: none; z-index: 5;
              font-family: system-ui, sans-serif; }
-      #reticle { position: absolute; left: 50%; top: 50%; width: 0; height: 0; }
+      #reticle { position: absolute; left: 50%; top: 50%; width: 0; height: 0;
+                 opacity: 0; transition: opacity .12s; }
       #reticle .dot { position: absolute; left: -2px; top: -2px; width: 4px; height: 4px;
                       background: #e8ecf2; border-radius: 50%; opacity: .9; }
       #reticle .tick { position: absolute; background: #e8ecf2; opacity: .85;
@@ -98,12 +100,21 @@ export class HUD {
     this.vignette = hud.querySelector('#vignette')!;
     this.death = hud.querySelector('#death')!;
     this.toastEl = hud.querySelector('#toast')!;
-    const ret = hud.querySelector('#reticle')!;
-    this.reticleTicks = ['t', 'b', 'l', 'r'].map((c) => ret.querySelector(`.${c}`)!);
+    this.reticle = hud.querySelector('#reticle')!;
+    this.reticleTicks = ['t', 'b', 'l', 'r'].map((c) => this.reticle.querySelector(`.${c}`)!);
   }
 
-  /** spreadPx: reticle gap in pixels, derived from weapon spread angle. */
-  update(spreadPx: number, mag: number, reserve: number, weaponName: string, reloading: boolean): void {
+  /** spreadPx: reticle gap in pixels, derived from weapon spread angle.
+   *  showReticle: reticle renders ONLY while gun-ADS (clean screen otherwise). */
+  update(
+    spreadPx: number,
+    mag: number,
+    reserve: number,
+    weaponName: string,
+    reloading: boolean,
+    showReticle: boolean,
+  ): void {
+    this.reticle.style.opacity = showReticle ? '1' : '0';
     const gap = 6 + spreadPx;
     const [t, b, l, r] = this.reticleTicks;
     t.style.transform = `translateY(${-gap - 7}px)`;

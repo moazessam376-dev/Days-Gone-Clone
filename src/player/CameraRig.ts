@@ -1,6 +1,6 @@
 import RAPIER from '@dimforge/rapier3d-compat';
 import * as THREE from 'three';
-import { CAMERA, CAMERA_RIG } from '../config';
+import { CAMERA, CAMERA_RIG, HANDLING } from '../config';
 import { Input } from '../core/Input';
 import { PhysicsWorld } from '../physics/PhysicsWorld';
 import { CAMERA_CAST_GROUPS } from '../physics/layers';
@@ -26,6 +26,10 @@ export class CameraRig {
   yaw = 0;
   pitch = -0.15;
   private aimBlend = 0;
+  private sprintBlend = 0;
+  /** Camera side: +1 = right shoulder, -1 = left (Q toggles, persists). */
+  private side = 1;
+  private sideSmooth = 1;
   private currentDistance = CAMERA_RIG.restDistance;
   private castShape: RAPIER.Ball;
   private followPos = new THREE.Vector3();
@@ -50,8 +54,18 @@ export class CameraRig {
     aiming: boolean,
     recoil?: { pitch: number; yaw: number },
     vehicle = false,
+    sprinting = false,
   ): void {
     const cfg = CAMERA_RIG;
+
+    // Q mirrors the shoulder side; the offset blends across, never snaps.
+    if (input.locked && input.consumePressed('KeyQ')) this.side = -this.side;
+    const sideStep = dt / HANDLING.shoulderSwapTime;
+    this.sideSmooth = THREE.MathUtils.clamp(
+      this.sideSmooth + (this.side > 0 ? sideStep : -sideStep),
+      -1,
+      1,
+    );
 
     const fovScale = this.camera.fov / CAMERA.fov;
     if (input.locked) {
@@ -65,18 +79,30 @@ export class CameraRig {
     }
 
     // Aim state blend (drives FOV, shoulder, and arm length together).
-    const blendStep = dt / cfg.aimLerpTime;
+    // Weighty-responsive: raising the gun is slower than dropping it.
+    const blendStep = dt / (aiming ? HANDLING.aimInTime : HANDLING.aimOutTime);
     this.aimBlend = THREE.MathUtils.clamp(this.aimBlend + (aiming ? blendStep : -blendStep), 0, 1);
     const b = THREE.MathUtils.smoothstep(this.aimBlend, 0, 1);
 
-    const fov = THREE.MathUtils.lerp(CAMERA.fov, cfg.aimFov, b);
+    // Sprint widens the FOV for speed feel (fully yields to the aim FOV).
+    const sprintStep = dt / cfg.sprintFovTime;
+    this.sprintBlend = THREE.MathUtils.clamp(
+      this.sprintBlend + (sprinting ? sprintStep : -sprintStep),
+      0,
+      1,
+    );
+    const baseFov = CAMERA.fov + cfg.sprintFovAdd * this.sprintBlend;
+
+    const fov = THREE.MathUtils.lerp(baseFov, cfg.aimFov, b);
     if (Math.abs(fov - this.camera.fov) > 0.01) {
       this.camera.fov = fov;
       this.camera.updateProjectionMatrix();
     }
 
     // Vehicle chase framing: higher pivot, longer arm, no shoulder offset.
-    const shoulderX = vehicle ? 0 : THREE.MathUtils.lerp(cfg.shoulderX, cfg.aimShoulderX, b);
+    const shoulderX = vehicle
+      ? 0
+      : THREE.MathUtils.lerp(cfg.shoulderX, cfg.aimShoulderX, b) * this.sideSmooth;
     const distance = vehicle ? 7.0 : THREE.MathUtils.lerp(cfg.restDistance, cfg.aimDistance, b);
 
     // Recoil is composed in but never stored — it always springs back.
