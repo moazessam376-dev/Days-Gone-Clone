@@ -43,26 +43,44 @@ export const ALL_LAYERS = 0xffff;
 /** World geometry: terrain, buildings, trees, crates, breakables. */
 export const STATIC_GROUPS = interactionGroups(Layer.STATIC, ALL_LAYERS);
 
-/** The player's kinematic capsule. */
-export const PLAYER_BODY_GROUPS = interactionGroups(Layer.PLAYER, ALL_LAYERS);
+/** The player's kinematic capsule. Filter DROPS VEHICLE deliberately: a
+ * kinematic body shoves dynamic bodies with unbounded solver authority (the
+ * "flying car" bug). Vehicles stay solid via KCC_OBSTACLE_GROUPS below. */
+export const PLAYER_BODY_GROUPS = interactionGroups(Layer.PLAYER, Layer.STATIC | Layer.ENEMY);
 
-/** Enemy kinematic capsules + head balls (excludes VEHICLE: cars plow through;
- * run-over kills come from EnemyManager.runOverSweep, not the solver). */
-export const ENEMY_BODY_GROUPS = interactionGroups(Layer.ENEMY, 0xffff & ~Layer.VEHICLE);
+/** Enemy kinematic capsules + head balls. No VEHICLE (cars plow through;
+ * run-over kills come from runOverSweep; parked cars block via steering). */
+export const ENEMY_BODY_GROUPS = interactionGroups(
+  Layer.ENEMY,
+  Layer.STATIC | Layer.PLAYER | Layer.ENEMY | Layer.PROJECTILE,
+);
 
-/** Corpse boxes: world + each other. */
-export const CORPSE_GROUPS = interactionGroups(Layer.RAGDOLL, Layer.STATIC | Layer.RAGDOLL);
+/** Corpse boxes: world + each other + vehicles (knock-aside, velocity-capped
+ * in EnemyManager). */
+export const CORPSE_GROUPS = interactionGroups(
+  Layer.RAGDOLL,
+  Layer.STATIC | Layer.RAGDOLL | Layer.VEHICLE,
+);
 
-/** Car/bike chassis. */
-export const VEHICLE_GROUPS = interactionGroups(Layer.VEHICLE, ALL_LAYERS);
+/** Car/bike chassis. MUST keep PLAYER in the filter — the KCC wall query is
+ * two-way and dies without it (see PLAYER_BODY_GROUPS note). */
+export const VEHICLE_GROUPS = interactionGroups(
+  Layer.VEHICLE,
+  Layer.STATIC | Layer.PLAYER | Layer.RAGDOLL | Layer.VEHICLE | Layer.PROJECTILE,
+);
 
 /** Grenades/molotovs: bounce off the world and vehicles, sail past bodies. */
 export const THROWABLE_GROUPS = interactionGroups(Layer.PROJECTILE, Layer.STATIC | Layer.VEHICLE);
 
 // ---- Query-only groups (never assigned to a collider) ----
 
-/** What the character controller treats as walls/ground. */
-export const KCC_OBSTACLE_GROUPS = interactionGroups(Layer.PLAYER, ALL_LAYERS);
+/** What the character controller treats as walls/ground. Includes VEHICLE
+ * even though the body's solver pair with vehicles is dead — the KCC resolves
+ * them geometrically (slide), applying no impulses. */
+export const KCC_OBSTACLE_GROUPS = interactionGroups(
+  Layer.PLAYER,
+  Layer.STATIC | Layer.ENEMY | Layer.VEHICLE,
+);
 
 /** Hitscan bullets: world, flesh, vehicles. */
 export const HIT_SCAN_GROUPS = interactionGroups(

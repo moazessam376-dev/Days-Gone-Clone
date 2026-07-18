@@ -67,7 +67,9 @@ export class PlayerController {
     this.controller.enableSnapToGround(0.4);
     this.controller.setMaxSlopeClimbAngle((55 * Math.PI) / 180);
     this.controller.setMinSlopeSlideAngle((70 * Math.PI) / 180);
-    this.controller.setApplyImpulsesToDynamicBodies(true);
+    // The capsule must never push dynamic bodies — corpses ignore the player
+    // and vehicles are walls (see docs/collision-matrix.md).
+    this.controller.setApplyImpulsesToDynamicBodies(false);
 
     physics.syncObject(this.body, this.root);
   }
