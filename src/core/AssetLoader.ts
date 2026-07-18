@@ -11,13 +11,31 @@ export class AssetLoader {
   private cache = new Map<string, GLTF>();
   private texCache = new Map<string, THREE.Texture>();
 
+  /** GitHub Pages occasionally 503s single files right after a deploy while
+   * the CDN warms — one flaky fetch must not brick the whole boot. */
+  private async retry<T>(fn: () => Promise<T>, label: string): Promise<T> {
+    let lastErr: unknown;
+    for (let attempt = 0; attempt < 4; attempt++) {
+      try {
+        return await fn();
+      } catch (err) {
+        lastErr = err;
+        await new Promise((r) => setTimeout(r, 500 * 2 ** attempt));
+      }
+    }
+    throw new Error(`asset failed after retries: ${label}: ${String(lastErr)}`);
+  }
+
   async loadAll(
     models: Record<string, string>,
     textures: Record<string, string> = {},
   ): Promise<void> {
     await Promise.all([
       ...Object.entries(models).map(async ([key, path]) => {
-        const gltf = await this.loader.loadAsync(import.meta.env.BASE_URL + path);
+        const gltf = await this.retry(
+          () => this.loader.loadAsync(import.meta.env.BASE_URL + path),
+          path,
+        );
         gltf.scene.traverse((obj) => {
           if ((obj as THREE.Mesh).isMesh) {
             obj.castShadow = true;
@@ -30,7 +48,10 @@ export class AssetLoader {
         this.cache.set(key, gltf);
       }),
       ...Object.entries(textures).map(async ([key, path]) => {
-        const tex = await this.texLoader.loadAsync(import.meta.env.BASE_URL + path);
+        const tex = await this.retry(
+          () => this.texLoader.loadAsync(import.meta.env.BASE_URL + path),
+          path,
+        );
         // Default flipY=true matches our Synty exports' FBX-convention UVs.
         tex.colorSpace = THREE.SRGBColorSpace;
         this.texCache.set(key, tex);
