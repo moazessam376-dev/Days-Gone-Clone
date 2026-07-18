@@ -3,3 +3,7 @@ dist/
 assets/raw/
 .DS_Store
 *.log
+
+# Local asset packs (licensed, oversized) - never commit
+assets/Game Assets/
+*.unitypackage

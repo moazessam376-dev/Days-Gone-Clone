@@ -109,7 +109,13 @@ export class PlayerController {
     aimBlocked = false,
     rollBlocked = false,
   ): void {
-    this.aiming = input.locked && input.isMouseDown(2) && !this.isRolling && !aimBlocked;
+    // F is a hold-to-aim alias for RMB (trackpads can't hold a two-finger
+    // press and click at the same time).
+    this.aiming =
+      input.locked &&
+      (input.isMouseDown(2) || input.isDown('KeyF')) &&
+      !this.isRolling &&
+      !aimBlocked;
     this.sprintBlockT = Math.max(0, this.sprintBlockT - dt);
     // Blocked inputs are dropped, never buffered.
     if (rollBlocked) input.consumePressed('Space');

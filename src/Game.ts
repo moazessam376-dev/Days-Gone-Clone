@@ -244,8 +244,10 @@ export class Game {
     if (!this.input.mock) this.loop.setPaused(true);
 
     if (this.input.mock) {
-      // Test hook for automated verification (?mockinput only).
+      // Test hooks for automated verification (?mockinput only). __weapons
+      // lets pose/tuning experiments run live without rebuilds.
       (window as unknown as Record<string, unknown>).__game = this;
+      (window as unknown as Record<string, unknown>).__weapons = WEAPONS;
     }
   }
 

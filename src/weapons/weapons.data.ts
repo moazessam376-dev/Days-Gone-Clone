@@ -53,9 +53,12 @@ export interface WeaponDef {
 /** The classic fit: barrel along the hand's +X (see WeaponRig). Carry adds
  * the global HANDLING.carryPitch on top so the barrel-down angle is one
  * live-tunable dial across all weapons. */
+// Hand-frame axes (probed visually 2026-07-18): x = along the barrel
+// (+x back toward the body), y = fist-vertical (-y seats the gun DOWN into
+// the grip; 0 leaves it riding on top of the knuckles), z = diagonal.
 const DEFAULT_POSE: WeaponPoses = {
-  carry: { pos: [0, 0, 0], rot: [0, -Math.PI / 2, 0] },
-  ads: { pos: [0, 0, 0], rot: [0, -Math.PI / 2, 0] },
+  carry: { pos: [0, -0.09, 0], rot: [0, -Math.PI / 2, 0] },
+  ads: { pos: [0, -0.09, 0], rot: [0, -Math.PI / 2, 0] },
 };
 
 export const WEAPONS: Record<string, WeaponDef> = {

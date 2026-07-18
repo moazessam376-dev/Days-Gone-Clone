@@ -37,6 +37,7 @@ the spec and config never disagree.
 | Mouse | Look (pointer lock) |
 | LMB (button 0) | Fire / throw — **only while aiming**; unaimed press = carry-alert nudge (face camera 0.8 s, no shot, no ammo) |
 | RMB (button 2, hold) | Aim (ADS) / show throwable arc |
+| F (hold) | Aim alias — identical to RMB hold (trackpads can't hold a two-finger press and click; added from user playtest 2026-07-18) |
 | ShiftLeft (hold) | Sprint (needs stamina, blocks aim/fire) |
 | Space | Dodge roll (costs stamina) |
 | R | Reload |
@@ -48,7 +49,7 @@ the spec and config never disagree.
 | V | Stopgap punch (pre-R2 melee; unchanged) |
 | Enter | Respawn when dead |
 | Esc | Browser pointer-lock release → pause |
-| G / F | **REMOVED** (throwables live on the wheel) |
+| G | **REMOVED** (throwables live on the wheel; F is now the aim alias) |
 
 Tab and Q require `e.preventDefault()` in `Input` keydown (Tab moves browser
 focus otherwise). This is the only Input.ts behavior change besides a new

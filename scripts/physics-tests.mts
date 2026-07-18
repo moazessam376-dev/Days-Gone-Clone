@@ -68,7 +68,7 @@ const HARNESS = `
   const upY = (body) => { const r = body.rotation(); return 1 - 2 * (r.x * r.x + r.z * r.z); };
   const finite = (...vals) => vals.every(Number.isFinite);
   const softReset = () => {
-    for (const code of ['KeyW','KeyA','KeyS','KeyD','ShiftLeft','Space','Tab']) up(code);
+    for (const code of ['KeyW','KeyA','KeyS','KeyD','ShiftLeft','Space','Tab','KeyF']) up(code);
     mup(0); mup(2);
     if (g.driving) { press('KeyE'); g.debugStep(2); }
     clearEnemies();
