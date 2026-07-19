@@ -139,20 +139,17 @@ export const HANDLING = {
   reequipTime: 0.5, // auto re-equip of the previous gun after a throw
   shoulderSwapTime: 0.15, // Q camera side mirror blend
   nudgeTime: 0.8, // unaimed LMB: face camera this long, fire nothing
-  carryBlend: 0.35, // upper-body aim-pose weight while carrying (not aiming)
-  /** Barrel-down pitch (rad) added to every gun's carry pose — one dial. */
-  carryPitch: -0.6,
-  /** Two-hand carry (guns with a foregrip): the gun is anchored across the
-   * chest and BOTH hands are IK'd onto it (no rifle-carry clips exist).
-   * Extra pitch/yaw make it read as a Days Gone-style patrol low-ready. */
-  twoHandYawTilt: 0.45, // carry yaw offset (rad, + = muzzle swings left)
-  twoHandPitch: -0.5, // overrides carryPitch for chest-anchored carry
-  twoHandOffset: [0.05, -0.22, -0.24] as [number, number, number], // chest → gun origin, carry frame (-z = in front)
-  /** Long-gun ADS: the gun anchors to the chest in the AIM frame (stock at
-   * the right shoulder) and BOTH hands stay IK'd to grip/foregrip — the rig
-   * only ships pistol aim clips, so following the animated hand made every
-   * weapon read as the same one-hand pistol pose (round-6 playtest). */
-  twoHandAdsOffset: [0.17, -0.05, -0.3] as [number, number, number], // chest → gun origin, aim frame (-z = at the reticle)
+  carryBlend: 0.35, // upper-body pistol-idle weight while carrying (not aiming)
+  /** Gun orientation in the right-hand bone frame (euler rad, one dial for
+   * all Synty guns — they share the barrel-toward--Z export convention).
+   * With real Mixamo gun clips the gun follows the HAND (position AND
+   * orientation); this composes hand world → gun. Calibrated against
+   * rendered frames (scripts/grip-check.mts). */
+  holdRot: [1.361, -1.034, 1.183] as [number, number, number], // solved from the probed carry wrist pose (scripts/_rig-probe)
+  /** Aim elevation: fraction of camera pitch applied procedurally to EACH of
+   * Spine_02/Spine_03 while aiming a gun (the whole chest+arms unit pitches,
+   * replacing the old 3-pose aim blend that clipped the arms together). */
+  aimSpinePitch: 0.3,
   /** Finger curl (rad per segment) wrapping a held grip — the rig's clips
    * never animate fingers, so bind-pose hands read as open palms. */
   gripCurl: { finger: 0.95, index: 0.7, thumb: 0.5 },

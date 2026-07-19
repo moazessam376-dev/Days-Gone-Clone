@@ -134,6 +134,29 @@ window.exportTexture = async (texUrl, size = 512) => {
   return cv.toDataURL('image/png').split(',')[1];
 };
 
+/**
+ * Merge single-clip animation FBXs (e.g. Mixamo downloads, one 'mixamo.com'
+ * clip each) into one GLB on the first file's skeleton, clips renamed.
+ *   items: [{ url, name }]
+ * All files must share bone names (true for one Mixamo character rig).
+ */
+window.mergeFbxAnims = async (items) => {
+  let holder = null;
+  const clips = [];
+  for (const it of items) {
+    const g = await fbxLoader.loadAsync(it.url);
+    if (!holder) holder = g;
+    const clip = (g.animations ?? [])[0];
+    if (!clip) throw new Error(`no animation in ${it.url}`);
+    clip.name = it.name;
+    clips.push(clip);
+  }
+  const bones = [];
+  holder.traverse((o) => { if (o.isBone) bones.push(o.name); });
+  const glb = await exportGlb(holder, clips);
+  return { glb, bones, clipNames: clips.map((c) => c.name) };
+};
+
 /** Print the node/mesh tree of an FBX or GLB without exporting (inspection). */
 window.inspect = async (url) => {
   let src;
@@ -359,6 +382,11 @@ window.__bakeFromSource = async (target, skin, topBone, targetBones, srcSpec, op
   const source = animGltf.scene;
   const srcBones = new Map();
   source.traverse((o) => { if (o.isBone && !srcBones.has(o.name)) srcBones.set(o.name, o); });
+  if (srcBones.size === 0) {
+    // Skinless anim GLBs (merged Mixamo clips) re-import as plain nodes —
+    // glTF only flags joints referenced by a skin. Named nodes work the same.
+    source.traverse((o) => { if (o.name && !srcBones.has(o.name)) srcBones.set(o.name, o); });
+  }
 
   // World-frame delta transfer requires both rigs to FACE THE SAME WAY at
   // rest; srcYaw pre-rotates the source rig into the target's frame (the

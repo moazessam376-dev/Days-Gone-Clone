@@ -1,0 +1,17 @@
+{
+  "out": "assets/raw/mixamo/mixamo-anims.glb",
+  "items": [
+    { "file": "assets/raw/mixamo/Rifle Idle.fbx", "name": "RifleIdle" },
+    { "file": "assets/raw/mixamo/Rifle Walk.fbx", "name": "RifleWalk" },
+    { "file": "assets/raw/mixamo/Rifle Run.fbx", "name": "RifleRun" },
+    { "file": "assets/raw/mixamo/Rifle Aiming Idle.fbx", "name": "RifleAimIdle" },
+    { "file": "assets/raw/mixamo/Rifle Walk Aiming.fbx", "name": "RifleAimWalk" },
+    { "file": "assets/raw/mixamo/Firing Rifle.fbx", "name": "RifleFire" },
+    { "file": "assets/raw/mixamo/Reloading.fbx", "name": "RifleReload" },
+    { "file": "assets/raw/mixamo/Pistol Idle.fbx", "name": "PistolIdle" },
+    { "file": "assets/raw/mixamo/Pistol Walk.fbx", "name": "PistolAimWalk" },
+    { "file": "assets/raw/mixamo/Pistol Aiming Idle.fbx", "name": "PistolAimIdle" },
+    { "file": "assets/raw/mixamo/Shooting Pistol.fbx", "name": "PistolFire" },
+    { "file": "assets/raw/mixamo/Pistol Reload.fbx", "name": "PistolReload" }
+  ]
+}

@@ -6,33 +6,32 @@ import type { AssetLoader } from '../core/AssetLoader';
 const _muzzle = new THREE.Vector3();
 const _box = new THREE.Box3();
 const _handPos = new THREE.Vector3();
-const _chestPos = new THREE.Vector3();
 const _fingerPos = new THREE.Vector3();
+const _handQ = new THREE.Quaternion();
+const _holdQ = new THREE.Quaternion();
+const _tweakQ = new THREE.Quaternion();
 const _carryQ = new THREE.Quaternion();
 const _adsQ = new THREE.Quaternion();
-const _tweakQ = new THREE.Quaternion();
 const _euler = new THREE.Euler();
 const _off = new THREE.Vector3();
-const _posCarry = new THREE.Vector3();
-const _posAds = new THREE.Vector3();
-const IDENTITY_POSE = { pos: [0, 0, 0], rot: [0, 0, 0] } as const;
 
 /**
  * In-hand weapon models (Synty GLBs, barrel toward -Z, ~1u = 1m, baked by
  * scripts/synty-export.mts).
  *
- * Placement contract (R2 playtest fix — guns used to inherit the hand bone's
- * noisy local axes and dangled muzzle-down at the thigh):
- * - POSITION follows the right-hand bone, plus a per-weapon offset.
- * - ORIENTATION is composed in world space and never taken from the bone:
- *   carry = character yaw + HANDLING.carryPitch (low-ready, barrel forward-
- *   down); ADS = the camera's exact yaw+pitch, so the barrel always tracks
- *   the reticle. The two blend with the same weighty-responsive aim times as
- *   the camera. Throwables use the carry frame with a small fixed tilt.
+ * Placement contract (Mixamo gun-clip era): the character's clips pose the
+ * right wrist meaningfully in every stance, so guns follow the HAND —
+ * position AND orientation. The gun's orientation = hand world orientation ×
+ * HANDLING.holdRot × the weapon's own hold.rot tweak; its position = palm
+ * (wrist lerped toward the index-finger base) + hold.pos in the gun's frame.
  *
- * Per-weapon `pose.pos` offsets are expressed in the GUN's oriented frame
- * (x right, y up, z toward the stock) and move the gun so its grip sits in
- * the palm; `pose.rot` is an extra local euler tweak (used by throwables).
+ * ADS keeps the reticle honest: the orientation slerps to the camera's exact
+ * yaw/pitch by aimBlend, pivoting around the grip (exports keep the pistol
+ * grip near the origin) so the palm stays glued while the barrel tracks the
+ * crosshair precisely.
+ *
+ * Throwables keep the old world-composed carry frame (they sit upright in
+ * the palm; the throw arm is animated separately).
  */
 export class WeaponRig {
   private holder = new THREE.Group();
@@ -98,18 +97,15 @@ export class WeaponRig {
   }
 
   /**
-   * Call every render frame after animation update.
-   * @param aiming drives the carry↔ADS blend (weighty-responsive times).
+   * Call every render frame after animation update (the hand bone must hold
+   * this frame's animated pose).
+   * @param aiming drives the hand-follow↔ADS-exact blend.
    * @param lower 0..1 swap dip — the gun sinks and pitches away mid-swap.
-   * @param charYaw the character model's yaw (carry frame).
+   * @param charYaw the character model's yaw (throwable carry frame).
    * @param camYaw / @param camPitch the camera rig's aim (ADS frame).
-   * @param chestBone anchor for the two-hand carry (long guns sit across the
-   *   chest, not in the animated hand — the idle clip's hand hangs at the
-   *   thigh, which read as a one-hand lug).
-   * @param sprintWeight 0..1 — blends two-handers back onto the pumping hand.
    * @param fingerBone index-finger base: bone origins are JOINTS, so the
    *   hand bone alone is the wrist — lerping toward the finger base lands
-   *   hand-follow weapons in the palm instead of on the forearm.
+   *   props in the palm instead of on the forearm.
    */
   update(
     dt: number,
@@ -119,8 +115,6 @@ export class WeaponRig {
     charYaw = 0,
     camYaw = 0,
     camPitch = 0,
-    chestBone: THREE.Object3D | null = null,
-    sprintWeight = 0,
     fingerBone: THREE.Object3D | null = null,
   ): void {
     this.kickZ *= Math.exp(-14 * dt);
@@ -140,55 +134,46 @@ export class WeaponRig {
     } else _handPos.copy(this.holder.position);
 
     const def = WEAPONS[this.active];
-    const tp = THROWABLE_POSES[this.active];
-    const carry = def?.pose.carry ?? tp ?? IDENTITY_POSE;
-    const ads = def?.pose.ads ?? tp ?? IDENTITY_POSE;
     const b = THREE.MathUtils.smoothstep(this.aimBlend, 0, 1);
 
-    // Carry frame: barrel along the character's facing, pitched down into
-    // low-ready. Throwables stay world-upright (no carry pitch).
-    // charYaw is model.rotation.y, which ALREADY faces the barrel (-Z model
-    // forward) the right way — adding π here pointed the carried gun 180°
-    // backwards, which read as "dangling vertical at the hip" and put the
-    // foregrip out of the left arm's reach (round-3 playtest bug).
-    const twoHand = !!def?.pose.foregrip && !!chestBone;
-    const carryPitch = def ? (twoHand ? HANDLING.twoHandPitch : HANDLING.carryPitch) : 0;
-    const carryYaw = charYaw + (twoHand ? HANDLING.twoHandYawTilt : 0);
-    _carryQ.setFromEuler(_euler.set(carryPitch, carryYaw, 0, 'YXZ'));
-    // ADS frame: exactly the camera's aim — the barrel tracks the reticle.
+    if (def && handBone) {
+      // ---- Gun: ride the animated hand ----
+      handBone.getWorldQuaternion(_handQ);
+      const hr = HANDLING.holdRot;
+      const wr = def.pose.hold.rot;
+      _holdQ.setFromEuler(_euler.set(hr[0], hr[1], hr[2], 'YXZ'));
+      _handQ.multiply(_holdQ);
+      if (wr[0] || wr[1] || wr[2]) {
+        _handQ.multiply(_holdQ.setFromEuler(_euler.set(wr[0], wr[1], wr[2], 'YXZ')));
+      }
+      // ADS: exact camera yaw/pitch so the barrel tracks the reticle; the
+      // slerp pivots around the grip (near origin) so the palm stays glued.
+      _adsQ.setFromEuler(_euler.set(camPitch, camYaw, 0, 'YXZ'));
+      this.holder.quaternion.copy(_handQ).slerp(_adsQ, b);
+      const hp = def.pose.hold.pos;
+      this.holder.position
+        .copy(_handPos)
+        .add(_off.set(hp[0], hp[1], hp[2]).applyQuaternion(this.holder.quaternion));
+      this.holder.position.y -= 0.15 * lower;
+
+      // Swap-dip pitch-away + recoil kick straight back along the barrel.
+      _tweakQ.setFromEuler(_euler.set(-1.05 * lower, 0, 0, 'YXZ'));
+      g.quaternion.copy(_tweakQ);
+      g.position.set(0, 0, this.kickZ);
+      return;
+    }
+
+    // ---- Throwable (or no hand bone): world-composed upright carry ----
+    const tp = THROWABLE_POSES[this.active] ?? { pos: [0, 0, 0], rot: [0, 0, 0] };
+    _carryQ.setFromEuler(_euler.set(0, charYaw, 0, 'YXZ'));
     _adsQ.setFromEuler(_euler.set(camPitch, camYaw, 0, 'YXZ'));
-
-    _posCarry.copy(_handPos).add(_off.set(carry.pos[0], carry.pos[1], carry.pos[2]).applyQuaternion(_carryQ));
-    if (twoHand) {
-      // Across-the-chest anchor; sprint blends back onto the pumping hand.
-      const co = HANDLING.twoHandOffset;
-      chestBone!.getWorldPosition(_chestPos).add(_off.set(co[0], co[1], co[2]).applyQuaternion(_carryQ));
-      _posCarry.lerpVectors(_chestPos, _posCarry, sprintWeight);
-    }
-    if (twoHand) {
-      // ADS: stock at the right shoulder, not in the animated hand — the rig
-      // only has PISTOL aim clips, so hand-follow made rifles/shotguns aim
-      // one-handed. Both hands are IK'd onto the gun (grip + foregrip).
-      const ao = HANDLING.twoHandAdsOffset;
-      chestBone!
-        .getWorldPosition(_posAds)
-        .add(
-          _off
-            .set(ao[0] + ads.pos[0], ao[1] + ads.pos[1], ao[2] + ads.pos[2])
-            .applyQuaternion(_adsQ),
-        );
-    } else {
-      _posAds.copy(_handPos).add(_off.set(ads.pos[0], ads.pos[1], ads.pos[2]).applyQuaternion(_adsQ));
-    }
-
     this.holder.quaternion.copy(_carryQ).slerp(_adsQ, b);
-    this.holder.position.lerpVectors(_posCarry, _posAds, b);
+    this.holder.position
+      .copy(_handPos)
+      .add(_off.set(tp.pos[0], tp.pos[1], tp.pos[2]).applyQuaternion(_carryQ));
     this.holder.position.y -= 0.15 * lower;
 
-    // Local tweaks: per-pose euler (throwable tilts), swap-dip pitch-away,
-    // recoil kick straight back along the barrel.
-    const rot = b < 0.5 ? carry.rot : ads.rot;
-    _tweakQ.setFromEuler(_euler.set(rot[0] - 1.05 * lower, rot[1], rot[2], 'YXZ'));
+    _tweakQ.setFromEuler(_euler.set(tp.rot[0] - 1.05 * lower, tp.rot[1], tp.rot[2], 'YXZ'));
     g.quaternion.copy(_tweakQ);
     g.position.set(0, 0, this.kickZ);
   }
@@ -207,17 +192,5 @@ export class WeaponRig {
     if (!fg || !g) return null;
     this.holder.updateMatrixWorld(true);
     return out.set(fg[0], fg[1], fg[2]).applyMatrix4(g.matrixWorld);
-  }
-
-  /** World position of the pistol grip (right-hand IK target while the long
-   * gun rides the chest anchor — carry AND ADS), or null when the gun follows
-   * the hand anyway (pistol / throwables). Call after update(). */
-  gripWorld(out: THREE.Vector3): THREE.Vector3 | null {
-    const def = WEAPONS[this.active];
-    const g = this.guns.get(this.active);
-    if (!def?.pose.foregrip || !g) return null;
-    const gp = def.pose.grip ?? [0, -0.04, 0.03];
-    this.holder.updateMatrixWorld(true);
-    return out.set(gp[0], gp[1], gp[2]).applyMatrix4(g.matrixWorld);
   }
 }

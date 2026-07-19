@@ -51,7 +51,6 @@ const _vehicleFwd = new THREE.Vector3();
 const _arcDir = new THREE.Vector3();
 const _arcOrigin = new THREE.Vector3();
 const _foregrip = new THREE.Vector3();
-const _gripR = new THREE.Vector3();
 
 /**
  * M1 graybox: third-person character controller + over-shoulder camera in an
@@ -572,8 +571,8 @@ export class Game {
     h.add(HANDLING, 'aimInTime', 0.05, 0.6);
     h.add(HANDLING, 'aimOutTime', 0.05, 0.6);
     h.add(HANDLING, 'swapTime', 0.2, 1.5);
-    h.add(HANDLING, 'carryPitch', -1.5, 1.5);
     h.add(HANDLING, 'carryBlend', 0, 1);
+    h.add(HANDLING, 'aimSpinePitch', 0, 0.6);
 
     const st = this.debug.folder('Stamina');
     st.add(STAMINA, 'sprintDrain', 0, 40);
@@ -597,7 +596,7 @@ export class Game {
       onShot: (def) => {
         this.combatFaceT = PLAYER.combatFaceTime;
         this.weaponRig.kick();
-        if (def.shootAnim) this.avatar.playShoot();
+        if (def.shootAnim) this.avatar.playShoot(def.cls);
         this.shake.add(def.pellets > 1 ? 0.32 : def.auto ? 0.1 : 0.16);
         this.weaponRig.muzzleWorld(this.muzzlePos);
         this.muzzleFlash.flash(this.muzzlePos);
@@ -633,7 +632,7 @@ export class Game {
         this.audio.play('impact_flesh', { gain: headshot ? 0.8 : 0.55, at: point });
       },
       onReloadStart: (def) => {
-        this.avatar.playReload(def.reloadTime);
+        this.avatar.playReload(def.reloadTime, def.cls);
         this.audio.play('reload', { gain: 0.5 });
       },
       onDryFire: () => this.audio.play('dry', { gain: 0.45 }),
@@ -1184,6 +1183,7 @@ export class Game {
       pitch: this.cameraRig.pitch,
       carrying: !this.driving,
       aimMode: this.equippedThrowable ? 'throw' : 'gun',
+      weaponClass: this.equippedThrowable ? null : WEAPONS[this.weapons.current]?.cls ?? null,
     });
     // Swap dip: 0 → 1 → 0 across the current lower/raise window.
     const swapLower =
@@ -1205,13 +1205,12 @@ export class Game {
       this.player.model.rotation.y,
       this.cameraRig.yaw,
       this.cameraRig.pitch,
-      this.avatar.chestBone,
-      this.avatar.sprintWeight,
       this.fingerBone,
     );
-    // Procedural arm layer: two-hand grip on long guns, cocked throw arm.
-    // Released while sprinting (arms pump), rolling, reloading (the left
-    // hand runs the reload motion), meleeing, and mid-swap.
+    // Procedural arm polish: pin the left palm onto the long-gun foregrip
+    // (glues away residual retarget error). Released while sprinting (arms
+    // pump), rolling, reloading (the left hand runs the reload motion),
+    // meleeing, and mid-swap.
     const gripFree =
       !this.driving &&
       !this.player.isRolling &&
@@ -1220,10 +1219,6 @@ export class Game {
       !this.equippedThrowable;
     const fgTarget = gripFree ? this.weaponRig.foregripWorld(_foregrip) : null;
     this.avatar.applyLeftHandIK(fgTarget, 1 - this.avatar.sprintWeight, dt);
-    // Right hand joins on the pistol grip while the long gun rides the
-    // chest anchor (gripWorld() is null in ADS — the aim clip owns the arm).
-    const rgTarget = gripFree ? this.weaponRig.gripWorld(_gripR) : null;
-    this.avatar.applyRightHandIK(rgTarget, 1 - this.avatar.sprintWeight, dt);
     // Fingers wrap whatever the hand is on: right hand around any held gun's
     // grip, left hand only while it's actually planted on the foregrip.
     this.avatar.applyHandGrip('R', this.equippedThrowable || this.driving ? 0 : 1, dt);

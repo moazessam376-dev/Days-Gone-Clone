@@ -11,18 +11,17 @@ export interface GripPose {
 }
 
 /**
- * Per-stance grip poses, rig-portable: when R2 swaps the character, only
- * these offsets (and the hand-bone name) need retuning — no rig code.
- * `foregrip` is reserved for the R2 two-hand pose (unused by the mannequin,
- * whose armature's 100x bone scale makes bone overrides unsafe).
+ * Hand-follow gun pose (Mixamo gun-clip era): the character's gun clips pose
+ * the wrist meaningfully, so the gun rides the RIGHT-HAND bone — position AND
+ * orientation — instead of a world-composed frame.
+ * `hold.pos` slides the grip into the palm (gun frame: x right, y up, z
+ * toward the stock); `hold.rot` is a per-weapon euler tweak composed on top
+ * of the shared HANDLING.holdRot hand→gun orientation.
  */
 export interface WeaponPoses {
-  carry: GripPose;
-  ads: GripPose;
+  hold: GripPose;
+  /** Left-hand IK pin target (gun frame) — long guns; pistols one-handed. */
   foregrip?: [number, number, number];
-  /** Right-hand IK target for the chest-anchored two-hand carry (gun frame).
-   * Defaults near the origin (exports keep the pistol grip there). */
-  grip?: [number, number, number];
 }
 
 export interface WeaponDef {
@@ -48,36 +47,32 @@ export interface WeaponDef {
   sound: { sub: number; crack: number; body: number; pitch: number };
   /** In-hand model: AssetLoader key (Synty GLB, barrel toward -Z) + scale. */
   model: { asset: string; scale: number };
-  /** Plays the full Pistol_Shoot anim per shot (semi-autos only). */
+  /** Plays the class fire anim per shot (semi-autos only). */
   shootAnim: boolean;
+  /** Animation class: which gun-handling clip set the avatar plays. */
+  cls: 'pistol' | 'long';
   pose: WeaponPoses;
 }
 
-/** Offsets are in the GUN's oriented frame (x right, y up, z toward the
- * stock — see WeaponRig): they slide the gun so its grip meets the palm.
- * The gun's world ORIENTATION is composed by WeaponRig (character yaw +
- * HANDLING.carryPitch in carry, exact camera aim in ADS) — rot here is only
- * a local tweak on top. Exports are bbox-centered, so a gun whose grip sits
- * toward the stock needs a small -z (forward) push. */
-const DEFAULT_POSE: WeaponPoses = {
-  carry: { pos: [0, 0.04, -0.12], rot: [0, 0, 0] },
-  ads: { pos: [0, 0.04, -0.12], rot: [0, 0, 0] },
+/** `hold.pos` is in the GUN's frame (x right, y up, z toward the stock):
+ * exports are bbox-centered with the pistol grip near the origin, so small
+ * offsets seat the grip in the palm. Calibrated against rendered frames
+ * (scripts/grip-check.mts). */
+const PISTOL_POSE: WeaponPoses = {
+  hold: { pos: [0, 0.04, -0.02], rot: [-0.45, 0, 0] },
 };
-// `foregrip` (gun frame, barrel -z): where the LEFT hand plants — drives the
-// two-hand IK in PlayerAvatar. Long guns only; pistols stay one-handed.
+// `foregrip` (gun frame, barrel -z): where the LEFT hand IK pins — polish on
+// top of the clip's own two-hand pose. Long guns only.
 const RIFLE_POSE: WeaponPoses = {
-  carry: { pos: [0, 0.04, -0.2], rot: [0, 0, 0] },
-  ads: { pos: [0, 0.04, -0.2], rot: [0, 0, 0] },
+  hold: { pos: [0, 0.04, -0.08], rot: [0, 0, 0] },
   foregrip: [0, -0.02, -0.22],
 };
 const SHOTGUN_POSE: WeaponPoses = {
-  carry: { pos: [0, 0.04, -0.16], rot: [0, 0, 0] },
-  ads: { pos: [0, 0.04, -0.16], rot: [0, 0, 0] },
+  hold: { pos: [0, 0.04, -0.06], rot: [0, 0, 0] },
   foregrip: [0, -0.03, -0.2],
 };
 const SAWNOFF_POSE: WeaponPoses = {
-  carry: { pos: [0, 0.03, -0.12], rot: [0, 0, 0] },
-  ads: { pos: [0, 0.03, -0.12], rot: [0, 0, 0] },
+  hold: { pos: [0, 0.03, -0.02], rot: [0, 0, 0] },
   foregrip: [0, -0.03, -0.15],
 };
 
@@ -113,7 +108,8 @@ export const WEAPONS: Record<string, WeaponDef> = {
     sound: { sub: 90, crack: 0.5, body: 0.16, pitch: 1.0 },
     model: { asset: 'wep_pistol', scale: 1 },
     shootAnim: true,
-    pose: DEFAULT_POSE,
+    cls: 'pistol',
+    pose: PISTOL_POSE,
   },
   rifle: {
     name: 'Rifle',
@@ -141,6 +137,7 @@ export const WEAPONS: Record<string, WeaponDef> = {
     sound: { sub: 70, crack: 0.65, body: 0.13, pitch: 1.1 },
     model: { asset: 'wep_rifle', scale: 1 },
     shootAnim: false,
+    cls: 'long',
     pose: RIFLE_POSE,
   },
   shotgun: {
@@ -162,6 +159,7 @@ export const WEAPONS: Record<string, WeaponDef> = {
     sound: { sub: 55, crack: 0.85, body: 0.28, pitch: 0.8 },
     model: { asset: 'wep_shotgun', scale: 1 },
     shootAnim: true,
+    cls: 'long',
     pose: SHOTGUN_POSE,
   },
   sawnoff: {
@@ -184,6 +182,7 @@ export const WEAPONS: Record<string, WeaponDef> = {
     sound: { sub: 48, crack: 0.9, body: 0.34, pitch: 0.72 },
     model: { asset: 'wep_sawnoff', scale: 1 },
     shootAnim: true,
+    cls: 'long',
     pose: SAWNOFF_POSE,
   },
 };

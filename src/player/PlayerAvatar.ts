@@ -18,16 +18,18 @@ export interface AvatarState {
   speed: number;
   aiming: boolean;
   rolling: boolean;
-  /** Weapon in hands (on foot): a light aim-pose blend stops the free arm
-   * swinging through the gun while carrying. Sprint pumps the arms again. */
+  /** Weapon in hands (on foot): drives the gun-carry clip sets. */
   carrying?: boolean;
   /** 0..1 roll progress (unused by this rig — the Roll clip is time-scaled). */
   rollT?: number;
   /** Camera pitch in radians; positive = looking up. */
   pitch: number;
-  /** What `aiming` means: gun ADS uses the pistol aim poses; a throwable
-   * wind-up keeps the idle upper body and cocks the arm procedurally. */
+  /** What `aiming` means: gun ADS uses the gun aim clips; a throwable
+   * wind-up holds the OverhandThrow cock frame. */
   aimMode?: 'gun' | 'throw';
+  /** Held gun's animation class ('pistol' | 'long'), null for throwables /
+   * unarmed / driving. Selects the Mixamo carry+aim clip set. */
+  weaponClass?: 'pistol' | 'long' | null;
 }
 
 interface WeightedAction {
@@ -105,6 +107,20 @@ export class PlayerAvatar {
     // the pistol-aim poses are (deliberately) not used.
     addWeighted('idle_upper', maskClip(clip('Idle_Loop'), true, 'upper'));
 
+    const tryClip = (name: string): THREE.AnimationClip | null => {
+      try {
+        return clip(name);
+      } catch {
+        return null;
+      }
+    };
+    const oneShot = (c: THREE.AnimationClip | null): THREE.AnimationAction | null => {
+      if (!c) return null;
+      const a = this.mixer.clipAction(maskClip(c, true, 'upper'));
+      a.setLoop(THREE.LoopOnce, 1);
+      return a;
+    };
+
     this.shootAction = this.mixer.clipAction(maskClip(clip('Pistol_Shoot'), true, 'upper'));
     this.shootAction.setLoop(THREE.LoopOnce, 1);
     this.meleeAction = this.mixer.clipAction(maskClip(clip('Punch_Cross'), true, 'upper'));
@@ -112,6 +128,28 @@ export class PlayerAvatar {
     this.reloadAction = this.mixer.clipAction(maskClip(clip('Pistol_Reload'), true, 'upper'));
     this.reloadAction.setLoop(THREE.LoopOnce, 1);
     this.reloadBaseDuration = clip('Pistol_Reload').duration;
+
+    // ---- Real gun-handling clips (Mixamo, retargeted in the export) ----
+    // Carry sets are FULL-BODY (idle/walk/run with the gun actually held);
+    // aim clips are upper-masked over the lower-body locomotion. Optional so
+    // an older cached player.glb still boots on the legacy pistol-pose path.
+    const rifleIdle = tryClip('Rifle_Idle');
+    if (rifleIdle) {
+      addWeighted('long_idle', rifleIdle);
+      addWeighted('long_walk', tryClip('Rifle_Walk') ?? rifleIdle);
+      addWeighted('long_run', tryClip('Rifle_Run') ?? tryClip('Rifle_Walk') ?? rifleIdle);
+      const pistolIdle = tryClip('Pistol_Idle') ?? rifleIdle;
+      addWeighted('pistol_upper', maskClip(pistolIdle, true, 'upper'));
+      const longAim = tryClip('Rifle_AimIdle');
+      const pistolAim = tryClip('Pistol_AimIdle');
+      if (longAim) addWeighted('long_aim', maskClip(longAim, true, 'upper'));
+      if (pistolAim) addWeighted('pistol_aim', maskClip(pistolAim, true, 'upper'));
+      this.hasGunClips = !!(longAim && pistolAim);
+      this.fireLong = oneShot(tryClip('Rifle_Fire'));
+      this.firePistol = oneShot(tryClip('Pistol_Fire'));
+      this.reloadLong = oneShot(tryClip('Rifle_Reload'));
+      this.reloadLongBase = tryClip('Rifle_Reload')?.duration ?? 1;
+    }
 
     // Real throw animation (UAL2 OverhandThrow retargeted in the export).
     // Aiming HOLDS the clip at its cocked frame; the release plays through.
@@ -150,6 +188,15 @@ export class PlayerAvatar {
   private reloadBaseDuration = 1;
   private throwAction: THREE.AnimationAction | null = null;
   private throwReleasing = 0;
+  /** True when the export ships the Mixamo gun clip sets. */
+  hasGunClips = false;
+  private fireLong: THREE.AnimationAction | null = null;
+  private firePistol: THREE.AnimationAction | null = null;
+  private reloadLong: THREE.AnimationAction | null = null;
+  private reloadLongBase = 1;
+  /** Smoothed camera pitch fed to the procedural spine lean. */
+  private spinePitch = 0;
+  private spineWeight = 0;
 
   /** Right-hand bone — mount point for weapon models. */
   get handBone(): THREE.Object3D | null {
@@ -160,14 +207,17 @@ export class PlayerAvatar {
     return bone;
   }
 
-  playShoot(): void {
-    this.shootAction.reset().setEffectiveWeight(1).fadeIn(0.02).play();
-    this.shootAction.timeScale = 2.2;
+  playShoot(cls: 'pistol' | 'long' = 'pistol'): void {
+    const a = (cls === 'long' ? this.fireLong : this.firePistol) ?? this.shootAction;
+    a.reset().setEffectiveWeight(1).fadeIn(0.02).play();
+    a.timeScale = a === this.shootAction ? 2.2 : 1.6;
   }
 
-  playReload(duration: number): void {
-    this.reloadAction.timeScale = this.reloadBaseDuration / duration;
-    this.reloadAction.reset().setEffectiveWeight(1).fadeIn(0.08).play();
+  playReload(duration: number, cls: 'pistol' | 'long' = 'pistol'): void {
+    const a = (cls === 'long' ? this.reloadLong : null) ?? this.reloadAction;
+    const base = a === this.reloadLong ? this.reloadLongBase : this.reloadBaseDuration;
+    a.timeScale = base / duration;
+    a.reset().setEffectiveWeight(1).fadeIn(0.08).play();
   }
 
   playMelee(): void {
@@ -218,30 +268,65 @@ export class PlayerAvatar {
     // read as "aiming a gun", which the playtest called out.
     const throwing = state.aimMode === 'throw' ? 1 : 0;
     const gunAim = a * (1 - throwing);
+    /** Gun clip set in play (null = unarmed/throwable/legacy glb). */
+    const cls = this.hasGunClips && state.carrying ? state.weaponClass ?? null : null;
 
-    // Aim pitch → three-pose blend. Poses cover roughly ±60° of pitch.
-    const p = THREE.MathUtils.clamp(state.pitch / 1.05, -1, 1);
-    const wUp = Math.max(0, p);
-    const wDown = Math.max(0, -p);
-    const wNeutral = 1 - wUp - wDown;
+    // Zero every gun/aim target first; the active branch re-raises its own.
+    for (const key of [
+      'long_idle', 'long_walk', 'long_run', 'long_aim',
+      'pistol_upper', 'pistol_aim', 'aim_down', 'aim_neutral', 'aim_up',
+    ]) {
+      this.setTarget(key, 0);
+    }
 
-    this.setTarget('idle', wIdle * (1 - a) * rollSuppress);
-    this.setTarget('walk', wWalk * (1 - a) * rollSuppress);
-    this.setTarget('jog', wJog * (1 - a) * rollSuppress);
-    this.setTarget('sprint', wSprint * (1 - a) * rollSuppress);
+    if (cls === 'long') {
+      // Long guns: full-body Mixamo carry locomotion (idle/walk/run with the
+      // rifle actually held two-handed); sprint stays the unarmed pump (gun
+      // drops to the hand — R1 sprint-lowers-gun). ADS masks the shouldered
+      // aim clip over the lower-body locomotion.
+      this.setTarget('idle', 0);
+      this.setTarget('walk', 0);
+      this.setTarget('jog', 0);
+      this.setTarget('sprint', wSprint * (1 - a) * rollSuppress);
+      this.setTarget('long_idle', wIdle * (1 - a) * rollSuppress);
+      this.setTarget('long_walk', wWalk * (1 - a) * rollSuppress);
+      this.setTarget('long_run', wJog * (1 - a) * rollSuppress);
+      this.setTarget('long_aim', gunAim * rollSuppress);
+    } else if (cls === 'pistol') {
+      // Pistol: normal locomotion, arm relaxed via a partial pistol-idle
+      // upper mask (PropertyMixer normalizes by cumulative weight, so the
+      // legs keep full locomotion). ADS masks the two-hand pistol aim.
+      const carry = HANDLING.carryBlend * (1 - a) * rollSuppress * (1 - wSprint);
+      this.setTarget('idle', wIdle * (1 - a) * rollSuppress);
+      this.setTarget('walk', wWalk * (1 - a) * rollSuppress);
+      this.setTarget('jog', wJog * (1 - a) * rollSuppress);
+      this.setTarget('sprint', wSprint * (1 - a) * rollSuppress);
+      this.setTarget('pistol_upper', carry);
+      this.setTarget('pistol_aim', gunAim * rollSuppress);
+    } else {
+      // Unarmed / throwable equipped / legacy glb without gun clips.
+      this.setTarget('idle', wIdle * (1 - a) * rollSuppress);
+      this.setTarget('walk', wWalk * (1 - a) * rollSuppress);
+      this.setTarget('jog', wJog * (1 - a) * rollSuppress);
+      this.setTarget('sprint', wSprint * (1 - a) * rollSuppress);
+      if (!this.hasGunClips && state.carrying) {
+        // Legacy path: pitch-blended pistol poses (old cached player.glb).
+        const p = THREE.MathUtils.clamp(state.pitch / 1.05, -1, 1);
+        const wUp = Math.max(0, p);
+        const wDown = Math.max(0, -p);
+        const wNeutral = 1 - wUp - wDown;
+        const carry = HANDLING.carryBlend * (1 - a) * rollSuppress * (1 - wSprint);
+        this.setTarget('aim_down', wDown * gunAim * rollSuppress);
+        this.setTarget('aim_neutral', wNeutral * gunAim * rollSuppress + carry);
+        this.setTarget('aim_up', wUp * gunAim * rollSuppress);
+      }
+    }
     this.setTarget('idle_lower', (wIdle + wJog + wSprint) * a * rollSuppress);
     this.setTarget('walk_lower', wWalk * a * rollSuppress);
     // With the real OverhandThrow clip the wind-up owns the whole upper
     // body — idle_upper at equal weight would average it down to a half-
     // raised arm. Keep idle_upper only for the procedural fallback.
     this.setTarget('idle_upper', this.throwAction ? 0 : a * throwing * rollSuppress);
-    // Carry: partial neutral aim pose on the upper body (PropertyMixer
-    // normalizes by cumulative weight, so legs stay full locomotion).
-    const carry =
-      (state.carrying ? HANDLING.carryBlend : 0) * (1 - a) * rollSuppress * (1 - wSprint);
-    this.setTarget('aim_down', wDown * gunAim * rollSuppress);
-    this.setTarget('aim_neutral', wNeutral * gunAim * rollSuppress + carry);
-    this.setTarget('aim_up', wUp * gunAim * rollSuppress);
 
     // Fast exponential approach keeps blends snappy but pop-free.
     const k = 1 - Math.exp(-15 * dt);
@@ -251,6 +336,34 @@ export class PlayerAvatar {
     }
 
     this.mixer.update(dt);
+
+    // Aim elevation: pitch the chest (Spine_02+03) toward the camera pitch
+    // AFTER the mixer — one mechanism for every weapon, and the arms ride
+    // the chest rigidly instead of blending between clip poses.
+    this.spineWeight += ((cls ? gunAim : 0) - this.spineWeight) * Math.min(1, dt * 14);
+    this.spinePitch += (state.pitch - this.spinePitch) * Math.min(1, dt * 18);
+    this.applySpinePitch(this.spinePitch * this.spineWeight);
+  }
+
+  /** Rotate Spine_02/Spine_03 about the character's world right axis so the
+   * chest carries the aim elevation. Positive pitch = looking up. */
+  private applySpinePitch(pitch: number): void {
+    if (Math.abs(pitch) < 1e-3) return;
+    const angle = pitch * HANDLING.aimSpinePitch;
+    this.object.getWorldQuaternion(_charQ);
+    // Character faces +Z ⇒ world right = local -X (probed rig cheat sheet).
+    _spineAxis.set(-1, 0, 0).applyQuaternion(_charQ).normalize();
+    for (const name of ['Spine_02', 'Spine_03']) {
+      const bone = this.boneByName.get(name);
+      if (!bone || !bone.parent) continue;
+      // Positive rotation about the right axis tips the chest BACK (up).
+      _spineQ.setFromAxisAngle(_spineAxis, angle);
+      bone.getWorldQuaternion(_ikBoneQ);
+      bone.parent.getWorldQuaternion(_ikParentQ);
+      _ikBoneQ.premultiply(_spineQ);
+      bone.quaternion.copy(_ikParentQ.invert().multiply(_ikBoneQ));
+      bone.updateMatrixWorld(true);
+    }
   }
 
   private setTarget(key: string, target: number): void {
@@ -267,7 +380,6 @@ export class PlayerAvatar {
   /** Smoothed weights so grips engage/release without popping. */
   private ikWeightL = 0;
   private ikWeightR = 0;
-  private ikWeightRGrip = 0;
 
   /** Chest bone — the two-hand carry anchors the gun here. */
   get chestBone(): THREE.Object3D | null {
@@ -310,15 +422,6 @@ export class PlayerAvatar {
     }
   }
 
-  /**
-   * Plant the RIGHT hand on the pistol grip of a chest-anchored long gun.
-   * Mutually exclusive with the throw pose (Game gates them).
-   */
-  applyRightHandIK(target: THREE.Vector3 | null, weight: number, dt: number): void {
-    this.ikWeightRGrip += ((target ? weight : 0) - this.ikWeightRGrip) * Math.min(1, dt * 14);
-    if (this.ikWeightRGrip < 0.02 || !target) return;
-    this.solveArm('R', target, this.ikWeightRGrip);
-  }
   /** Last frame's sprint blend / roll flag — Game gates the grip IK on them
    * (sprint pumps the arms one-handed; a roll tumbles the whole body). */
   sprintWeight = 0;
@@ -456,6 +559,8 @@ export class PlayerAvatar {
 
 const _curlAxis = new THREE.Vector3(1, 0, 0);
 const _curlQ = new THREE.Quaternion();
+const _spineAxis = new THREE.Vector3();
+const _spineQ = new THREE.Quaternion();
 const _ikS = new THREE.Vector3();
 const _ikE = new THREE.Vector3();
 const _ikW = new THREE.Vector3();

@@ -116,10 +116,6 @@
      "out": "Rig|Punch_Cross"
     },
     {
-     "src": "Rig|Pistol_Reload",
-     "out": "Rig|Pistol_Reload"
-    },
-    {
      "src": "Rig|Death01",
      "out": "Rig|Death01"
     },
@@ -226,6 +222,103 @@
       "Thumb_02_R": "thumb_02_r",
       "Finger_01_R": "middle_01_r",
       "Finger_02_R": "middle_02_r"
+     }
+    },
+    {
+     "animGlb": "assets/raw/mixamo/mixamo-anims.glb",
+     "srcHip": "mixamorigHips",
+     "method": "swing",
+     "clips": [
+      {
+       "src": "RifleIdle",
+       "out": "Rig|Rifle_Idle"
+      },
+      {
+       "src": "RifleWalk",
+       "out": "Rig|Rifle_Walk"
+      },
+      {
+       "src": "RifleRun",
+       "out": "Rig|Rifle_Run"
+      },
+      {
+       "src": "RifleAimIdle",
+       "out": "Rig|Rifle_AimIdle"
+      },
+      {
+       "src": "RifleAimWalk",
+       "out": "Rig|Rifle_AimWalk"
+      },
+      {
+       "src": "RifleFire",
+       "out": "Rig|Rifle_Fire"
+      },
+      {
+       "src": "RifleReload",
+       "out": "Rig|Rifle_Reload"
+      },
+      {
+       "src": "PistolIdle",
+       "out": "Rig|Pistol_Idle"
+      },
+      {
+       "src": "PistolAimWalk",
+       "out": "Rig|Pistol_AimWalk"
+      },
+      {
+       "src": "PistolAimIdle",
+       "out": "Rig|Pistol_AimIdle"
+      },
+      {
+       "src": "PistolFire",
+       "out": "Rig|Pistol_Fire"
+      },
+      {
+       "src": "PistolReload",
+       "out": "Rig|Pistol_Reload"
+      }
+     ],
+     "boneMap": {
+      "Hips": "mixamorigHips",
+      "Spine_01": "mixamorigSpine",
+      "Spine_02": "mixamorigSpine1",
+      "Spine_03": "mixamorigSpine2",
+      "Neck": "mixamorigNeck",
+      "Head": "mixamorigHead",
+      "Clavicle_L": "mixamorigLeftShoulder",
+      "Shoulder_L": "mixamorigLeftArm",
+      "Elbow_L": "mixamorigLeftForeArm",
+      "Hand_L": "mixamorigLeftHand",
+      "UpperLeg_L": "mixamorigLeftUpLeg",
+      "LowerLeg_L": "mixamorigLeftLeg",
+      "Ankle_L": "mixamorigLeftFoot",
+      "Ball_L": "mixamorigLeftToeBase",
+      "Thumb_01_L": "mixamorigLeftHandThumb1",
+      "IndexFinger_01_L": "mixamorigLeftHandIndex1",
+      "Finger_01_L": "mixamorigLeftHandMiddle1",
+      "Thumb_02_L": "mixamorigLeftHandThumb2",
+      "IndexFinger_02_L": "mixamorigLeftHandIndex2",
+      "Finger_02_L": "mixamorigLeftHandMiddle2",
+      "Thumb_03_L": "mixamorigLeftHandThumb3",
+      "IndexFinger_03_L": "mixamorigLeftHandIndex3",
+      "Finger_03_L": "mixamorigLeftHandMiddle3",
+      "Clavicle_R": "mixamorigRightShoulder",
+      "Shoulder_R": "mixamorigRightArm",
+      "Elbow_R": "mixamorigRightForeArm",
+      "Hand_R": "mixamorigRightHand",
+      "UpperLeg_R": "mixamorigRightUpLeg",
+      "LowerLeg_R": "mixamorigRightLeg",
+      "Ankle_R": "mixamorigRightFoot",
+      "Ball_R": "mixamorigRightToeBase",
+      "Thumb_01_R": "mixamorigRightHandThumb1",
+      "IndexFinger_01_R": "mixamorigRightHandIndex1",
+      "Finger_01_R": "mixamorigRightHandMiddle1",
+      "Thumb_02_R": "mixamorigRightHandThumb2",
+      "IndexFinger_02_R": "mixamorigRightHandIndex2",
+      "Finger_02_R": "mixamorigRightHandMiddle2",
+      "Thumb_03_R": "mixamorigRightHandThumb3",
+      "IndexFinger_03_R": "mixamorigRightHandIndex3",
+      "Finger_03_R": "mixamorigRightHandMiddle3"
      }
     }
    ]

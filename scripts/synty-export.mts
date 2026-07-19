@@ -133,17 +133,24 @@ async function main() {
       const outDir = args[2];
       mkdirSync(outDir, { recursive: true });
       const clipNames = (m.clips ?? []).map((c) => c.out);
-      const shots = [
-        { clip: clipNames[0], time: 0.5, yaw: 30 },
-        { clip: clipNames[0], time: 0.5, yaw: 210 },
-        { clip: clipNames[Math.min(3, clipNames.length - 1)], time: 0.3, yaw: 90 },
-        { clip: clipNames[Math.min(1, clipNames.length - 1)], time: 0.4, yaw: 30 },
-      ];
+      // Optional args[3]: comma-separated "clip@time@yaw" shot specs (clip
+      // names may come from extraAnims sources too).
+      const shots = args[3]
+        ? args[3].split(',').map((s) => {
+            const [clip, time, yaw] = s.split('@');
+            return { clip, time: Number(time ?? 0.5), yaw: Number(yaw ?? 30) };
+          })
+        : [
+            { clip: clipNames[0], time: 0.5, yaw: 30 },
+            { clip: clipNames[0], time: 0.5, yaw: 210 },
+            { clip: clipNames[Math.min(3, clipNames.length - 1)], time: 0.3, yaw: 90 },
+            { clip: clipNames[Math.min(1, clipNames.length - 1)], time: 0.4, yaw: 30 },
+          ];
       const r = (await page.evaluate(
         (fbx, t, anim, clips, boneMap, opts, sh) =>
           (window as any).debugRetarget(fbx, t, anim, clips, boneMap, opts, sh),
         url(m.fbx), url(m.tex ?? DEFAULT_TEX), url(m.animGlb!), m.clips ?? [], m.boneMap ?? {},
-        { targetHeight: m.targetHeight, texSize: m.texSize, mesh: m.mesh, hip: m.hip, srcHip: m.srcHip, srcYaw: m.srcYaw, method: m.method, attachments: (m.attachments ?? []).map((a) => ({ url: url(a.fbx), bone: a.bone })) },
+        { targetHeight: m.targetHeight, texSize: m.texSize, mesh: m.mesh, hip: m.hip, srcHip: m.srcHip, srcYaw: m.srcYaw, method: m.method, attachments: (m.attachments ?? []).map((a) => ({ url: url(a.fbx), bone: a.bone })), extraAnims: (m.extraAnims ?? []).map((e) => ({ ...e, animGlb: url(e.animGlb) })) },
         shots,
       )) as { images: Array<string | null>; warnings: string[]; restAudit?: unknown[] };
       console.log(JSON.stringify(r.restAudit ?? [], null, 0));
@@ -152,6 +159,26 @@ async function main() {
       });
       if (r.warnings.length) console.log('warnings:', r.warnings);
       console.log(`wrote ${r.images.filter(Boolean).length} debug shots -> ${outDir}`);
+      return;
+    }
+
+    if (job === 'merge-anims') {
+      // merge-anims <spec.json> — spec: { out, items: [{ file, name }] }
+      // Merges single-clip FBXs (Mixamo) into one anim GLB for extraAnims.
+      const spec = JSON.parse(readFileSync(args[0], 'utf8')) as {
+        out: string;
+        items: Array<{ file: string; name: string }>;
+      };
+      const r = (await page.evaluate(
+        (items) => (window as any).mergeFbxAnims(items),
+        spec.items.map((it) => ({ url: url(it.file), name: it.name })),
+      )) as { glb: string; bones: string[]; clipNames: string[] };
+      const outPath = join(ROOT, spec.out);
+      mkdirSync(dirname(outPath), { recursive: true });
+      writeFileSync(outPath, Buffer.from(r.glb, 'base64'));
+      console.log(`✓ merged ${r.clipNames.length} clips -> ${spec.out} (${(statSync(outPath).size / 1024).toFixed(0)} KB)`);
+      console.log(`  clips: ${JSON.stringify(r.clipNames)}`);
+      console.log(`  bones: ${r.bones.length}`);
       return;
     }
 
