@@ -10,7 +10,7 @@ import { CameraRig } from './player/CameraRig';
 import { AssetLoader } from './core/AssetLoader';
 import { CAMERA_RIG, PLAYER } from './config';
 import { WeaponSystem, DamageRegistry } from './weapons/WeaponSystem';
-import { WeaponRig } from './weapons/WeaponRig';
+import { WeaponRig, type RigBones } from './weapons/WeaponRig';
 import { WEAPONS, WEAPON_ORDER } from './weapons/weapons.data';
 import { FxPools } from './fx/ParticlePool';
 import { ScreenShake, Hitstop, Recoil } from './fx/Feedback';
@@ -69,8 +69,7 @@ export class Game {
   private cameraRig: CameraRig;
   private weapons!: WeaponSystem;
   private weaponRig!: WeaponRig;
-  private handBone: THREE.Object3D | null = null;
-  private fingerBone: THREE.Object3D | null = null;
+  private rigBones!: RigBones;
   private avatarHidden = false;
   private registry = new DamageRegistry();
   private fx!: FxPools;
@@ -639,8 +638,13 @@ export class Game {
     }, this.player.body);
 
     this.weaponRig = new WeaponRig(this.scene, assets);
-    this.handBone = this.avatar.handBone;
-    this.fingerBone = this.avatar.fingerBone;
+    this.rigBones = {
+      handR: this.avatar.handBone,
+      fingerR: this.avatar.fingerBone,
+      handL: this.avatar.bone('Hand_L'),
+      fingerL: this.avatar.bone('IndexFinger_01_L'),
+      chest: this.avatar.chestBone,
+    };
     this.weaponRig.setActive(this.weapons.current);
   }
 
@@ -1175,6 +1179,9 @@ export class Game {
 
     this.physics.interpolate(alpha);
     this.player.renderUpdate(dt);
+    // Swap dip: 0 → 1 → 0 across the current lower/raise window.
+    const swapLower =
+      this.swapT > 0 ? Math.sin(Math.PI * (1 - this.swapT / this.swapTotal)) : 0;
     this.avatar.update(dt, {
       speed: this.player.speed,
       aiming: this.player.aiming,
@@ -1184,10 +1191,8 @@ export class Game {
       carrying: !this.driving,
       aimMode: this.equippedThrowable ? 'throw' : 'gun',
       weaponClass: this.equippedThrowable ? null : WEAPONS[this.weapons.current]?.cls ?? null,
+      swapLower,
     });
-    // Swap dip: 0 → 1 → 0 across the current lower/raise window.
-    const swapLower =
-      this.swapT > 0 ? Math.sin(Math.PI * (1 - this.swapT / this.swapTotal)) : 0;
     // Throw wind-up FIRST: it moves the hand bone the rig then reads —
     // updating the rig before this left the bottle floating at the hip
     // while the arm was raised (round-4 playtest bug).
@@ -1199,18 +1204,17 @@ export class Game {
     );
     this.weaponRig.update(
       dt,
-      this.handBone,
+      this.rigBones,
       this.player.aiming,
       swapLower,
       this.player.model.rotation.y,
       this.cameraRig.yaw,
       this.cameraRig.pitch,
-      this.fingerBone,
     );
     // Procedural arm polish: pin the left palm onto the long-gun foregrip
-    // (glues away residual retarget error). Released while sprinting (arms
-    // pump), rolling, reloading (the left hand runs the reload motion),
-    // meleeing, and mid-swap.
+    // (glues away residual two-hand framing error; reach-clamped so it can
+    // never straighten the elbow). Released while sprinting (arms pump),
+    // rolling, reloading, meleeing, and mid-swap.
     const gripFree =
       !this.driving &&
       !this.player.isRolling &&
@@ -1218,11 +1222,13 @@ export class Game {
       this.swapT <= 0 &&
       !this.equippedThrowable;
     const fgTarget = gripFree ? this.weaponRig.foregripWorld(_foregrip) : null;
-    this.avatar.applyLeftHandIK(fgTarget, 1 - this.avatar.sprintWeight, dt);
-    // Fingers wrap whatever the hand is on: right hand around any held gun's
-    // grip, left hand only while it's actually planted on the foregrip.
-    this.avatar.applyHandGrip('R', this.equippedThrowable || this.driving ? 0 : 1, dt);
-    this.avatar.applyHandGrip('L', fgTarget ? 1 - this.avatar.sprintWeight : 0, dt);
+    this.avatar.applyLeftHandIK(fgTarget, 0.6 * (1 - this.avatar.sprintWeight), dt);
+    // Fingers: the Mixamo gun clips animate them (mapped in the retarget) —
+    // the procedural curl would fight the clip and clip through the grips
+    // (ADS finger conflict from the playtest). Curl only on the legacy path.
+    const curls = this.avatar.hasGunClips || this.equippedThrowable || this.driving ? 0 : 1;
+    this.avatar.applyHandGrip('R', curls, dt);
+    this.avatar.applyHandGrip('L', curls && fgTarget ? 1 - this.avatar.sprintWeight : 0, dt);
     this.recoil.update(dt);
     for (const v of this.vehicles) v.updateVisuals(dt);
     this.cameraRig.update(

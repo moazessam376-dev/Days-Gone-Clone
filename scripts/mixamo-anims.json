@@ -1,7 +1,7 @@
 {
   "out": "assets/raw/mixamo/mixamo-anims.glb",
   "items": [
-    { "file": "assets/raw/mixamo/Rifle Idle.fbx", "name": "RifleIdle" },
+    { "file": "assets/raw/mixamo/Rifle Idle.fbx", "name": "RifleIdle", "start": 0.2, "end": 4.4 },
     { "file": "assets/raw/mixamo/Rifle Walk.fbx", "name": "RifleWalk" },
     { "file": "assets/raw/mixamo/Rifle Run.fbx", "name": "RifleRun" },
     { "file": "assets/raw/mixamo/Rifle Aiming Idle.fbx", "name": "RifleAimIdle" },

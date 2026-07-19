@@ -167,11 +167,11 @@ async function main() {
       // Merges single-clip FBXs (Mixamo) into one anim GLB for extraAnims.
       const spec = JSON.parse(readFileSync(args[0], 'utf8')) as {
         out: string;
-        items: Array<{ file: string; name: string }>;
+        items: Array<{ file: string; name: string; start?: number; end?: number }>;
       };
       const r = (await page.evaluate(
         (items) => (window as any).mergeFbxAnims(items),
-        spec.items.map((it) => ({ url: url(it.file), name: it.name })),
+        spec.items.map((it) => ({ url: url(it.file), name: it.name, start: it.start, end: it.end })),
       )) as { glb: string; bones: string[]; clipNames: string[] };
       const outPath = join(ROOT, spec.out);
       mkdirSync(dirname(outPath), { recursive: true });

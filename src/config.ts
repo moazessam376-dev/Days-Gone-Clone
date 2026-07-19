@@ -140,12 +140,16 @@ export const HANDLING = {
   shoulderSwapTime: 0.15, // Q camera side mirror blend
   nudgeTime: 0.8, // unaimed LMB: face camera this long, fire nothing
   carryBlend: 0.35, // upper-body pistol-idle weight while carrying (not aiming)
-  /** Gun orientation in the right-hand bone frame (euler rad, one dial for
-   * all Synty guns — they share the barrel-toward--Z export convention).
-   * With real Mixamo gun clips the gun follows the HAND (position AND
-   * orientation); this composes hand world → gun. Calibrated against
-   * rendered frames (scripts/grip-check.mts). */
-  holdRot: [1.361, -1.034, 1.183] as [number, number, number], // solved from the probed carry wrist pose (scripts/_rig-probe)
+  /** Gun orientation in the right-hand bone frame (euler rad), per weapon
+   * class — the Mixamo rifle and pistol sets grip differently. Solved
+   * analytically from probed hand quaternions (inv(handQ) * desiredQ), not
+   * eyeballed; per-weapon pose.rot tweaks on top. */
+  holdRot: [1.361, -1.034, 1.183] as [number, number, number], // long guns, solved at carry
+  holdRotPistol: [1.043, 0.404, 2.747] as [number, number, number], // solved at the Pistol_AimIdle pose (barrel == camera ray)
+  /** Back holster (stowed long guns): offset from the chest bone and euler,
+   * both in the character's yaw frame (z+ = behind). */
+  backOffset: [0.06, -0.05, 0.16] as [number, number, number],
+  backRot: [-1.194, 1.849, 1.311] as [number, number, number], // barrel down-left diagonal, flat against the back (solved)
   /** Aim elevation: fraction of camera pitch applied procedurally to EACH of
    * Spine_02/Spine_03 while aiming a gun (the whole chest+arms unit pitches,
    * replacing the old 3-pose aim blend that clipped the arms together). */

@@ -30,6 +30,9 @@ export interface AvatarState {
   /** Held gun's animation class ('pistol' | 'long'), null for throwables /
    * unarmed / driving. Selects the Mixamo carry+aim clip set. */
   weaponClass?: 'pistol' | 'long' | null;
+  /** 0..1 swap dip: fades the gun-carry pose down to unarmed and back so a
+   * weapon switch reads as holster→draw instead of idle + floating gun. */
+  swapLower?: number;
 }
 
 interface WeightedAction {
@@ -279,30 +282,33 @@ export class PlayerAvatar {
       this.setTarget(key, 0);
     }
 
+    // Swap dip: the carry pose fades toward unarmed and back (holster→draw).
+    const draw = 1 - (state.swapLower ?? 0);
     if (cls === 'long') {
       // Long guns: full-body Mixamo carry locomotion (idle/walk/run with the
       // rifle actually held two-handed); sprint stays the unarmed pump (gun
       // drops to the hand — R1 sprint-lowers-gun). ADS masks the shouldered
       // aim clip over the lower-body locomotion.
-      this.setTarget('idle', 0);
-      this.setTarget('walk', 0);
-      this.setTarget('jog', 0);
-      this.setTarget('sprint', wSprint * (1 - a) * rollSuppress);
-      this.setTarget('long_idle', wIdle * (1 - a) * rollSuppress);
-      this.setTarget('long_walk', wWalk * (1 - a) * rollSuppress);
-      this.setTarget('long_run', wJog * (1 - a) * rollSuppress);
-      this.setTarget('long_aim', gunAim * rollSuppress);
+      const carry = (1 - a) * rollSuppress;
+      this.setTarget('idle', wIdle * carry * (1 - draw));
+      this.setTarget('walk', wWalk * carry * (1 - draw));
+      this.setTarget('jog', wJog * carry * (1 - draw));
+      this.setTarget('sprint', wSprint * carry);
+      this.setTarget('long_idle', wIdle * carry * draw);
+      this.setTarget('long_walk', wWalk * carry * draw);
+      this.setTarget('long_run', wJog * carry * draw);
+      this.setTarget('long_aim', gunAim * rollSuppress * draw);
     } else if (cls === 'pistol') {
       // Pistol: normal locomotion, arm relaxed via a partial pistol-idle
       // upper mask (PropertyMixer normalizes by cumulative weight, so the
       // legs keep full locomotion). ADS masks the two-hand pistol aim.
-      const carry = HANDLING.carryBlend * (1 - a) * rollSuppress * (1 - wSprint);
+      const carry = HANDLING.carryBlend * (1 - a) * rollSuppress * (1 - wSprint) * draw;
       this.setTarget('idle', wIdle * (1 - a) * rollSuppress);
       this.setTarget('walk', wWalk * (1 - a) * rollSuppress);
       this.setTarget('jog', wJog * (1 - a) * rollSuppress);
       this.setTarget('sprint', wSprint * (1 - a) * rollSuppress);
       this.setTarget('pistol_upper', carry);
-      this.setTarget('pistol_aim', gunAim * rollSuppress);
+      this.setTarget('pistol_aim', gunAim * rollSuppress * draw);
     } else {
       // Unarmed / throwable equipped / legacy glb without gun clips.
       this.setTarget('idle', wIdle * (1 - a) * rollSuppress);
@@ -390,6 +396,11 @@ export class PlayerAvatar {
    * wrist; lerping toward this bone lands weapons in the palm. */
   get fingerBone(): THREE.Object3D | null {
     return this.boneByName.get('IndexFinger_01_R') ?? null;
+  }
+
+  /** Named bone lookup (WeaponRig bone refs, probes). */
+  bone(name: string): THREE.Object3D | null {
+    return this.boneByName.get(name) ?? null;
   }
 
   /** Smoothed grip-curl weights per hand. */
@@ -511,7 +522,9 @@ export class PlayerAvatar {
     const l2 = E.distanceTo(W);
     if (l1 < 1e-4 || l2 < 1e-4) return;
 
-    const d = Math.min(Math.max(_ikDir.subVectors(target, S).length(), 0.02), (l1 + l2) * 0.999);
+    // Reach clamp at 96%: the IK may never fully straighten the elbow (a
+    // locked-straight arm is the "stretched" look the playtests called out).
+    const d = Math.min(Math.max(_ikDir.subVectors(target, S).length(), 0.02), (l1 + l2) * 0.96);
     _ikDir.normalize();
 
     // Elbow plane: pole points down-and-outward so the elbow never flips up.

@@ -137,7 +137,7 @@ window.exportTexture = async (texUrl, size = 512) => {
 /**
  * Merge single-clip animation FBXs (e.g. Mixamo downloads, one 'mixamo.com'
  * clip each) into one GLB on the first file's skeleton, clips renamed.
- *   items: [{ url, name }]
+ *   items: [{ url, name, start?, end? }]  (start/end: trim window, seconds)
  * All files must share bone names (true for one Mixamo character rig).
  */
 window.mergeFbxAnims = async (items) => {
@@ -146,8 +146,17 @@ window.mergeFbxAnims = async (items) => {
   for (const it of items) {
     const g = await fbxLoader.loadAsync(it.url);
     if (!holder) holder = g;
-    const clip = (g.animations ?? [])[0];
+    let clip = (g.animations ?? [])[0];
     if (!clip) throw new Error(`no animation in ${it.url}`);
+    if (it.start != null || it.end != null) {
+      const fps = 30;
+      clip = THREE.AnimationUtils.subclip(
+        clip, it.name,
+        Math.round((it.start ?? 0) * fps),
+        Math.round((it.end ?? clip.duration) * fps),
+        fps,
+      );
+    }
     clip.name = it.name;
     clips.push(clip);
   }

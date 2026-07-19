@@ -11,16 +11,16 @@ export interface GripPose {
 }
 
 /**
- * Hand-follow gun pose (Mixamo gun-clip era): the character's gun clips pose
- * the wrist meaningfully, so the gun rides the RIGHT-HAND bone — position AND
- * orientation — instead of a world-composed frame.
- * `hold.pos` slides the grip into the palm (gun frame: x right, y up, z
- * toward the stock); `hold.rot` is a per-weapon euler tweak composed on top
- * of the shared HANDLING.holdRot hand→gun orientation.
+ * Grip-first pose data (see WeaponRig): `grip` is the GRIP SOCKET — the
+ * point on the gun (gun frame: x right, y up, z toward the stock) that the
+ * right palm wraps; it is glued to the palm in every stance. `rot` is a
+ * per-weapon euler tweak on the class hold orientation. `foregrip` is where
+ * the LEFT palm holds; two-hand guns aim their grip→foregrip axis along the
+ * animated palm→palm line.
  */
 export interface WeaponPoses {
-  hold: GripPose;
-  /** Left-hand IK pin target (gun frame) — long guns; pistols one-handed. */
+  grip: [number, number, number];
+  rot: [number, number, number];
   foregrip?: [number, number, number];
 }
 
@@ -54,25 +54,26 @@ export interface WeaponDef {
   pose: WeaponPoses;
 }
 
-/** `hold.pos` is in the GUN's frame (x right, y up, z toward the stock):
- * exports are bbox-centered with the pistol grip near the origin, so small
- * offsets seat the grip in the palm. Calibrated against rendered frames
- * (scripts/grip-check.mts). */
+/** Sockets are in the GUN's frame (x right, y up, z toward the stock):
+ * exports are bbox-centered with the pistol grip near the origin. Calibrated
+ * against rendered frames (scripts/grip-check.mts). */
 const PISTOL_POSE: WeaponPoses = {
-  hold: { pos: [0, 0.04, -0.02], rot: [-0.45, 0, 0] },
+  grip: [0, -0.04, 0.02],
+  rot: [0, 0, 0],
 };
-// `foregrip` (gun frame, barrel -z): where the LEFT hand IK pins — polish on
-// top of the clip's own two-hand pose. Long guns only.
 const RIFLE_POSE: WeaponPoses = {
-  hold: { pos: [0, 0.04, -0.08], rot: [0, 0, 0] },
+  grip: [0, -0.04, 0.08],
+  rot: [0, 0, 0],
   foregrip: [0, -0.02, -0.22],
 };
 const SHOTGUN_POSE: WeaponPoses = {
-  hold: { pos: [0, 0.04, -0.06], rot: [0, 0, 0] },
+  grip: [0, -0.04, 0.06],
+  rot: [0, 0, 0],
   foregrip: [0, -0.03, -0.2],
 };
 const SAWNOFF_POSE: WeaponPoses = {
-  hold: { pos: [0, 0.03, -0.02], rot: [0, 0, 0] },
+  grip: [0, -0.03, 0.02],
+  rot: [0, 0, 0],
   foregrip: [0, -0.03, -0.15],
 };
 

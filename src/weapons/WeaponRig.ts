@@ -5,38 +5,59 @@ import type { AssetLoader } from '../core/AssetLoader';
 
 const _muzzle = new THREE.Vector3();
 const _box = new THREE.Box3();
-const _handPos = new THREE.Vector3();
-const _fingerPos = new THREE.Vector3();
+const _palmR = new THREE.Vector3();
+const _palmL = new THREE.Vector3();
+const _tmp = new THREE.Vector3();
+const _dWorld = new THREE.Vector3();
+const _dLocal = new THREE.Vector3();
+const _aimAxis = new THREE.Vector3();
 const _handQ = new THREE.Quaternion();
 const _holdQ = new THREE.Quaternion();
+const _swingQ = new THREE.Quaternion();
 const _tweakQ = new THREE.Quaternion();
 const _carryQ = new THREE.Quaternion();
 const _adsQ = new THREE.Quaternion();
 const _euler = new THREE.Euler();
 const _off = new THREE.Vector3();
+const _backQ = new THREE.Quaternion();
+
+/** Bones the rig follows; refs are stable, looked up once by Game. */
+export interface RigBones {
+  handR: THREE.Object3D | null;
+  fingerR: THREE.Object3D | null;
+  handL: THREE.Object3D | null;
+  fingerL: THREE.Object3D | null;
+  /** Chest bone — back-holster anchor for stowed long guns. */
+  chest: THREE.Object3D | null;
+}
 
 /**
  * In-hand weapon models (Synty GLBs, barrel toward -Z, ~1u = 1m, baked by
  * scripts/synty-export.mts).
  *
- * Placement contract (Mixamo gun-clip era): the character's clips pose the
- * right wrist meaningfully in every stance, so guns follow the HAND —
- * position AND orientation. The gun's orientation = hand world orientation ×
- * HANDLING.holdRot × the weapon's own hold.rot tweak; its position = palm
- * (wrist lerped toward the index-finger base) + hold.pos in the gun's frame.
+ * Placement contract (grip-first): every prop has a GRIP SOCKET
+ * (`pose.grip`, gun frame) — the point the right PALM wraps. The palm is
+ * approximated as wrist→index-knuckle at 60% (bone origins are joints; there
+ * is no palm bone). The socket is glued to the palm in every stance.
  *
- * ADS keeps the reticle honest: the orientation slerps to the camera's exact
- * yaw/pitch by aimBlend, pivoting around the grip (exports keep the pistol
- * grip near the origin) so the palm stays glued while the barrel tracks the
- * crosshair precisely.
+ * - One-hand guns: orientation = hand world × class holdRot × per-weapon rot.
+ * - Two-hand guns: the clips animate BOTH hands holding the virtual gun, so
+ *   the grip→foregrip axis is swung onto the right-palm→left-palm line every
+ *   frame (roll still comes from the hand). Idle fidgets then carry the gun
+ *   naturally instead of levering it through the torso.
+ * - ADS: orientation slerps to the camera's exact yaw/pitch; the pivot is
+ *   the grip socket, so the palm stays glued while the barrel tracks the
+ *   reticle precisely.
+ * - Throwables keep the world-upright carry frame.
  *
- * Throwables keep the old world-composed carry frame (they sit upright in
- * the palm; the throw arm is animated separately).
+ * Stowed long guns ride the back (Days Gone style), anchored to the chest
+ * bone in the character's yaw frame.
  */
 export class WeaponRig {
   private holder = new THREE.Group();
   private guns = new Map<string, THREE.Group>();
   private muzzles = new Map<string, THREE.Object3D>();
+  private backMounts = new Map<string, THREE.Group>();
   private active = '';
   private kickZ = 0;
   private aimBlend = 0;
@@ -69,6 +90,20 @@ export class WeaponRig {
       this.holder.add(g);
       this.guns.set(key, g);
       this.muzzles.set(key, muzzle);
+
+      // Stowed copy for the back holster (long guns only, wired in update).
+      if (WEAPONS[key]?.pose.foregrip) {
+        const back = new THREE.Group();
+        const bm = assets.get(assetKey).scene.clone(true);
+        bm.scale.setScalar(scale);
+        back.add(bm);
+        back.visible = false;
+        back.traverse((o) => {
+          if ((o as THREE.Mesh).isMesh) o.castShadow = true;
+        });
+        scene.add(back);
+        this.backMounts.set(key, back);
+      }
     };
 
     for (const key of WEAPON_ORDER) {
@@ -90,6 +125,7 @@ export class WeaponRig {
   /** Hide/show alongside the avatar (camera near-fade, driving). */
   setVisible(v: boolean): void {
     this.holder.visible = v;
+    for (const [, b] of this.backMounts) b.visible = v && b.visible;
   }
 
   kick(): void {
@@ -97,25 +133,21 @@ export class WeaponRig {
   }
 
   /**
-   * Call every render frame after animation update (the hand bone must hold
+   * Call every render frame after animation update (the hand bones must hold
    * this frame's animated pose).
    * @param aiming drives the hand-follow↔ADS-exact blend.
    * @param lower 0..1 swap dip — the gun sinks and pitches away mid-swap.
-   * @param charYaw the character model's yaw (throwable carry frame).
+   * @param charYaw character model yaw (throwable carry + back holster frame).
    * @param camYaw / @param camPitch the camera rig's aim (ADS frame).
-   * @param fingerBone index-finger base: bone origins are JOINTS, so the
-   *   hand bone alone is the wrist — lerping toward the finger base lands
-   *   props in the palm instead of on the forearm.
    */
   update(
     dt: number,
-    handBone: THREE.Object3D | null,
+    bones: RigBones,
     aiming = false,
     lower = 0,
     charYaw = 0,
     camYaw = 0,
     camPitch = 0,
-    fingerBone: THREE.Object3D | null = null,
   ): void {
     this.kickZ *= Math.exp(-14 * dt);
     this.aimBlend = THREE.MathUtils.clamp(
@@ -123,37 +155,55 @@ export class WeaponRig {
       0,
       1,
     );
+    this.updateBackMounts(bones.chest, charYaw);
     const g = this.guns.get(this.active);
     if (!g) return;
-    if (handBone) {
-      handBone.getWorldPosition(_handPos);
-      if (fingerBone) {
-        fingerBone.getWorldPosition(_fingerPos);
-        _handPos.lerp(_fingerPos, 0.6); // wrist → mid-palm
+
+    const palm = (hand: THREE.Object3D | null, finger: THREE.Object3D | null, out: THREE.Vector3): boolean => {
+      if (!hand) return false;
+      hand.getWorldPosition(out);
+      if (finger) {
+        finger.getWorldPosition(_tmp);
+        out.lerp(_tmp, 0.6); // wrist -> mid-palm (bone origins are joints)
       }
-    } else _handPos.copy(this.holder.position);
+      return true;
+    };
+    const hasPalmR = palm(bones.handR, bones.fingerR, _palmR);
+    if (!hasPalmR) _palmR.copy(this.holder.position);
 
     const def = WEAPONS[this.active];
     const b = THREE.MathUtils.smoothstep(this.aimBlend, 0, 1);
 
-    if (def && handBone) {
-      // ---- Gun: ride the animated hand ----
-      handBone.getWorldQuaternion(_handQ);
-      const hr = HANDLING.holdRot;
-      const wr = def.pose.hold.rot;
-      _holdQ.setFromEuler(_euler.set(hr[0], hr[1], hr[2], 'YXZ'));
-      _handQ.multiply(_holdQ);
+    if (def && hasPalmR) {
+      // ---- Gun: grip socket glued to the right palm ----
+      bones.handR!.getWorldQuaternion(_handQ);
+      const hr = def.cls === 'pistol' ? HANDLING.holdRotPistol : HANDLING.holdRot;
+      _carryQ.copy(_handQ).multiply(_holdQ.setFromEuler(_euler.set(hr[0], hr[1], hr[2], 'YXZ')));
+      const wr = def.pose.rot;
       if (wr[0] || wr[1] || wr[2]) {
-        _handQ.multiply(_holdQ.setFromEuler(_euler.set(wr[0], wr[1], wr[2], 'YXZ')));
+        _carryQ.multiply(_holdQ.setFromEuler(_euler.set(wr[0], wr[1], wr[2], 'YXZ')));
       }
-      // ADS: exact camera yaw/pitch so the barrel tracks the reticle; the
-      // slerp pivots around the grip (near origin) so the palm stays glued.
+      const grip = def.pose.grip;
+      // Two-hand: swing the grip→foregrip axis onto the palm→palm line (the
+      // clips animate both hands on the virtual gun; this reproduces it).
+      if (def.pose.foregrip && palm(bones.handL, bones.fingerL, _palmL)) {
+        const fg = def.pose.foregrip;
+        _dLocal.set(fg[0] - grip[0], fg[1] - grip[1], fg[2] - grip[2]).normalize();
+        _dWorld.copy(_palmL).sub(_palmR);
+        if (_dWorld.lengthSq() > 1e-4) {
+          _dWorld.normalize();
+          _aimAxis.copy(_dLocal).applyQuaternion(_carryQ);
+          _swingQ.setFromUnitVectors(_aimAxis, _dWorld);
+          _carryQ.premultiply(_swingQ);
+        }
+      }
+      // ADS: exact camera yaw/pitch so the barrel tracks the reticle.
       _adsQ.setFromEuler(_euler.set(camPitch, camYaw, 0, 'YXZ'));
-      this.holder.quaternion.copy(_handQ).slerp(_adsQ, b);
-      const hp = def.pose.hold.pos;
+      this.holder.quaternion.copy(_carryQ).slerp(_adsQ, b);
+      // Socket-to-palm: position so the grip point lands on the palm.
       this.holder.position
-        .copy(_handPos)
-        .add(_off.set(hp[0], hp[1], hp[2]).applyQuaternion(this.holder.quaternion));
+        .copy(_palmR)
+        .sub(_off.set(grip[0], grip[1], grip[2]).applyQuaternion(this.holder.quaternion));
       this.holder.position.y -= 0.15 * lower;
 
       // Swap-dip pitch-away + recoil kick straight back along the barrel.
@@ -169,13 +219,35 @@ export class WeaponRig {
     _adsQ.setFromEuler(_euler.set(camPitch, camYaw, 0, 'YXZ'));
     this.holder.quaternion.copy(_carryQ).slerp(_adsQ, b);
     this.holder.position
-      .copy(_handPos)
+      .copy(_palmR)
       .add(_off.set(tp.pos[0], tp.pos[1], tp.pos[2]).applyQuaternion(_carryQ));
     this.holder.position.y -= 0.15 * lower;
 
     _tweakQ.setFromEuler(_euler.set(tp.rot[0] - 1.05 * lower, tp.rot[1], tp.rot[2], 'YXZ'));
     g.quaternion.copy(_tweakQ);
     g.position.set(0, 0, this.kickZ);
+  }
+
+  /** Stowed long guns ride the back, Days Gone style: anchored to the chest
+   * bone position, oriented in the character's yaw frame (diagonal, stock
+   * up by the shoulder), staggered so two guns never z-fight. */
+  private updateBackMounts(chest: THREE.Object3D | null, charYaw: number): void {
+    let slot = 0;
+    for (const [key, back] of this.backMounts) {
+      const show = key !== this.active && !!chest && this.holder.visible;
+      back.visible = show;
+      if (!show || !chest) continue;
+      chest.getWorldPosition(_tmp);
+      _backQ.setFromEuler(_euler.set(0, charYaw, 0, 'YXZ'));
+      const bo = HANDLING.backOffset;
+      _off.set(bo[0] + slot * 0.09, bo[1], bo[2] + slot * -0.06).applyQuaternion(_backQ);
+      back.position.copy(_tmp).add(_off);
+      const br = HANDLING.backRot;
+      back.quaternion
+        .copy(_backQ)
+        .multiply(_holdQ.setFromEuler(_euler.set(br[0], br[1], br[2] + slot * 0.12, 'YXZ')));
+      slot++;
+    }
   }
 
   muzzleWorld(out: THREE.Vector3): THREE.Vector3 {
