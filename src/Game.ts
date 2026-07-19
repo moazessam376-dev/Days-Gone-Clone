@@ -1225,10 +1225,13 @@ export class Game {
     this.avatar.applyLeftHandIK(fgTarget, 0.6 * (1 - this.avatar.sprintWeight), dt);
     // Fingers: the Mixamo gun clips animate them (mapped in the retarget) —
     // the procedural curl would fight the clip and clip through the grips
-    // (ADS finger conflict from the playtest). Curl only on the legacy path.
-    const curls = this.avatar.hasGunClips || this.equippedThrowable || this.driving ? 0 : 1;
-    this.avatar.applyHandGrip('R', curls, dt);
-    this.avatar.applyHandGrip('L', curls && fgTarget ? 1 - this.avatar.sprintWeight : 0, dt);
+    // (ADS finger conflict from the playtest). Curl the right hand around
+    // held throwables (no clip animates that grip; opens for the release)
+    // and both hands on the legacy no-clip path.
+    const propCurl = this.equippedThrowable && !this.pendingThrow && !this.driving ? 1 : 0;
+    const legacyCurl = !this.avatar.hasGunClips && !this.equippedThrowable && !this.driving ? 1 : 0;
+    this.avatar.applyHandGrip('R', Math.max(propCurl, legacyCurl), dt);
+    this.avatar.applyHandGrip('L', legacyCurl && fgTarget ? 1 - this.avatar.sprintWeight : 0, dt);
     this.recoil.update(dt);
     for (const v of this.vehicles) v.updateVisuals(dt);
     this.cameraRig.update(

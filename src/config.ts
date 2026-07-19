@@ -146,10 +146,12 @@ export const HANDLING = {
    * eyeballed; per-weapon pose.rot tweaks on top. */
   holdRot: [1.361, -1.034, 1.183] as [number, number, number], // long guns, solved at carry
   holdRotPistol: [1.043, 0.404, 2.747] as [number, number, number], // solved at the Pistol_AimIdle pose (barrel == camera ray)
-  /** Back holster (stowed long guns): offset from the chest bone and euler,
-   * both in the character's yaw frame (z+ = behind). */
-  backOffset: [0.06, -0.05, 0.16] as [number, number, number],
-  backRot: [-1.194, 1.849, 1.311] as [number, number, number], // barrel down-left diagonal, flat against the back (solved)
+  /** Back holster (stowed long guns): offset + euler in the CHEST BONE's
+   * local frame so the mount leans with the spine (yaw-frame mounts clipped
+   * through the torso whenever the body leaned). Solved from a probed chest
+   * world quaternion; barrel ends up down-left diagonal, flat on the back. */
+  backOffset: [0.024, -0.2243, -0.1132] as [number, number, number],
+  backRot: [-0.5002, 1.9704, -3.0511] as [number, number, number],
   /** Aim elevation: fraction of camera pitch applied procedurally to EACH of
    * Spine_02/Spine_03 while aiming a gun (the whole chest+arms unit pitches,
    * replacing the old 3-pose aim blend that clipped the arms together). */

@@ -228,19 +228,20 @@ export class WeaponRig {
     g.position.set(0, 0, this.kickZ);
   }
 
-  /** Stowed long guns ride the back, Days Gone style: anchored to the chest
-   * bone position, oriented in the character's yaw frame (diagonal, stock
-   * up by the shoulder), staggered so two guns never z-fight. */
-  private updateBackMounts(chest: THREE.Object3D | null, charYaw: number): void {
+  /** Stowed long guns ride the back, Days Gone style: mounted in the CHEST
+   * BONE's local frame so they lean with the spine (a yaw-frame mount
+   * clipped through the torso whenever the body leaned), staggered so two
+   * guns never z-fight. */
+  private updateBackMounts(chest: THREE.Object3D | null, _charYaw: number): void {
     let slot = 0;
     for (const [key, back] of this.backMounts) {
       const show = key !== this.active && !!chest && this.holder.visible;
       back.visible = show;
       if (!show || !chest) continue;
       chest.getWorldPosition(_tmp);
-      _backQ.setFromEuler(_euler.set(0, charYaw, 0, 'YXZ'));
+      chest.getWorldQuaternion(_backQ);
       const bo = HANDLING.backOffset;
-      _off.set(bo[0] + slot * 0.09, bo[1], bo[2] + slot * -0.06).applyQuaternion(_backQ);
+      _off.set(bo[0] + slot * -0.05, bo[1] + slot * -0.09, bo[2] + slot * 0.05).applyQuaternion(_backQ);
       back.position.copy(_tmp).add(_off);
       const br = HANDLING.backRot;
       back.quaternion
