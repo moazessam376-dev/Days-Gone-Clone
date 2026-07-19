@@ -59,8 +59,32 @@ export class PlayerAvatar {
   private aimBlend = 0;
   private wasRolling = false;
 
+  // ---- Pose Lab hooks (docs/dev-mode.md) ----
+  /** All clip names in the loaded glb (dev-mode scrub dropdown). */
+  clipList: string[] = [];
+  /** When set, the mixer solos this clip paused at `time` (procedural
+   * layers — spine pitch, IK, grips — still run on top). */
+  devOverride: { clip: string; time: number } | null = null;
+  private devAction: THREE.AnimationAction | null = null;
+  private devClips: THREE.AnimationClip[] = [];
+
+  /** Duration of a clip by name (dev-mode time slider range). */
+  clipDuration(name: string): number {
+    return THREE.AnimationClip.findByName(this.devClips, name)?.duration ?? 1;
+  }
+
+  /** Hand a cached (possibly graph-shared) action back to the mixer. */
+  private releaseDevAction(): void {
+    if (!this.devAction) return;
+    this.devAction.paused = false;
+    this.devAction.setEffectiveWeight(0);
+    this.devAction = null;
+  }
+
   constructor(gltf: GLTF) {
     this.object = gltf.scene;
+    this.devClips = gltf.animations;
+    this.clipList = gltf.animations.map((c) => c.name);
     // Drop the model so feet sit at the capsule bottom (root group is centered
     // on the capsule). The Synty rig's natural forward is +Z, matching the
     // controller's yaw convention — no flip needed (the old Quaternius rig
@@ -334,11 +358,36 @@ export class PlayerAvatar {
     // raised arm. Keep idle_upper only for the procedural fallback.
     this.setTarget('idle_upper', this.throwAction ? 0 : a * throwing * rollSuppress);
 
+    // Pose Lab scrub: fade the whole graph out under the solo clip.
+    if (this.devOverride) {
+      for (const wa of this.actions.values()) wa.target = 0;
+    }
+
     // Fast exponential approach keeps blends snappy but pop-free.
     const k = 1 - Math.exp(-15 * dt);
     for (const wa of this.actions.values()) {
       wa.weight += (wa.target - wa.weight) * k;
       wa.action.setEffectiveWeight(wa.weight);
+    }
+
+    // Pose Lab solo runs AFTER the weight loop: mixer.clipAction caches by
+    // clip, so the dev action may be the SAME instance as a graph action —
+    // the loop above would stomp its weight (and its paused flag must be
+    // restored on release or the graph action stays frozen forever).
+    if (this.devOverride) {
+      const clip = THREE.AnimationClip.findByName(this.devClips, this.devOverride.clip);
+      if (clip && (!this.devAction || this.devAction.getClip() !== clip)) {
+        this.releaseDevAction();
+        this.devAction = this.mixer.clipAction(clip);
+        this.devAction.play();
+      }
+      if (this.devAction) {
+        this.devAction.paused = true;
+        this.devAction.time = Math.min(this.devOverride.time, this.devAction.getClip().duration);
+        this.devAction.setEffectiveWeight(1);
+      }
+    } else {
+      this.releaseDevAction();
     }
 
     this.mixer.update(dt);

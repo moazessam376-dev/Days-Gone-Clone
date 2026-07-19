@@ -62,6 +62,39 @@ export class WeaponRig {
   private kickZ = 0;
   private aimBlend = 0;
 
+  // ---- Pose Lab hooks (docs/dev-mode.md) ----
+  /** Per-weapon-key gizmo tweaks in the BASE gun frame, applied on top of
+   * the animation-computed pose every frame. */
+  readonly devTweaks = new Map<string, { pos: THREE.Vector3; quat: THREE.Quaternion }>();
+  /** This frame's animation-computed holder pose BEFORE tweaks — the gizmo
+   * handler solves its tweak against these, so edits stay stable while the
+   * animation keeps playing. */
+  readonly lastBaseQ = new THREE.Quaternion();
+  readonly lastBasePos = new THREE.Vector3();
+  /** While the Pose Lab gizmo holds a back mount, updateBackMounts must not
+   * overwrite it each frame (the export reads the dragged transform live). */
+  devBackFreeze = false;
+  /** The group the active weapon renders in (gizmo attach target). */
+  get holderObject(): THREE.Object3D {
+    return this.holder;
+  }
+  get activeKey(): string {
+    return this.active;
+  }
+  /** First visible back-holster mount (gizmo attach target), if any. */
+  backMountObject(): THREE.Object3D | null {
+    for (const [key, b] of this.backMounts) if (key !== this.active) return b;
+    return null;
+  }
+  private applyDevTweak(): void {
+    this.lastBaseQ.copy(this.holder.quaternion);
+    this.lastBasePos.copy(this.holder.position);
+    const t = this.devTweaks.get(this.active);
+    if (!t) return;
+    this.holder.position.add(_off.copy(t.pos).applyQuaternion(this.lastBaseQ));
+    this.holder.quaternion.multiply(t.quat);
+  }
+
   constructor(scene: THREE.Scene, assets: AssetLoader) {
     scene.add(this.holder);
 
@@ -205,6 +238,7 @@ export class WeaponRig {
         .copy(_palmR)
         .sub(_off.set(grip[0], grip[1], grip[2]).applyQuaternion(this.holder.quaternion));
       this.holder.position.y -= 0.15 * lower;
+      this.applyDevTweak();
 
       // Swap-dip pitch-away + recoil kick straight back along the barrel.
       _tweakQ.setFromEuler(_euler.set(-1.05 * lower, 0, 0, 'YXZ'));
@@ -222,6 +256,7 @@ export class WeaponRig {
       .copy(_palmR)
       .add(_off.set(tp.pos[0], tp.pos[1], tp.pos[2]).applyQuaternion(_carryQ));
     this.holder.position.y -= 0.15 * lower;
+    this.applyDevTweak();
 
     _tweakQ.setFromEuler(_euler.set(tp.rot[0] - 1.05 * lower, tp.rot[1], tp.rot[2], 'YXZ'));
     g.quaternion.copy(_tweakQ);
@@ -233,6 +268,7 @@ export class WeaponRig {
    * clipped through the torso whenever the body leaned), staggered so two
    * guns never z-fight. */
   private updateBackMounts(chest: THREE.Object3D | null, _charYaw: number): void {
+    if (this.devBackFreeze) return;
     let slot = 0;
     for (const [key, back] of this.backMounts) {
       const show = key !== this.active && !!chest && this.holder.visible;

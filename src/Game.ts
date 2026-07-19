@@ -45,6 +45,7 @@ import {
 } from './config';
 import { WeaponWheel, WHEEL_SECTOR_COUNT, type WheelSector } from './ui/WeaponWheel';
 import { ThrowArc } from './fx/ThrowArc';
+import { DevMode } from './dev/DevMode';
 
 const _vehicleQuat = new THREE.Quaternion();
 const _vehicleFwd = new THREE.Vector3();
@@ -70,6 +71,8 @@ export class Game {
   private weapons!: WeaponSystem;
   private weaponRig!: WeaponRig;
   private rigBones!: RigBones;
+  /** Pose & Grip Lab (?dev=1) — docs/dev-mode.md. */
+  private dev: DevMode | null = null;
   private avatarHidden = false;
   private registry = new DamageRegistry();
   private fx!: FxPools;
@@ -263,15 +266,63 @@ export class Game {
       fixedUpdate: (dt) => this.fixedUpdate(dt),
       render: (alpha, dt) => this.render(alpha, dt),
     });
+
+    // Pose & Grip Lab (?dev=1) — docs/dev-mode.md. Built after every system
+    // exists; the game runs unpaused with an orbit camera and no pointer lock.
+    if (new URLSearchParams(location.search).has('dev')) {
+      this.dev = new DevMode({
+        scene: this.scene,
+        camera: this.renderer.camera,
+        dom: this.renderer.renderer.domElement,
+        input: this.input,
+        avatar: this.avatar,
+        rig: this.weaponRig,
+        playerPos: () => this.player.root.position,
+        equip: (key) => this.devEquip(key),
+        freezeEnemies: (on) => this.devFreezeEnemies(on),
+      });
+      document.getElementById('click-to-play')?.classList.add('hidden');
+    }
+
     // Start frozen behind the click-to-play screen — the world must not
     // simulate (enemies chasing, fire spreading) until the player is in.
-    if (!this.input.mock) this.loop.setPaused(true);
+    if (!this.input.mock && !this.dev) this.loop.setPaused(true);
 
-    if (this.input.mock) {
-      // Test hooks for automated verification (?mockinput only). __weapons
-      // lets pose/tuning experiments run live without rebuilds.
+    if (this.input.mock || this.dev) {
+      // Test hooks for automated verification (?mockinput / ?dev=1 only).
+      // __weapons lets pose/tuning experiments run live without rebuilds.
       (window as unknown as Record<string, unknown>).__game = this;
       (window as unknown as Record<string, unknown>).__weapons = WEAPONS;
+    }
+  }
+
+  /** Pose Lab: instant equip of any weapon or throwable (no swap dip). */
+  private devEquip(key: string): void {
+    if (key === 'grenade' || key === 'molotov') {
+      this.equippedThrowable = key;
+    } else if (WEAPONS[key]) {
+      this.equippedThrowable = null;
+      this.weapons.switchTo(key);
+    }
+    this.swapT = 0;
+    this.actionLock = 0;
+    this.weaponRig.setActive(this.equippedThrowable ?? this.weapons.current);
+  }
+
+  private devSpawnFn: typeof EnemyManager.prototype.spawn | null = null;
+
+  /** Pose Lab: clear the field so nothing chews on the player mid-tune. */
+  private devFreezeEnemies(on: boolean): void {
+    if (on) {
+      this.enemies.reset();
+      this.enemyRenderer.reset();
+      if (!this.devSpawnFn) {
+        this.devSpawnFn = this.enemies.spawn.bind(this.enemies);
+        this.enemies.spawn = () => -1;
+      }
+    } else if (this.devSpawnFn) {
+      this.enemies.spawn = this.devSpawnFn;
+      this.devSpawnFn = null;
     }
   }
 
@@ -818,6 +869,7 @@ export class Game {
   }
 
   private fixedUpdate(dt: number): void {
+    if (this.dev?.simPaused) return;
     this.gameTime += dt;
 
     if (this.dead) {
@@ -1153,7 +1205,9 @@ export class Game {
   private render(alpha: number, dt: number): void {
     this.debug.begin();
     // Slow-mo sources compose multiplicatively (hitstop × weapon wheel).
-    this.loop.timeScale = this.hitstop.timeScale * (this.wheelOpen ? WHEEL.timeScale : 1);
+    this.loop.timeScale = this.dev
+      ? this.dev.timeScaleValue
+      : this.hitstop.timeScale * (this.wheelOpen ? WHEEL.timeScale : 1);
 
     // While the wheel is open the mouse steers SELECTION, not the camera:
     // consume the delta here so CameraRig sees none of it.
@@ -1234,25 +1288,31 @@ export class Game {
     this.avatar.applyHandGrip('L', legacyCurl && fgTarget ? 1 - this.avatar.sprintWeight : 0, dt);
     this.recoil.update(dt);
     for (const v of this.vehicles) v.updateVisuals(dt);
-    this.cameraRig.update(
-      dt,
-      this.input,
-      this.driving && this.activeVehicle ? this.activeVehicle.position : this.player.root.position,
-      this.player.aiming && !this.driving,
-      this.recoil,
-      this.driving,
-      this.player.sprinting && !this.driving,
-    );
-    this.shake.apply(dt, this.renderer.camera);
+    if (this.dev) {
+      // Pose Lab owns the camera (orbit); no rig follow, no shake.
+      this.dev.update(dt);
+    } else {
+      this.cameraRig.update(
+        dt,
+        this.input,
+        this.driving && this.activeVehicle ? this.activeVehicle.position : this.player.root.position,
+        this.player.aiming && !this.driving,
+        this.recoil,
+        this.driving,
+        this.player.sprinting && !this.driving,
+      );
+      this.shake.apply(dt, this.renderer.camera);
+    }
     this.renderer.camera.updateMatrixWorld();
     this.weaponRig.muzzleWorld(this.muzzlePos);
 
     // Camera pressed against a wall → hide the body so we never render its
-    // insides (hysteresis so the boundary doesn't flicker).
+    // insides (hysteresis so the boundary doesn't flicker). The Pose Lab's
+    // orbit camera never drives armDistance — always show the body there.
     const arm = this.cameraRig.armDistance;
     if (arm < CAMERA_RIG.hideAvatarBelow) this.avatarHidden = true;
     else if (arm > CAMERA_RIG.showAvatarAbove) this.avatarHidden = false;
-    const showBody = !this.avatarHidden && !this.driving;
+    const showBody = (!this.avatarHidden || !!this.dev) && !this.driving;
     this.avatar.object.visible = showBody;
     this.weaponRig.setVisible(showBody);
 

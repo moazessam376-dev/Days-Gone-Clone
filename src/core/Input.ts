@@ -17,6 +17,11 @@ export class Input {
   /** Dev/test escape hatch (?mockinput): treat input as locked without real
    * pointer lock so automated tests can drive the game with synthetic events. */
   readonly mock = new URLSearchParams(location.search).has('mockinput');
+  /** Dev mode (?dev=1): input counts as locked WITHOUT pointer lock, but the
+   * real mouse belongs to the editor camera/gizmos — trusted mouse events are
+   * ignored while keyboard stays live. The Pose Lab panel injects synthetic
+   * mouse events for aim/fire (same mechanism as the test probes). */
+  devUnlocked = false;
 
   constructor(private element: HTMLElement) {
     if (this.mock) this.locked = true;
@@ -38,29 +43,29 @@ export class Input {
     });
 
     document.addEventListener('mousemove', (e) => {
-      if (!this.locked || (this.mock && e.isTrusted)) return;
+      if (!this.locked || ((this.mock || this.devUnlocked) && e.isTrusted)) return;
       this.mouseDX += e.movementX;
       this.mouseDY += e.movementY;
     });
     document.addEventListener('mousedown', (e) => {
-      if (this.mock && e.isTrusted) return;
+      if ((this.mock || this.devUnlocked) && e.isTrusted) return;
       if (this.locked) {
         this.mouseButtons.add(e.button);
         this.buttonsPressedThisFrame.add(e.button);
       }
     });
     document.addEventListener('mouseup', (e) => {
-      if (this.mock && e.isTrusted) return;
+      if ((this.mock || this.devUnlocked) && e.isTrusted) return;
       this.mouseButtons.delete(e.button);
     });
 
     document.addEventListener('wheel', (e) => {
-      if (!this.locked || (this.mock && e.isTrusted)) return;
+      if (!this.locked || ((this.mock || this.devUnlocked) && e.isTrusted)) return;
       this.scrollAccum += Math.sign(e.deltaY);
     });
 
     document.addEventListener('pointerlockchange', () => {
-      if (this.mock) return;
+      if (this.mock || this.devUnlocked) return;
       this.locked = document.pointerLockElement === this.element;
       if (!this.locked) {
         this.keys.clear();
@@ -70,6 +75,7 @@ export class Input {
   }
 
   requestLock(): void {
+    if (this.devUnlocked) return;
     this.element.requestPointerLock();
   }
 
