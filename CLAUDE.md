@@ -84,6 +84,23 @@ Vite `base` is `/Days-Gone-Clone/`; all runtime asset URLs must go through
 `import.meta.env.BASE_URL`. After pushing, verify the Actions run is green and the
 live URL boots without console errors or 404s.
 
+## Visual verification (MANDATORY)
+
+- Before claiming ANY fix to weapon holding, aiming, pose, holster, placement,
+  vehicle stance, or ground contact is done, you MUST reproduce and verify it via
+  the Playwright MCP against the REAL build (`npm run dev` or the live URL):
+  drive the game to the exact state, screenshot it, and read the relevant
+  world-space numbers via `browser_evaluate` (the build exposes `window.__game`).
+  Report before/after screenshots AND numbers.
+- Headless scripts (`scripts/visual-check.mts`, `scripts/physics-tests.mts`) are
+  NOT sufficient proof alone: software-rendered Chromium, mock input, fixed
+  cameras — they passed all six R2 fix rounds while the user reported "nothing is
+  fixed." Treat them as a regression net only.
+- Prefer measured numbers over eyeballing; never tune a transform by guessing
+  across screenshots — read the delta via `browser_evaluate`, set it once.
+- Pose Lab (`?dev=1`) exports get written back into `src/config.ts`, never
+  hardcoded elsewhere, and noted in the relevant `docs/` spec.
+
 ## Verification
 
 Every milestone must end runnable: `npm run build` clean, then actually play it —
