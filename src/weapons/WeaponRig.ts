@@ -277,7 +277,10 @@ export class WeaponRig {
       chest.getWorldPosition(_tmp);
       chest.getWorldQuaternion(_backQ);
       const bo = HANDLING.backOffset;
-      _off.set(bo[0] + slot * -0.05, bo[1] + slot * -0.09, bo[2] + slot * 0.05).applyQuaternion(_backQ);
+      const ss = HANDLING.backSlotStep;
+      _off
+        .set(bo[0] + slot * ss[0], bo[1] + slot * ss[1], bo[2] + slot * ss[2])
+        .applyQuaternion(_backQ);
       back.position.copy(_tmp).add(_off);
       const br = HANDLING.backRot;
       back.quaternion

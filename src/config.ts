@@ -148,10 +148,16 @@ export const HANDLING = {
   holdRotPistol: [1.043, 0.404, 2.747] as [number, number, number], // solved at the Pistol_AimIdle pose (barrel == camera ray)
   /** Back holster (stowed long guns): offset + euler in the CHEST BONE's
    * local frame so the mount leans with the spine (yaw-frame mounts clipped
-   * through the torso whenever the body leaned). Solved from a probed chest
-   * world quaternion; barrel ends up down-left diagonal, flat on the back. */
-  backOffset: [0.024, -0.2243, -0.1132] as [number, number, number],
-  backRot: [-0.5002, 1.9704, -3.0511] as [number, number, number],
+   * through the torso whenever the body leaned). Solved from the probed
+   * Spine_03 world quaternion against measured world targets (16 cm behind
+   * the chest plane, barrel up with a 20° lean, flat side against the back,
+   * Days Gone style) — the previous values landed the mounts 24-36 cm IN
+   * FRONT of the chest (user screenshot + measured fwd component). */
+  backOffset: [-0.0761, 0.1043, 0.1322] as [number, number, number],
+  backRot: [0.3055, -1.1737, -0.1147] as [number, number, number],
+  /** Per-slot stagger for additional stowed guns, chest-local: the world
+   * "leftward across the back" direction (solved with backOffset above). */
+  backSlotStep: [-0.0174, 0.0459, -0.1312] as [number, number, number],
   /** Aim elevation: fraction of camera pitch applied procedurally to EACH of
    * Spine_02/Spine_03 while aiming a gun (the whole chest+arms unit pitches,
    * replacing the old 3-pose aim blend that clipped the arms together). */
