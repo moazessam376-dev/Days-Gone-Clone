@@ -57,6 +57,12 @@ export class PlayerAvatar {
   private actions = new Map<string, WeightedAction>();
   private rollAction: THREE.AnimationAction;
   private aimBlend = 0;
+
+  /** Smoothed 0..1 ADS blend — Game gates the pistol's support-hand IK on it
+   * (a sidearm is one-handed at low ready, two-handed on aim). */
+  get aimWeight(): number {
+    return this.aimBlend;
+  }
   private wasRolling = false;
 
   // ---- Pose Lab hooks (docs/dev-mode.md) ----
@@ -466,11 +472,12 @@ export class PlayerAvatar {
     const w = (this.curlWeight[side] += (weight - this.curlWeight[side]) * Math.min(1, dt * 12));
     if (w < 0.02) return;
     const c = HANDLING.gripCurl;
-    for (const [prefix, amt] of [
-      ['Finger_0', c.finger],
-      ['IndexFinger_0', c.index],
-      ['Thumb_0', c.thumb],
+    for (const [prefix, amt, axis] of [
+      ['Finger_0', c.finger, c.fingerAxis],
+      ['IndexFinger_0', side === 'L' ? c.indexSupport : c.index, c.indexAxis],
+      ['Thumb_0', c.thumb, c.thumbAxis],
     ] as const) {
+      _curlAxis.set(axis[0], axis[1], axis[2]);
       for (let i = 1; i <= 4; i++) {
         const name = `${prefix}${i}_${side}`;
         const rest = this.fingerRest.get(name);
@@ -619,7 +626,7 @@ export class PlayerAvatar {
   }
 }
 
-const _curlAxis = new THREE.Vector3(1, 0, 0);
+const _curlAxis = new THREE.Vector3();
 const _curlQ = new THREE.Quaternion();
 const _spineAxis = new THREE.Vector3();
 const _spineQ = new THREE.Quaternion();

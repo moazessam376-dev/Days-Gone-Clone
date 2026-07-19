@@ -1270,7 +1270,12 @@ export class Game {
       this.swapT <= 0 &&
       !this.equippedThrowable;
     const fgTarget = gripFree ? this.weaponRig.foregripWorld(_foregrip) : null;
-    const leftIk = WEAPONS[this.weaponRig.activeKey]?.pose.leftIk ?? 0.6;
+    const heldDef = WEAPONS[this.weaponRig.activeKey];
+    // A sidearm is one-handed at low ready and two-handed on aim, so its
+    // support hand fades in with the ADS blend; long guns are held with both
+    // hands in every stance.
+    const leftIk =
+      (heldDef?.pose.leftIk ?? 0.6) * (heldDef?.cls === 'pistol' ? this.avatar.aimWeight : 1);
     this.avatar.applyLeftHandIK(fgTarget, leftIk * (1 - this.avatar.sprintWeight), dt);
     this.weaponRig.update(
       dt,

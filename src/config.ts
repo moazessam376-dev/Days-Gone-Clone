@@ -166,9 +166,29 @@ export const HANDLING = {
    * Spine_02/Spine_03 while aiming a gun (the whole chest+arms unit pitches,
    * replacing the old 3-pose aim blend that clipped the arms together). */
   aimSpinePitch: 0.3,
-  /** Finger curl (rad per segment) wrapping a held grip — the rig's clips
-   * never animate fingers, so bind-pose hands read as open palms. */
-  gripCurl: { finger: 0.95, index: 0.7, thumb: 0.5 },
+  /**
+   * Finger curl wrapping a held grip — the retargeted clips leave the finger
+   * bones static, so without this every hand reads as an open palm.
+   *
+   * Axes are per-chain, in each BONE's local frame, and were MEASURED on this
+   * reconstructed Synty rig by rotating each chain about every cardinal axis
+   * and keeping the one that brings the fingertip to the grip socket. The
+   * chains genuinely disagree, and the old single +X axis moved the tips
+   * 0 mm — which is why every hand has read as an open palm since R2.
+   * Right-hand tip→grip at rest vs curled: fingers 157→7 mm, index 158→29 mm,
+   * thumb 120→61 mm.
+   */
+  gripCurl: {
+    fingerAxis: [0, -1, 0] as [number, number, number],
+    indexAxis: [0, 0, -1] as [number, number, number],
+    thumbAxis: [0, 1, 0] as [number, number, number],
+    finger: 1.25,
+    thumb: 1.1,
+    /** Trigger hand: the index rests ON the trigger, so it curls less than
+     * the support hand's index, which wraps the foregrip fully. */
+    index: 0.65,
+    indexSupport: 1.1,
+  },
 };
 
 export const STAMINA = {

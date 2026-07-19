@@ -223,7 +223,10 @@ export class WeaponRig {
       const grip = def.pose.grip;
       // Two-hand: swing the grip→foregrip axis onto the palm→palm line (the
       // clips animate both hands on the virtual gun; this reproduces it).
-      if (def.pose.foregrip && palm(bones.handL, bones.fingerL, _palmL)) {
+      // LONG GUNS ONLY — on a pistol `foregrip` is the support-hand socket
+      // right next to the grip, and swinging that 5 cm axis onto the
+      // palm→palm line would spin the gun wildly.
+      if (def.cls === 'long' && def.pose.foregrip && palm(bones.handL, bones.fingerL, _palmL)) {
         const fg = def.pose.foregrip;
         _dLocal.set(fg[0] - grip[0], fg[1] - grip[1], fg[2] - grip[2]).normalize();
         _dWorld.copy(_palmL).sub(_palmR);
