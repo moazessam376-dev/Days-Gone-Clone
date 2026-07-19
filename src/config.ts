@@ -145,7 +145,11 @@ export const HANDLING = {
    * analytically from probed hand quaternions (inv(handQ) * desiredQ), not
    * eyeballed; per-weapon pose.rot tweaks on top. */
   holdRot: [1.361, -1.034, 1.183] as [number, number, number], // long guns, solved at carry
-  holdRotPistol: [1.043, 0.404, 2.747] as [number, number, number], // solved at the Pistol_AimIdle pose (barrel == camera ray)
+  /** Pistol hold, solved at the relaxed Pistol_Idle CARRY wrist (barrel
+   * down-forward in the sagittal plane, slide top facing forward). ADS is
+   * camera-exact via the holder slerp, so this value only ever shows during
+   * carry — the old aim-pose solve left the hanging pistol 45° sideways. */
+  holdRotPistol: [0.6062, 1.8547, -1.7563] as [number, number, number],
   /** Back holster (stowed long guns): offset + euler in the CHEST BONE's
    * local frame so the mount leans with the spine (yaw-frame mounts clipped
    * through the torso whenever the body leaned). Solved from the probed
@@ -154,7 +158,7 @@ export const HANDLING = {
    * Days Gone style) — the previous values landed the mounts 24-36 cm IN
    * FRONT of the chest (user screenshot + measured fwd component). */
   backOffset: [-0.0761, 0.1043, 0.1322] as [number, number, number],
-  backRot: [0.3055, -1.1737, -0.1147] as [number, number, number],
+  backRot: [0.3099, -1.2603, 1.451] as [number, number, number],
   /** Per-slot stagger for additional stowed guns, chest-local: the world
    * "leftward across the back" direction (solved with backOffset above). */
   backSlotStep: [-0.0174, 0.0459, -0.1312] as [number, number, number],

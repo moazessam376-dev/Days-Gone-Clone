@@ -1256,6 +1256,22 @@ export class Game {
         : 0,
       dt,
     );
+    // Left-hand IK BEFORE the rig, against last frame's foregrip: the rig
+    // then swings the gun onto the POST-IK palm→palm line, so both palms end
+    // up on the weapon by construction. Running it after meant the gun aimed
+    // at the clip's hand while the hand chased the gun — a one-frame-lagged
+    // loop that settled 4.6 cm off the handguard no matter the IK gain
+    // (measured: 109 mm at 0.6, 51 mm at 0.85, 65 mm at 1.0).
+    // Released while sprinting (arms pump), rolling, reloading, and mid-swap.
+    const gripFree =
+      !this.driving &&
+      !this.player.isRolling &&
+      !this.weapons.isReloading &&
+      this.swapT <= 0 &&
+      !this.equippedThrowable;
+    const fgTarget = gripFree ? this.weaponRig.foregripWorld(_foregrip) : null;
+    const leftIk = WEAPONS[this.weaponRig.activeKey]?.pose.leftIk ?? 0.6;
+    this.avatar.applyLeftHandIK(fgTarget, leftIk * (1 - this.avatar.sprintWeight), dt);
     this.weaponRig.update(
       dt,
       this.rigBones,
@@ -1265,27 +1281,17 @@ export class Game {
       this.cameraRig.yaw,
       this.cameraRig.pitch,
     );
-    // Procedural arm polish: pin the left palm onto the long-gun foregrip
-    // (glues away residual two-hand framing error; reach-clamped so it can
-    // never straighten the elbow). Released while sprinting (arms pump),
-    // rolling, reloading, meleeing, and mid-swap.
-    const gripFree =
-      !this.driving &&
-      !this.player.isRolling &&
-      !this.weapons.isReloading &&
-      this.swapT <= 0 &&
-      !this.equippedThrowable;
-    const fgTarget = gripFree ? this.weaponRig.foregripWorld(_foregrip) : null;
-    this.avatar.applyLeftHandIK(fgTarget, 0.6 * (1 - this.avatar.sprintWeight), dt);
-    // Fingers: the Mixamo gun clips animate them (mapped in the retarget) —
-    // the procedural curl would fight the clip and clip through the grips
-    // (ADS finger conflict from the playtest). Curl the right hand around
-    // held throwables (no clip animates that grip; opens for the release)
-    // and both hands on the legacy no-clip path.
+    // Fingers: the retargeted gun clips leave the finger bones essentially
+    // STATIC (measured quat delta <0.005 over 30 frames of Rifle_AimIdle),
+    // so every hand on a weapon needs the procedural wrap — applyHandGrip
+    // composes rest*curl absolutely, so it replaces the clip's static
+    // fingers instead of stacking on them. Right hand: any held gun or
+    // throwable (opens for the throw release). Left hand: when it's on the
+    // long-gun foregrip (released while sprinting — arms pump).
     const propCurl = this.equippedThrowable && !this.pendingThrow && !this.driving ? 1 : 0;
-    const legacyCurl = !this.avatar.hasGunClips && !this.equippedThrowable && !this.driving ? 1 : 0;
-    this.avatar.applyHandGrip('R', Math.max(propCurl, legacyCurl), dt);
-    this.avatar.applyHandGrip('L', legacyCurl && fgTarget ? 1 - this.avatar.sprintWeight : 0, dt);
+    const gunCurl = !this.equippedThrowable && !this.driving ? 1 : 0;
+    this.avatar.applyHandGrip('R', Math.max(propCurl, gunCurl), dt);
+    this.avatar.applyHandGrip('L', gunCurl && fgTarget ? 1 - this.avatar.sprintWeight : 0, dt);
     this.recoil.update(dt);
     for (const v of this.vehicles) v.updateVisuals(dt);
     if (this.dev) {

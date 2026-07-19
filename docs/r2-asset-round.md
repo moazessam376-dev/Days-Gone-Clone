@@ -68,6 +68,46 @@ redistributed)" section for Synty.
   tuned WITH the user in the Pose Lab (`?dev=1`) and exported into
   `src/config.ts`. The alternative (one fixed grip transform on the hand
   bone) is round 7's rejected look — do not revert to it.
+### Weapon handling round 11 (2026-07-19) — measured grips + weapon scale
+
+Root causes found by probing the live build (all previously invisible to
+"does the code do what it says" checks, because the code was correctly
+executing wrong data):
+
+1. **Grip sockets were 13-16 cm off every real grip.** `pose.grip` was
+   hand-guessed; measured against each GLB's own vertices the revolver's
+   grip is at z≈0.15 (socket said 0.02) and the rifle's pistol grip at
+   z≈0.225 (socket said 0.08 — that is the MAGAZINE). The hand therefore
+   held each gun by its receiver with the grip floating by the wrist.
+   Sockets are now measured values in UNSCALED model units.
+2. **Weapons were oversized for the character** (≈1.61 m tall): rifle
+   102.9 cm, "sawn-off" 103.1 cm, revolver 38.1 cm. At that size the
+   rifle's foregrip sat **68 cm from the left shoulder while the arm
+   reaches 61.5 cm** — physically unreachable, which is the "arms look
+   stretched" complaint from rounds 7-10. Display scales now target
+   realistic lengths (rifle 80 cm, shotgun 72 cm, sawn-off 57 cm,
+   revolver 27 cm); `WeaponRig` multiplies sockets by `model.scale` so
+   resizing never invalidates grip data.
+3. **Left-hand IK ran AFTER the rig**, so the gun aimed at the clip's hand
+   while the hand chased the gun — a lagged loop that stalled 4.6 cm off
+   the handguard at any gain (109 mm @0.6, 51 mm @0.85, 65 mm @1.0). The
+   IK now runs BEFORE `WeaponRig.update`, which then swings the gun onto
+   the post-IK palm→palm line.
+4. **Finger curl was gated behind `!hasGunClips`** on the assumption the
+   Mixamo clips animate fingers. Measured: finger-bone quaternion delta
+   <0.005 over 30 frames of Rifle_AimIdle — the retarget leaves them
+   static. The procedural wrap now runs for every held gun (it composes
+   rest*curl absolutely, so it replaces rather than stacks).
+5. **Back holster was in FRONT of the chest** (+24 to +36 cm on the
+   forward axis) and rolled flat-on instead of edge-on. Re-solved from
+   the probed Spine_03 quaternion: 16 cm behind the chest, muzzle-up with
+   a 20° lean, gun on its SIDE (Days Gone reference).
+
+Per-weapon handling identity (user decision, 2026-07-19): every weapon
+gets its own grip/foregrip/`leftIk`, so the shotgun no longer inherits
+the assault rifle's hold. Weapon-class ANIMATION sets are still shared
+(`cls: 'long' | 'pistol'`) — per-weapon clip sets are the open follow-up.
+
 - Bike stance: `BikeController.updateVisuals` fits the rigid model through
   BOTH per-wheel physics-hub deltas (vertical lift + pitch on a stance
   wrapper group). Averaging them into lift-only was the ground-clipping

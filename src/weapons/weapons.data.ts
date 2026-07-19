@@ -22,6 +22,11 @@ export interface WeaponPoses {
   grip: [number, number, number];
   rot: [number, number, number];
   foregrip?: [number, number, number];
+  /** Left-hand IK weight pulling the palm onto `foregrip` (default 0.6).
+   * The rifle clips pose both arms for a RIFLE-length gun; shorter guns
+   * need a stronger pull so their tighter foregrip actually reads — this
+   * is what gives each long gun its own hold instead of the rifle's. */
+  leftIk?: number;
 }
 
 export interface WeaponDef {
@@ -54,27 +59,45 @@ export interface WeaponDef {
   pose: WeaponPoses;
 }
 
-/** Sockets are in the GUN's frame (x right, y up, z toward the stock):
- * exports are bbox-centered with the pistol grip near the origin. Calibrated
- * against rendered frames (scripts/grip-check.mts). */
+/**
+ * Sockets are in the GUN's frame (x right, y up, z toward the stock) and in
+ * UNSCALED model units — WeaponRig multiplies by `model.scale`, so resizing a
+ * weapon never invalidates its grip data.
+ *
+ * Every value below is MEASURED off the GLB's own vertices (bin the mesh along
+ * Z, find the downward protrusions off the receiver line): the rearmost
+ * protrusion IS the pistol grip, the one in front of it is the magazine or
+ * trigger guard. The previous hand-guessed sockets sat 13-16 cm forward of
+ * every real grip, so the hand held each gun by its receiver with the grip
+ * floating up by the wrist.
+ */
 const PISTOL_POSE: WeaponPoses = {
-  grip: [0, -0.04, 0.02],
+  // Revolver grip protrusion: z 0.119..0.186, down to y -0.103.
+  grip: [0, -0.05, 0.15],
   rot: [0, 0, 0],
 };
 const RIFLE_POSE: WeaponPoses = {
-  grip: [0, -0.04, 0.08],
+  // Pistol grip: z 0.193..0.27 (deepest -0.094); magazine is the z≈-0.04
+  // protrusion, which is what the old socket was grabbing.
+  grip: [0, -0.05, 0.225],
   rot: [0, 0, 0],
-  foregrip: [0, -0.02, -0.22],
+  // Handguard underside y 0.019, top rail 0.142 — palm wraps mid-height.
+  foregrip: [0, 0.05, -0.19],
+  leftIk: 0.85,
 };
 const SHOTGUN_POSE: WeaponPoses = {
-  grip: [0, -0.04, 0.06],
+  // Grip protrusion z 0.162..0.301 (deepest -0.103); trigger guard z≈0.116.
+  grip: [0, -0.045, 0.19],
   rot: [0, 0, 0],
-  foregrip: [0, -0.03, -0.2],
+  foregrip: [0, 0.045, -0.2],
+  leftIk: 0.95,
 };
 const SAWNOFF_POSE: WeaponPoses = {
-  grip: [0, -0.03, 0.02],
+  // Grip protrusion z 0.142..0.22 (deepest -0.094 at 0.168).
+  grip: [0, -0.045, 0.175],
   rot: [0, 0, 0],
-  foregrip: [0, -0.03, -0.15],
+  foregrip: [0, 0.06, -0.16],
+  leftIk: 0.95,
 };
 
 /** In-hand grip poses for throwable props. Both exports have their origin at
@@ -107,7 +130,7 @@ export const WEAPONS: Record<string, WeaponDef> = {
     reserveAmmo: 60,
     reloadTime: 1.4,
     sound: { sub: 90, crack: 0.5, body: 0.16, pitch: 1.0 },
-    model: { asset: 'wep_pistol', scale: 1 },
+    model: { asset: 'wep_pistol', scale: 0.709 },
     shootAnim: true,
     cls: 'pistol',
     pose: PISTOL_POSE,
@@ -136,7 +159,7 @@ export const WEAPONS: Record<string, WeaponDef> = {
     reserveAmmo: 120,
     reloadTime: 2.1,
     sound: { sub: 70, crack: 0.65, body: 0.13, pitch: 1.1 },
-    model: { asset: 'wep_rifle', scale: 1 },
+    model: { asset: 'wep_rifle', scale: 0.777 },
     shootAnim: false,
     cls: 'long',
     pose: RIFLE_POSE,
@@ -158,7 +181,7 @@ export const WEAPONS: Record<string, WeaponDef> = {
     reserveAmmo: 30,
     reloadTime: 2.6,
     sound: { sub: 55, crack: 0.85, body: 0.28, pitch: 0.8 },
-    model: { asset: 'wep_shotgun', scale: 1 },
+    model: { asset: 'wep_shotgun', scale: 1.167 },
     shootAnim: true,
     cls: 'long',
     pose: SHOTGUN_POSE,
@@ -181,7 +204,7 @@ export const WEAPONS: Record<string, WeaponDef> = {
     reserveAmmo: 18,
     reloadTime: 2.0,
     sound: { sub: 48, crack: 0.9, body: 0.34, pitch: 0.72 },
-    model: { asset: 'wep_sawnoff', scale: 1 },
+    model: { asset: 'wep_sawnoff', scale: 0.553 },
     shootAnim: true,
     cls: 'long',
     pose: SAWNOFF_POSE,

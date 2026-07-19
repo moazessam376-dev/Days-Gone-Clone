@@ -216,6 +216,10 @@ export class WeaponRig {
       if (wr[0] || wr[1] || wr[2]) {
         _carryQ.multiply(_holdQ.setFromEuler(_euler.set(wr[0], wr[1], wr[2], 'YXZ')));
       }
+      // Sockets are authored in UNSCALED model units (measured off the GLB's
+      // own vertices) — apply the display scale here so resizing a weapon
+      // never invalidates its grip data.
+      const ms = def.model.scale;
       const grip = def.pose.grip;
       // Two-hand: swing the grip→foregrip axis onto the palm→palm line (the
       // clips animate both hands on the virtual gun; this reproduces it).
@@ -236,7 +240,9 @@ export class WeaponRig {
       // Socket-to-palm: position so the grip point lands on the palm.
       this.holder.position
         .copy(_palmR)
-        .sub(_off.set(grip[0], grip[1], grip[2]).applyQuaternion(this.holder.quaternion));
+        .sub(
+          _off.set(grip[0] * ms, grip[1] * ms, grip[2] * ms).applyQuaternion(this.holder.quaternion),
+        );
       this.holder.position.y -= 0.15 * lower;
       this.applyDevTweak();
 
@@ -299,10 +305,12 @@ export class WeaponRig {
   /** World position of the active gun's foregrip (left-hand IK target), or
    * null for one-handed weapons/throwables. Call after update(). */
   foregripWorld(out: THREE.Vector3): THREE.Vector3 | null {
-    const fg = WEAPONS[this.active]?.pose.foregrip;
+    const def = WEAPONS[this.active];
+    const fg = def?.pose.foregrip;
     const g = this.guns.get(this.active);
     if (!fg || !g) return null;
+    const ms = def.model.scale;
     this.holder.updateMatrixWorld(true);
-    return out.set(fg[0], fg[1], fg[2]).applyMatrix4(g.matrixWorld);
+    return out.set(fg[0] * ms, fg[1] * ms, fg[2] * ms).applyMatrix4(g.matrixWorld);
   }
 }
