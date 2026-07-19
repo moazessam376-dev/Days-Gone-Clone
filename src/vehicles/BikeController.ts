@@ -41,8 +41,12 @@ export class BikeController {
   /** Named wheel pivots (WheelF/WheelR in the exported GLB) spun by speed. */
   private spinWheels: Array<{ node: THREE.Object3D; radius: number }> = [];
   private wheelHubY: number[] = [];
-  private modelBaseY = 0;
+  private wheelHubZ: number[] = [];
+  /** Carries the stance correction (lift + pitch) in root space, so the
+   * model's own alignment rotation/centering offset stays untouched. */
+  private stance = new THREE.Group();
   private modelLift = 0;
+  private modelPitch = 0;
   /** Chassis footprint half-extents (for the zombie steering obstacle). */
   readonly halfExtents = { hw: 0.45, hd: 1.15 };
 
@@ -72,8 +76,8 @@ export class BikeController {
     const center = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());
     this.model.position.sub(center);
-    this.modelBaseY = this.model.position.y;
-    this.root.add(this.model);
+    this.stance.add(this.model);
+    this.root.add(this.stance);
 
     this.body = physics.world.createRigidBody(
       RAPIER.RigidBodyDesc.dynamic()
@@ -140,9 +144,10 @@ export class BikeController {
         restLength,
         w.radius,
       );
-      // Authored hub height per wheel — updateVisuals compares it with the
-      // live suspension to keep the rendered tires ON the ground.
+      // Authored hub per wheel — updateVisuals compares it with the live
+      // suspension to keep the rendered tires ON the ground.
       this.wheelHubY.push(w.y);
+      this.wheelHubZ.push(w.z);
     }
     for (let i = 0; i < 2; i++) {
       this.controller.setWheelSuspensionStiffness(i, 30);
@@ -246,23 +251,34 @@ export class BikeController {
     this.model.rotation.z = this.lean;
     // The bike model is RIGID (no per-wheel articulation), so the rendered
     // stance depends only on the body height — which the solver sets from
-    // suspension equilibrium, NOT from the authored geometry. Slide the
-    // whole model vertically by the measured physics-hub vs authored-hub
-    // gap so the tires always meet the ground, per bike, at any load.
-    let sum = 0;
-    let n = 0;
+    // suspension equilibrium, NOT from the authored geometry. Fit the model
+    // through BOTH measured physics-hub vs authored-hub gaps (lift + pitch):
+    // averaging them into a pure lift split any front/rear disagreement in
+    // half, floating one tire and sinking the other by the same amount
+    // (the user bike measured exactly +20 mm front / -20 mm rear).
+    const deltas: Array<{ d: number; z: number }> = [];
     for (let i = 0; i < this.wheelHubY.length; i++) {
       if (!this.controller.wheelIsInContact(i)) continue;
       const L = this.controller.wheelSuspensionLength(i);
       const anchor = this.controller.wheelChassisConnectionPointCs(i);
       if (L == null || !anchor) continue;
-      sum += anchor.y - L - this.wheelHubY[i];
-      n++;
+      deltas.push({ d: anchor.y - L - this.wheelHubY[i], z: this.wheelHubZ[i] });
     }
-    if (n > 0) {
-      const target = sum / n;
-      this.modelLift += (target - this.modelLift) * Math.min(1, dt * 10 || 0.2);
-      this.model.position.y = this.modelBaseY + this.modelLift;
+    if (deltas.length > 0) {
+      // Solve lift t and pitch θ so each authored hub lands on its physics
+      // hub: t - θ·z_i = d_i (rotation.x=θ moves a point at z by -θ·z).
+      // One wheel grounded: hold the current pitch, lift onto that wheel.
+      let pitch = this.modelPitch;
+      if (deltas.length >= 2) {
+        const [f, r] = deltas;
+        pitch = (r.d - f.d) / (f.z - r.z);
+      }
+      const lift = deltas[0].d + pitch * deltas[0].z;
+      const k = Math.min(1, dt * 10 || 0.2);
+      this.modelLift += (lift - this.modelLift) * k;
+      this.modelPitch += (pitch - this.modelPitch) * k;
+      this.stance.position.y = this.modelLift;
+      this.stance.rotation.x = this.modelPitch;
     }
   }
 

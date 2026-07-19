@@ -55,6 +55,25 @@ redistributed)" section for Synty.
 7. **Verification** — `npm run build` + physics suite + visual QA script,
    then user playtest. R2 closes on playtest sign-off.
 
+## Weapon animation & bike stance status (2026-07-19)
+
+- The real gun-handling clips ARE active: 12 Mixamo rifle/pistol clips
+  (built by the merge-anims job from `scripts/mixamo-anims.json` into
+  `assets/raw/mixamo/mixamo-anims.glb`, retargeted in the Hunter job) ship
+  in the player GLB; `PlayerAvatar.hasGunClips === true` on the live build.
+  The old procedural pistol pose and finger curl are the FALLBACK, gated
+  behind `!hasGunClips` — they must never run on top of the clips.
+- Attachment model (user decision, 2026-07-19): keep the palm-socket +
+  palm→palm two-hand framing from round 8; per-weapon grip offsets get
+  tuned WITH the user in the Pose Lab (`?dev=1`) and exported into
+  `src/config.ts`. The alternative (one fixed grip transform on the hand
+  bone) is round 7's rejected look — do not revert to it.
+- Bike stance: `BikeController.updateVisuals` fits the rigid model through
+  BOTH per-wheel physics-hub deltas (vertical lift + pitch on a stance
+  wrapper group). Averaging them into lift-only was the ground-clipping
+  bug (user bike measured +20 mm front / −20 mm rear; both bikes now
+  0 mm/0 mm at rest, verified via Playwright per CLAUDE.md).
+
 ## Notes
 
 - All 30 Synty characters share one skeleton — D1 is swappable later at

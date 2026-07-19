@@ -133,7 +133,37 @@ while failing the real playtest; the next session must reproduce the
 problems from the user's own view (their build stamp, their footage, or
 driving the live site) before writing any more code, and should treat
 "held weirdly" as a pose-QUALITY problem (no gun animations exist in any
-owned library — sourcing real rifle/pistol anim assets is on the table).
+owned library — sourcing real rifle/pistol anim assets is on the table).**
+
+Rounds 7–9 (2026-07-19, deployed): REAL Mixamo gun animations — 12
+rifle/pistol clips (merge-anims job → `assets/raw/mixamo/mixamo-anims.glb`)
+retargeted onto the Synty rig; PlayerAvatar weapon-class carry/aim/fire/
+reload sets gated behind `hasGunClips`; grip-first attachment (palm
+sockets, palm→palm two-hand framing, clip-driven fingers — the legacy
+procedural pose + finger curl only run when `!hasGunClips`); chest-frame
+back holster; Pose & Grip Lab dev editor (`?dev=1`, EXPORT TUNING).
+
+Round 10 (2026-07-19, Playwright-MCP verification + bike stance fix):
+first round verified per CLAUDE.md's mandatory visual-verification rules
+against the real build. Measured: `hasGunClips === true`; every
+weapon × state selects the intended clip set (action weights read live —
+rifle/shotgun/sawnoff → Rifle_Idle/Aim, pistol → Pistol set, molotov →
+OverhandThrow; nothing falls through to pistol clips); rifle carry
+renders two-handed. User decision recorded: KEEP the palm-socket
+attachment and tune per-weapon grip offsets WITH the user in the Pose
+Lab (the one-fixed-grip-transform alternative is round 7's rejected
+look). Bike clipping root-caused by measurement: user bike front
++20 mm / rear −20 mm while the Synty moto sat 0/0 — `updateVisuals`
+averaged the per-wheel physics-hub vs authored-hub gaps into a pure
+vertical lift, splitting any front/rear disagreement across both tires.
+Fixed with a lift+pitch stance fit through BOTH wheel deltas (stance
+wrapper group; suite stays 25/25). Measured after: both bikes 0 mm/0 mm
+at rest on flat ground, −1/+6 mm parked on a 14 % slope; on a steep 24°
+slope the rear tire reads −47 mm but the rendered hub matches the
+physics hub to the millimetre — that residual is the raycast-vehicle
+physics bottoming out, not a stance bug. Weapon-hold sign-off STILL
+pending: the user confirms from their own build stamp, then the Pose Lab
+grip-tuning session runs together.
 
 ### R3 — Vehicles as a real system
 - Enter/exit animations, visible rider on the bike, per-vehicle handling
