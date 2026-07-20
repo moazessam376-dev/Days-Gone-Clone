@@ -498,10 +498,42 @@ export class PlayerAvatar {
    */
   alignHand(side: 'L' | 'R', target: THREE.Quaternion, weight: number): void {
     const hand = this.boneByName.get(`Hand_${side}`);
-    if (!hand || !hand.parent || weight < 0.02) return;
-    hand.parent.getWorldQuaternion(_alignQ);
+    const fore = hand?.parent; // Hand_* hangs off Elbow_*
+    if (!hand || !fore || weight < 0.02) return;
+    const w = Math.min(1, weight);
+
+    // Forearm pronation FIRST. A real arm turns the palm by rolling the
+    // forearm, not by wringing the wrist: making the wrist supply the whole
+    // rotation measured 83.6 deg of local twist, which shears the skin at
+    // the joint (the "twisted arm / clipping hand" in the playtest).
+    // The hand's local translation IS the forearm's bone axis, and rolling
+    // about it leaves the hand's POSITION untouched, so the IK pays nothing.
+    _alignAxis.copy(hand.position);
+    if (_alignAxis.lengthSq() > 1e-8) {
+      _alignAxis.normalize();
+      // Wrist rotation the alignment is about to demand, in forearm space.
+      fore.getWorldQuaternion(_alignQ);
+      _alignDeltaQ.copy(_alignQ.invert()).multiply(target);
+      // Swing-twist decomposition about the bone axis. (Take the dot BEFORE
+      // overwriting the vector — aliasing here silently projected onto the
+      // axis itself and rolled the forearm the wrong way, doubling the
+      // twist to 171 deg instead of cutting it to 17.)
+      _alignVec.set(_alignDeltaQ.x, _alignDeltaQ.y, _alignDeltaQ.z);
+      const along = _alignVec.dot(_alignAxis);
+      _alignVec.copy(_alignAxis).multiplyScalar(along);
+      _alignTwistQ.set(_alignVec.x, _alignVec.y, _alignVec.z, _alignDeltaQ.w);
+      if (_alignTwistQ.lengthSq() > 1e-8) {
+        _alignTwistQ.normalize();
+        // Give the forearm its share; the wrist keeps the remainder.
+        _alignCurQ.copy(_IDENTITY_Q).slerp(_alignTwistQ, HANDLING.forearmTwistShare * w);
+        fore.quaternion.multiply(_alignCurQ);
+        fore.updateWorldMatrix(false, true);
+      }
+    }
+
+    fore.getWorldQuaternion(_alignQ);
     _alignQ.invert().multiply(target);
-    hand.quaternion.slerp(_alignQ, Math.min(1, weight));
+    hand.quaternion.slerp(_alignQ, w);
   }
 
   /** Last frame's sprint blend / roll flag — Game gates the grip IK on them
@@ -643,6 +675,12 @@ export class PlayerAvatar {
 
 const _curlAxis = new THREE.Vector3();
 const _alignQ = new THREE.Quaternion();
+const _alignCurQ = new THREE.Quaternion();
+const _alignDeltaQ = new THREE.Quaternion();
+const _alignTwistQ = new THREE.Quaternion();
+const _alignAxis = new THREE.Vector3();
+const _alignVec = new THREE.Vector3();
+const _IDENTITY_Q = new THREE.Quaternion();
 const _curlQ = new THREE.Quaternion();
 const _spineAxis = new THREE.Vector3();
 const _spineQ = new THREE.Quaternion();

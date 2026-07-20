@@ -166,6 +166,10 @@ export const HANDLING = {
    * Spine_02/Spine_03 while aiming a gun (the whole chest+arms unit pitches,
    * replacing the old 3-pose aim blend that clipped the arms together). */
   aimSpinePitch: 0.3,
+  /** Share of a forced wrist rotation that the FOREARM absorbs as roll
+   * instead of the wrist joint. Real arms pronate; wringing the wrist alone
+   * measured 83.6 deg of twist on the support hand and sheared the mesh. */
+  forearmTwistShare: 0.8,
   /**
    * Finger curl wrapping a held grip — the retargeted clips leave the finger
    * bones static, so without this every hand reads as an open palm.
@@ -198,8 +202,9 @@ export const HANDLING = {
     /** Floor curl for a hand that is holding nothing. The clips leave the
      * finger bones at the bind pose — fingers dead straight and slightly
      * splayed — which reads as a mannequin claw on the free hand at low
-     * ready. A real relaxed hand rests a third of the way closed. */
-    relaxed: 0.3,
+     * ready. A real relaxed hand rests about half closed — at 0.3 the tips
+     * still measured 137-148 mm from the palm, i.e. barely bent. */
+    relaxed: 0.5,
   },
 };
 
