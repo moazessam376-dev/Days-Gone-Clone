@@ -107,7 +107,7 @@ export class DevMode {
     pose.add({ exportTuning: () => this.exportTuning() }, 'exportTuning').name('EXPORT TUNING');
 
     const state = this.gui.addFolder('State');
-    for (const key of ['pistol', 'rifle', 'shotgun', 'sawnoff', 'grenade', 'molotov']) {
+    for (const key of ['pistol', 'rifle', 'shotgun', 'grenade', 'molotov']) {
       state.add({ [key]: () => { this.deps.equip(key); this.attachGizmo(); } }, key);
     }
     state

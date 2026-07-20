@@ -182,12 +182,24 @@ export const HANDLING = {
     fingerAxis: [0, -1, 0] as [number, number, number],
     indexAxis: [0, 0, -1] as [number, number, number],
     thumbAxis: [0, 1, 0] as [number, number, number],
-    finger: 1.25,
-    thumb: 1.1,
+    finger: 1.0,
+    thumb: 0.8,
     /** Trigger hand: the index rests ON the trigger, so it curls less than
      * the support hand's index, which wraps the foregrip fully. */
-    index: 0.65,
-    indexSupport: 1.1,
+    index: 0.5,
+    indexSupport: 0.9,
+    /**
+     * Per-joint taper, knuckle→tip. The angle applies to EVERY bone in the
+     * chain and compounds down it, so a flat 1.25 rad meant ~286° of total
+     * curl — the fingers spiralled back through the grip and read as loose
+     * slabs. A real grip is roughly 45°/50°/35° with the tip barely moving.
+     */
+    segments: [0.85, 0.95, 0.6, 0.15] as [number, number, number, number],
+    /** Floor curl for a hand that is holding nothing. The clips leave the
+     * finger bones at the bind pose — fingers dead straight and slightly
+     * splayed — which reads as a mannequin claw on the free hand at low
+     * ready. A real relaxed hand rests a third of the way closed. */
+    relaxed: 0.3,
   },
 };
 

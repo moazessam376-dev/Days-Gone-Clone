@@ -1,7 +1,9 @@
 import { WHEEL } from '../config';
 
-/** Sector count; Game's selection math derives its angle step from this. */
-export const WHEEL_SECTOR_COUNT = 7;
+/** Sector count; Game's selection math derives its angle step from this.
+ * Must match buildWheelSectors(): pistol, rifle, shotgun, molotov, grenade,
+ * melee — the sawn-off slot was retired with the weapon. */
+export const WHEEL_SECTOR_COUNT = 6;
 
 export interface WheelSector {
   key: string;

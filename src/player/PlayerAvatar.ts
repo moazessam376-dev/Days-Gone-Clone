@@ -483,10 +483,25 @@ export class PlayerAvatar {
         const rest = this.fingerRest.get(name);
         if (!rest) continue;
         const bone = this.boneByName.get(name)!;
-        _curlQ.setFromAxisAngle(_curlAxis, amt * w);
+        _curlQ.setFromAxisAngle(_curlAxis, amt * c.segments[i - 1] * w);
         bone.quaternion.copy(rest).multiply(_curlQ);
       }
     }
+  }
+
+  /**
+   * Blend a hand's WORLD orientation toward `target`. The clips orient each
+   * wrist for the virtual weapon they were animated on, so on our models the
+   * support hand ends up rotated off the gun and its curled fingers close on
+   * empty air next to the grip. Call after the arm IK (which moves the
+   * parent chain) and before the finger curl.
+   */
+  alignHand(side: 'L' | 'R', target: THREE.Quaternion, weight: number): void {
+    const hand = this.boneByName.get(`Hand_${side}`);
+    if (!hand || !hand.parent || weight < 0.02) return;
+    hand.parent.getWorldQuaternion(_alignQ);
+    _alignQ.invert().multiply(target);
+    hand.quaternion.slerp(_alignQ, Math.min(1, weight));
   }
 
   /** Last frame's sprint blend / roll flag — Game gates the grip IK on them
@@ -627,6 +642,7 @@ export class PlayerAvatar {
 }
 
 const _curlAxis = new THREE.Vector3();
+const _alignQ = new THREE.Quaternion();
 const _curlQ = new THREE.Quaternion();
 const _spineAxis = new THREE.Vector3();
 const _spineQ = new THREE.Quaternion();

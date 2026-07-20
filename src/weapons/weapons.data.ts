@@ -218,4 +218,11 @@ export const WEAPONS: Record<string, WeaponDef> = {
   },
 };
 
-export const WEAPON_ORDER = ['pistol', 'rifle', 'shotgun', 'sawnoff'] as const;
+/**
+ * Guns that are actually obtainable, in wheel order. `sawnoff` (Synty
+ * Hybrid_02) is DISABLED at the user's request: the model reads as a
+ * full-length weapon rather than a sawn-off (it measured 103 cm before
+ * rescaling) and its handling never matched the slot. Its definition and
+ * assets stay in place so re-enabling is a one-line change.
+ */
+export const WEAPON_ORDER = ['pistol', 'rifle', 'shotgun'] as const;

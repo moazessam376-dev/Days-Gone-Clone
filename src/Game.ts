@@ -52,6 +52,7 @@ const _vehicleFwd = new THREE.Vector3();
 const _arcDir = new THREE.Vector3();
 const _arcOrigin = new THREE.Vector3();
 const _foregrip = new THREE.Vector3();
+const _supportQ = new THREE.Quaternion();
 
 /**
  * M1 graybox: third-person character controller + over-shoulder camera in an
@@ -503,7 +504,6 @@ export class Game {
       gun('pistol', 'Pistol'),
       gun('rifle', 'Rifle'),
       gun('shotgun', 'Shotgun'),
-      gun('sawnoff', 'Sawn-Off'),
       {
         key: 'molotov',
         label: 'Molotov',
@@ -1274,9 +1274,9 @@ export class Game {
     // A sidearm is one-handed at low ready and two-handed on aim, so its
     // support hand fades in with the ADS blend; long guns are held with both
     // hands in every stance.
-    const leftIk =
-      (heldDef?.pose.leftIk ?? 0.6) * (heldDef?.cls === 'pistol' ? this.avatar.aimWeight : 1);
-    this.avatar.applyLeftHandIK(fgTarget, leftIk * (1 - this.avatar.sprintWeight), dt);
+    const leftOnGun =
+      (heldDef?.cls === 'pistol' ? this.avatar.aimWeight : 1) * (1 - this.avatar.sprintWeight);
+    this.avatar.applyLeftHandIK(fgTarget, (heldDef?.pose.leftIk ?? 0.6) * leftOnGun, dt);
     this.weaponRig.update(
       dt,
       this.rigBones,
@@ -1286,17 +1286,30 @@ export class Game {
       this.cameraRig.yaw,
       this.cameraRig.pitch,
     );
+    // Support-hand wrist: the clips orient it for the virtual weapon they
+    // were animated on, so on our models the curled fingers close on empty
+    // air beside the grip. Aim the palm at the grip before curling.
+    // PISTOL ONLY for now — a long gun's support hand wraps the handguard,
+    // not the trigger grip, so it needs its own target point.
+    if (fgTarget && leftOnGun > 0.02 && heldDef?.cls === 'pistol') {
+      const sq = this.weaponRig.supportHandOrientation(_supportQ, this.avatar.bone('Hand_L'));
+      if (sq) this.avatar.alignHand('L', sq, leftOnGun);
+    }
     // Fingers: the retargeted gun clips leave the finger bones essentially
     // STATIC (measured quat delta <0.005 over 30 frames of Rifle_AimIdle),
     // so every hand on a weapon needs the procedural wrap — applyHandGrip
     // composes rest*curl absolutely, so it replaces the clip's static
     // fingers instead of stacking on them. Right hand: any held gun or
-    // throwable (opens for the throw release). Left hand: when it's on the
-    // long-gun foregrip (released while sprinting — arms pump).
+    // throwable (opens for the throw release). The left hand curls on the
+    // SAME weight that puts it on the weapon — clenching a hand that is
+    // hanging free at low ready reads as a claw.
     const propCurl = this.equippedThrowable && !this.pendingThrow && !this.driving ? 1 : 0;
     const gunCurl = !this.equippedThrowable && !this.driving ? 1 : 0;
-    this.avatar.applyHandGrip('R', Math.max(propCurl, gunCurl), dt);
-    this.avatar.applyHandGrip('L', gunCurl && fgTarget ? 1 - this.avatar.sprintWeight : 0, dt);
+    // A hand holding nothing still gets the relaxed floor curl; only the
+    // driving pose (hands on the bars, posed by its own clip) is left alone.
+    const idle = this.driving ? 0 : HANDLING.gripCurl.relaxed;
+    this.avatar.applyHandGrip('R', Math.max(propCurl, gunCurl, idle), dt);
+    this.avatar.applyHandGrip('L', Math.max(gunCurl && fgTarget ? leftOnGun : 0, idle), dt);
     this.recoil.update(dt);
     for (const v of this.vehicles) v.updateVisuals(dt);
     if (this.dev) {

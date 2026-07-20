@@ -20,6 +20,8 @@ const _adsQ = new THREE.Quaternion();
 const _euler = new THREE.Euler();
 const _off = new THREE.Vector3();
 const _backQ = new THREE.Quaternion();
+const _gripW = new THREE.Vector3();
+const _basis = new THREE.Matrix4();
 
 /** Bones the rig follows; refs are stable, looked up once by Game. */
 export interface RigBones {
@@ -297,6 +299,40 @@ export class WeaponRig {
         .multiply(_holdQ.setFromEuler(_euler.set(br[0], br[1], br[2] + slot * 0.12, 'YXZ')));
       slot++;
     }
+  }
+
+  /**
+   * World orientation that lands the SUPPORT palm on the grip: the hand's
+   * finger axis (local +X on this rig) aims from the wrist at the grip
+   * socket, and the knuckle axis (local -Z) lies across the barrel so the
+   * fingers wrap the grip instead of raking along it. Both local axes were
+   * measured off the reconstructed rig — see HANDLING.gripCurl.
+   */
+  supportHandOrientation(
+    out: THREE.Quaternion,
+    wrist: THREE.Object3D | null,
+  ): THREE.Quaternion | null {
+    const def = WEAPONS[this.active];
+    const g = this.guns.get(this.active);
+    const m = this.muzzles.get(this.active);
+    if (!def || !g || !m || !wrist) return null;
+    const ms = def.model.scale;
+    const gp = def.pose.grip;
+    this.holder.updateMatrixWorld(true);
+    _gripW.set(gp[0] * ms, gp[1] * ms, gp[2] * ms).applyMatrix4(g.matrixWorld);
+    m.getWorldPosition(_muzzle);
+    g.getWorldPosition(_tmp);
+    _dWorld.copy(_muzzle).sub(_tmp); // barrel direction
+    wrist.getWorldPosition(_tmp);
+    _aimAxis.copy(_gripW).sub(_tmp);
+    if (_aimAxis.lengthSq() < 1e-6 || _dWorld.lengthSq() < 1e-6) return null;
+    _aimAxis.normalize();
+    _dWorld.normalize().addScaledVector(_aimAxis, -_dWorld.dot(_aimAxis));
+    if (_dWorld.lengthSq() < 1e-6) return null;
+    _dWorld.normalize().negate(); // local +Z image
+    _palmL.crossVectors(_dWorld, _aimAxis).normalize();
+    _basis.makeBasis(_aimAxis, _palmL, _dWorld);
+    return out.setFromRotationMatrix(_basis);
   }
 
   muzzleWorld(out: THREE.Vector3): THREE.Vector3 {
