@@ -75,12 +75,18 @@ const PISTOL_POSE: WeaponPoses = {
   // Revolver grip protrusion: z 0.119..0.186, down to y -0.103.
   grip: [0, -0.05, 0.15],
   rot: [0, 0, 0],
-  // SUPPORT-HAND socket, not a foregrip: the left wrist sits just under and
-  // inboard of the firing hand for the two-handed aim. `cls: 'pistol'` keeps
-  // this out of the long-gun axis swing, and Game fades the IK in with the
-  // aim blend so low-ready stays one-handed. The aim clip's own left hand
-  // lands 22.6 cm from our grip — it is posing a differently-sized pistol.
-  foregrip: [-0.028, -0.177, 0.164],
+  // SUPPORT-HAND socket, not a foregrip: the left wrist sits below and
+  // outboard of the firing hand so the two clasp like a real two-handed
+  // grip (reference: the support palm packs the exposed grip, its fingers
+  // wrap OVER the firing fingers). `cls: 'pistol'` keeps this out of the
+  // long-gun axis swing, and Game fades the IK in with the aim blend so
+  // low-ready stays one-handed. The aim clip's own left hand lands 22.6 cm
+  // from our grip — it is posing a differently-sized pistol.
+  // Tuned against bone-to-bone clearance: the previous socket put the two
+  // hands 14 mm apart, so these chunky low-poly hands interpenetrated and
+  // fingers poked through the gun. 36 mm clears the meshes while the left
+  // fingertips still reach the grip (55 mm) so it reads as a clasp.
+  foregrip: [-0.055, -0.21, 0.17],
   leftIk: 0.9,
 };
 const RIFLE_POSE: WeaponPoses = {

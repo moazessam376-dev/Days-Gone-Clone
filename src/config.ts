@@ -202,9 +202,10 @@ export const HANDLING = {
     /** Floor curl for a hand that is holding nothing. The clips leave the
      * finger bones at the bind pose — fingers dead straight and slightly
      * splayed — which reads as a mannequin claw on the free hand at low
-     * ready. A real relaxed hand rests about half closed — at 0.3 the tips
-     * still measured 137-148 mm from the palm, i.e. barely bent. */
-    relaxed: 0.5,
+     * ready. A hand hanging at the side is well past half closed: at 0.3 the
+     * tips measured 137-148 mm from the palm and at 0.5 still 118-136, i.e.
+     * near straight, which reads as a splayed claw. */
+    relaxed: 0.7,
   },
 };
 
